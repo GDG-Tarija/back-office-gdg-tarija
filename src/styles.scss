@@ -1,5 +1,193 @@
+@use './styles/variables';
 @use 'tailwindcss';
 @use 'primeicons/primeicons.css';
 @plugin "tailwindcss-primeui";
 
 @layer tailwind, primeng;
+
+@theme {
+  --color-google-blue: #4285f4;
+  --color-google-red: #ea4335;
+  --color-google-yellow: #fbbc05;
+  --color-google-green: #34a853;
+  --color-google-blue-light: #d2e3fc;
+  --color-google-red-light: #fad2cf;
+  --color-google-yellow-light: #fde293;
+  --color-google-green-light: #ceead6;
+
+  --color-surface-main: #f8f9fa;
+  --color-surface-paper: #ffffff;
+  --color-text-primary: #202124;
+  --color-text-secondary: #5f6368;
+
+  --font-google: 'Google Sans', system-ui, sans-serif;
+
+  --shadow-google-card: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-google-card-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  --animate-gdg-spin: gdg-spin 1.2s linear infinite;
+
+  @keyframes gdg-spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/assets/fonts/google-sans/GoogleSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/assets/fonts/google-sans/GoogleSans-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/assets/fonts/google-sans/GoogleSans-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/assets/fonts/google-sans/GoogleSans-MediumItalic.ttf') format('truetype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/assets/fonts/google-sans/GoogleSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/assets/fonts/google-sans/GoogleSans-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  font-family:
+    'Google Sans',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: var(--color-surface-main);
+  color: var(--color-text-primary);
+}
+
+body {
+  min-height: 100dvh;
+}
+
+@layer components {
+  .gdg-btn {
+    @apply rounded-full font-semibold transition-all duration-300 ease-in-out;
+  }
+
+  .gdg-btn-filled {
+    @apply rounded-full bg-google-blue px-8 py-3 font-semibold text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-blue-600 active:scale-95;
+  }
+
+  .gdg-btn-outlined {
+    @apply rounded-full border-2 border-google-blue px-8 py-3 font-semibold text-google-blue transition-all duration-300 ease-in-out hover:bg-google-blue-light;
+  }
+
+  .gdg-btn-ghost {
+    @apply rounded-full px-6 py-2 font-semibold text-google-blue transition-all duration-300 ease-in-out hover:bg-google-blue-light;
+  }
+
+  .gdg-card {
+    @apply rounded-3xl border border-black/5 bg-white shadow-sm;
+  }
+
+  .gdg-h1 {
+    @apply text-5xl font-extrabold tracking-tight text-text-primary;
+  }
+
+  .gdg-h2 {
+    @apply text-3xl font-bold tracking-tight text-text-primary;
+  }
+
+  .gdg-body {
+    @apply text-lg leading-relaxed text-text-secondary;
+  }
+
+  .gdg-container {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+
+  .gdg-page {
+    @apply min-h-full pt-6 pb-0 sm:pt-8;
+  }
+
+  .gdg-spinner {
+    @apply relative inline-block size-10 rounded-full;
+    background: conic-gradient(
+      var(--gdg-google-blue),
+      var(--gdg-google-red),
+      var(--gdg-google-yellow),
+      var(--gdg-google-green),
+      var(--gdg-google-blue)
+    );
+    animation: gdg-spin 1.1s linear infinite;
+  }
+
+  .gdg-spinner::after {
+    content: '';
+    @apply absolute inset-1 rounded-full bg-white;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-scrollbar-thumb) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-scrollbar-thumb);
+    border-radius: 3px;
+
+    &:hover {
+      background: var(--color-scrollbar-thumb-hover);
+    }
+  }
+}

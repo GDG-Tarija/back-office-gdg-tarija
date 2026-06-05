@@ -1,0 +1,47 @@
+<div class="relative z-10 mx-auto w-full max-w-xl">
+  <div class="gdg-card overflow-hidden">
+    <div class="p-8 sm:p-12">
+      <img [src]="logo.src" [alt]="logo.alt" class="h-10 w-auto" />
+
+      <p class="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-google-blue">
+        Back Office
+      </p>
+      <h1 class="mt-3 text-3xl font-bold tracking-tight text-text-primary sm:text-4xl">
+        Iniciar sesión
+      </h1>
+      <p class="mt-3 text-base leading-7 text-text-secondary">
+        Usá tu cuenta de Google para acceder al panel administrativo de GDG Tarija.
+      </p>
+
+      <div class="mt-8">
+        <p-button
+          styleClass="w-full justify-center rounded-full px-6 py-3 font-semibold"
+          [loading]="loading()"
+          [disabled]="loading()"
+          (onClick)="loginWithGoogle()"
+        >
+          <img
+            class="mr-3 inline-block"
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt=""
+            width="20"
+            height="20"
+          />
+          <span>Continuar con Google</span>
+        </p-button>
+      </div>
+
+      <p class="mt-6 text-sm leading-6 text-text-secondary">
+        Al continuar aceptás el uso de tu perfil básico para identificarte dentro de la
+        administración.
+      </p>
+    </div>
+
+    <div class="grid h-1 grid-cols-4">
+      <div class="bg-google-blue"></div>
+      <div class="bg-google-red"></div>
+      <div class="bg-google-yellow"></div>
+      <div class="bg-google-green"></div>
+    </div>
+  </div>
+</div>

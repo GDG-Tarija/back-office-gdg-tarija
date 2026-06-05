@@ -1,0 +1,47 @@
+<main class="min-h-dvh bg-surface-main p-6">
+  <section class="mx-auto flex max-w-6xl flex-col gap-6">
+    <header
+      class="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-google-blue">Dashboard</p>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-text-primary">
+          Back Office GDG Tarija
+        </h1>
+        <p class="mt-2 text-text-secondary">
+          Panel administrativo listo para conectar los módulos de gestión.
+        </p>
+      </div>
+
+      <p-button
+        label="Cerrar sesión"
+        icon="pi pi-sign-out"
+        severity="secondary"
+        (onClick)="auth.signOut()"
+      />
+    </header>
+
+    <p-card>
+      @if (auth.user(); as user) {
+        <div class="flex items-center gap-4">
+          @if (user.avatar_url) {
+            <img
+              class="size-14 rounded-full object-cover"
+              [src]="user.avatar_url"
+              alt="Avatar"
+              referrerpolicy="no-referrer"
+            />
+          }
+          <div>
+            <h2 class="text-xl font-semibold text-text-primary">
+              {{ user.first_name }} {{ user.last_name }}
+            </h2>
+            <p class="text-text-secondary">{{ user.email }}</p>
+          </div>
+        </div>
+      } @else {
+        <p class="text-text-secondary">Cargando perfil...</p>
+      }
+    </p-card>
+  </section>
+</main>
