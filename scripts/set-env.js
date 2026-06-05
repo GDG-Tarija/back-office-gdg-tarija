@@ -44,6 +44,18 @@ const devFilePath = path.join(dir, 'environment.ts');
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
+if (!supabaseUrl || !supabaseKey) {
+  console.error(
+    [
+      '[scripts/set-env.js] Faltan variables de Supabase.',
+      'Crea un archivo .env en la raíz o define variables de entorno:',
+      'SUPABASE_URL=...',
+      'SUPABASE_KEY=...',
+    ].join('\n'),
+  );
+  process.exit(1);
+}
+
 const devContent = `export const environment = {
   production: false,
   supabaseUrl: ${toTsString(supabaseUrl)},
