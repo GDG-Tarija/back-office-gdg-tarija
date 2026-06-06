@@ -13,6 +13,15 @@
         Usá tu cuenta de Google para acceder al panel administrativo de GDG Tarija.
       </p>
 
+      @if (error(); as err) {
+        <div
+          class="mt-6 flex items-center gap-3 rounded-2xl bg-google-red-light p-4 text-sm font-medium text-google-red"
+        >
+          <i class="pi pi-exclamation-circle text-lg"></i>
+          <span>{{ err }}</span>
+        </div>
+      }
+
       <div class="mt-8">
         <p-button
           styleClass="w-full justify-center rounded-full px-6 py-3 font-semibold"

@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PostgrestError } from '@supabase/supabase-js';
 
+import { AUTH_WHITELIST } from '../../config/auth-whitelist';
 import { Profile } from '../../models/profile.model';
 import { SUPABASE } from '../../supabase/supabase.client';
 
@@ -33,6 +34,17 @@ export class AuthService {
 
   readonly user = signal<Profile | null>(null);
   readonly loading = signal(true);
+  readonly authError = signal<string | null>(null);
+
+  isWhitelisted(email?: string): boolean {
+    if (!email) return false;
+    return AUTH_WHITELIST.map((e) => e.toLowerCase()).includes(email.toLowerCase());
+  }
+
+  async signOutWithError(message: string): Promise<void> {
+    this.authError.set(message);
+    await this.signOut();
+  }
 
   constructor() {
     this.supabase.auth.onAuthStateChange((event, session) => {
@@ -54,6 +66,8 @@ export class AuthService {
   }
 
   signInWithGoogle(): void {
+    this.loading.set(true);
+    this.authError.set(null);
     const currentPath = window.location.pathname;
     const redirectTarget = currentPath === '/auth/login' ? '/dashboard' : currentPath;
 
@@ -65,7 +79,12 @@ export class AuthService {
 
     void this.supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        queryParams: {
+          prompt: 'select_account',
+        },
+      },
     });
   }
 
@@ -115,6 +134,11 @@ export class AuthService {
       return;
     }
 
+    if (!this.isWhitelisted(partial.email)) {
+      await this.signOutWithError('Tu correo no está autorizado para acceder a este panel.');
+      return;
+    }
+
     try {
       const { data, error } = await this.rpc('get_my_profile');
       const row = Array.isArray(data) ? data[0] : null;
@@ -135,6 +159,11 @@ export class AuthService {
 
     if (!partial) {
       this.loading.set(false);
+      return;
+    }
+
+    if (!this.isWhitelisted(partial.email)) {
+      await this.signOutWithError('Tu correo no está autorizado para acceder a este panel.');
       return;
     }
 

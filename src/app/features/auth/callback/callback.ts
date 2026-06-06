@@ -22,10 +22,16 @@ export class Callback implements OnInit {
   ngOnInit(): void {
     this.auth
       .getSession()
-      .then(() => {
+      .then(async (session) => {
+        if (session && !this.auth.isWhitelisted(session.user?.email)) {
+          await this.auth.signOutWithError(
+            'Tu correo no está autorizado para acceder a este panel.',
+          );
+          return;
+        }
         const redirectTo = this.getSafeRedirect(sessionStorage.getItem('redirect_to'));
         sessionStorage.removeItem('redirect_to');
-        return this.router.navigateByUrl(redirectTo);
+        await this.router.navigateByUrl(redirectTo);
       })
       .catch(() => this.router.navigateByUrl('/auth/login'));
   }

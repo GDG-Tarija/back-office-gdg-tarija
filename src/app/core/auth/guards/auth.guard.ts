@@ -13,5 +13,10 @@ export const authGuard: CanActivateFn = async () => {
     return false;
   }
 
+  if (!auth.isWhitelisted(session.user?.email)) {
+    await auth.signOutWithError('No está autorizado para acceder a este panel.');
+    return false;
+  }
+
   return true;
 };

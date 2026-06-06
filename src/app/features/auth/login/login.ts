@@ -16,6 +16,7 @@ export class Login {
 
   readonly logo = LOGOS.horizontal;
   readonly loading = this.auth.loading;
+  readonly error = this.auth.authError;
 
   loginWithGoogle(): void {
     this.auth.signInWithGoogle();
