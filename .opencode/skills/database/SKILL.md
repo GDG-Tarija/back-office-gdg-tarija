@@ -32,19 +32,19 @@ La arquitectura de vistas y menús del sistema está distribuida en los siguient
 
 Todas las columnas de las tablas de Supabase se generan de forma tipada. No modificar la base de datos a mano; proponer primero una migración SQL en `supabase/migrations/` y actualizar este documento.
 
-### 2.1. Brand (Marcas / Organizaciones asociadas)
+### 2.1. Sponsors (Patrocinadores de la Comunidad)
 
-**Tabla:** `brands`
+**Tabla:** `sponsors`
 
-| Columna       | Tipo          | Restricciones                    | Descripción                                  |
-| ------------- | ------------- | -------------------------------- | -------------------------------------------- |
-| `id`          | String (UUID) | PK, `default: gen_random_uuid()` | Identificador único de la marca.             |
-| `name`        | String        | Nullable                         | Nombre comercial de la marca.                |
-| `description` | String        | Nullable                         | Descripción corta de la marca.               |
-| `score`       | String        | Nullable                         | Puntuación o valor de scoring de marca.      |
-| `state`       | State (enum)  | `NOT NULL`, `default: ACTIVE`    | Estado del registro (`ACTIVE` / `INACTIVE`). |
-| `created_at`  | TIMESTAMPTZ   | `default: NOW()`                 | Fecha y hora de creación automática.         |
-| `updated_at`  | TIMESTAMPTZ   | `default: NOW()`                 | Fecha y hora de última modificación.         |
+| Columna       | Tipo                     | ¿Acepta Nulos? | Descripción                                                |
+| ------------- | ------------------------ | -------------- | ---------------------------------------------------------- |
+| `id`          | UUID                     | NO             | Identificador único del patrocinador. PK.                  |
+| `name`        | Text                     | SÍ             | Nombre del patrocinador.                                   |
+| `description` | Text                     | SÍ             | Descripción del patrocinador o detalles de colaboración.   |
+| `score`       | Text                     | SÍ             | Puntuación, prioridad o valor de scoring del patrocinador. |
+| `state`       | USER-DEFINED (Enum/Text) | NO             | Estado del registro (ej: `ACTIVE` / `INACTIVE`).           |
+| `created_at`  | Timestamp with Time Zone | NO             | Fecha y hora de creación automática.                       |
+| `updated_at`  | Timestamp with Time Zone | NO             | Fecha y hora de última modificación automática.            |
 
 ### 2.2. Events (Eventos de la Comunidad)
 
@@ -64,7 +64,6 @@ Todas las columnas de las tablas de Supabase se generan de forma tipada. No modi
 | `updated_at`    | Timestamp with Time Zone | SÍ             | Fecha y hora de última actualización automática.                                     |
 | `description`   | Text                     | SÍ             | Descripción extensa o contenido informativo del evento.                              |
 | `image_url`     | Text                     | SÍ             | Enlace de la imagen promocional.                                                     |
-| `logo_url`      | Text                     | SÍ             | Enlace del logo o insignia del evento.                                               |
 | `banner_url`    | Text                     | SÍ             | Enlace del banner superior horizontal.                                               |
 | `location_type` | Character Varying        | SÍ             | Modalidad (ej: `PHYSICAL`, `VIRTUAL`, `HYBRID`).                                     |
 | `location_name` | Text                     | SÍ             | Nombre de la ubicación física o plataforma virtual (ej: `Edificio Postgrado UAJMS`). |
@@ -103,6 +102,8 @@ Todas las columnas de las tablas de Supabase se generan de forma tipada. No modi
 | `created_at`      | Timestamp with Time Zone | SÍ             | Fecha y hora de creación.                                         |
 | `updated_at`      | Timestamp with Time Zone | SÍ             | Fecha y hora de última actualización.                             |
 | `payment_qr_url`  | Text                     | SÍ             | Enlace al QR de pago bancario/transferencia (solo si es de pago). |
+| `description`     | Text                     | SÍ             | Descripción del tipo de ticket.                                   |
+| `image_url`       | Text                     | SÍ             | Imagen promocional o ilustrativa del ticket.                      |
 
 ### 2.5. Users (Perfiles y Cuentas de Usuarios)
 
@@ -120,6 +121,80 @@ Todas las columnas de las tablas de Supabase se generan de forma tipada. No modi
 | `is_staff`   | Boolean                  | SÍ             | Permiso especial de personal organizador (vista de administración). |
 | `created_at` | Timestamp with Time Zone | SÍ             | Fecha y hora del primer registro de la cuenta.                      |
 | `updated_at` | Timestamp with Time Zone | SÍ             | Fecha y hora de última modificación del perfil.                     |
+
+### 2.6. Inscripciones Sessions (Inscripción a Sesiones Individuales)
+
+**Tabla:** `inscripciones_sessions`
+
+| Columna         | Tipo                     | ¿Acepta Nulos? | Descripción                                                         |
+| --------------- | ------------------------ | -------------- | ------------------------------------------------------------------- |
+| `id`            | UUID                     | NO             | Identificador único de la inscripción de sesión. PK.                |
+| `usuario_id`    | UUID                     | NO             | Identificador del usuario asistente. FK a `users.id`.               |
+| `session_id`    | UUID                     | NO             | Identificador de la sesión. FK a `sessions.id`.                     |
+| `inscrito_en`   | Timestamp with Time Zone | NO             | Fecha y hora en la que se realizó la inscripción a la sesión.       |
+| `asistio`       | Boolean                  | NO             | Bandera que indica si el usuario asistió a la sesión.               |
+| `checked_in_at` | Timestamp with Time Zone | SÍ             | Fecha y hora en la que se registró el ingreso/check-in a la sesión. |
+
+### 2.7. Scan Logs (Historial de Escaneos de Acreditación)
+
+**Tabla:** `scan_logs`
+
+| Columna           | Tipo                     | ¿Acepta Nulos? | Descripción                                                                  |
+| ----------------- | ------------------------ | -------------- | ---------------------------------------------------------------------------- |
+| `id`              | UUID                     | NO             | Identificador único del registro de escaneo. PK.                             |
+| `registration_id` | UUID                     | NO             | Identificador del registro de inscripción asociado. FK a `registrations.id`. |
+| `scanned_by`      | UUID                     | SÍ             | Identificador del usuario que realizó el escaneo (staff). FK a `users.id`.   |
+| `scan_type`       | Character Varying        | NO             | Tipo de escaneo realizado (ej: `EVENT_ENTRY`, `SESSION_ENTRY`).              |
+| `scanned_at`      | Timestamp with Time Zone | SÍ             | Fecha y hora en la que se realizó el escaneo físico.                         |
+| `created_at`      | Timestamp with Time Zone | SÍ             | Fecha y hora de registro del log de escaneo.                                 |
+| `updated_at`      | Timestamp with Time Zone | SÍ             | Fecha y hora de última modificación.                                         |
+
+### 2.8. Session Registrations (Inscripciones de Registro a Sesiones)
+
+**Tabla:** `session_registrations`
+
+| Columna           | Tipo                     | ¿Acepta Nulos? | Descripción                                                                 |
+| ----------------- | ------------------------ | -------------- | --------------------------------------------------------------------------- |
+| `registration_id` | UUID                     | NO             | Identificador de la inscripción general al evento. FK a `registrations.id`. |
+| `session_id`      | UUID                     | NO             | Identificador de la sesión. FK a `sessions.id`.                             |
+| `registered_at`   | Timestamp with Time Zone | SÍ             | Fecha y hora de inscripción a la sesión.                                    |
+
+### 2.9. Sessions (Sesiones / Charlas de Eventos)
+
+**Tabla:** `sessions`
+
+| Columna      | Tipo                     | ¿Acepta Nulos? | Descripción                                          |
+| ------------ | ------------------------ | -------------- | ---------------------------------------------------- |
+| `id`         | UUID                     | NO             | Identificador único de la sesión. PK.                |
+| `event_id`   | UUID                     | NO             | Identificador del evento asociado. FK a `events.id`. |
+| `title`      | Character Varying        | NO             | Título o nombre de la sesión o charla.               |
+| `capacity`   | Integer                  | NO             | Capacidad límite de la sesión.                       |
+| `created_at` | Timestamp with Time Zone | SÍ             | Fecha y hora de creación automática.                 |
+| `updated_at` | Timestamp with Time Zone | SÍ             | Fecha y hora de última actualización automática.     |
+
+### 2.10. Staff Whitelist (Lista Blanca de Personal)
+
+**Tabla:** `staff_whitelist`
+
+| Columna      | Tipo                     | ¿Acepta Nulos? | Descripción                                           |
+| ------------ | ------------------------ | -------------- | ----------------------------------------------------- |
+| `id`         | UUID                     | NO             | Identificador único del registro. PK.                 |
+| `email`      | Character Varying        | NO             | Correo electrónico habilitado para el rol de staff.   |
+| `role`       | Character Varying        | NO             | Rol administrativo asignado (ej: `ADMIN`, `SCANNER`). |
+| `created_at` | Timestamp with Time Zone | SÍ             | Fecha y hora de agregación a la lista blanca.         |
+| `updated_at` | Timestamp with Time Zone | SÍ             | Fecha y hora de actualización.                        |
+
+### 2.11. Tracks (Ejes Temáticos o Salas de Eventos)
+
+**Tabla:** `tracks`
+
+| Columna       | Tipo                     | ¿Acepta Nulos? | Descripción                                          |
+| ------------- | ------------------------ | -------------- | ---------------------------------------------------- |
+| `id`          | UUID                     | NO             | Identificador único del track. PK.                   |
+| `evento_id`   | UUID                     | NO             | Identificador del evento asociado. FK a `events.id`. |
+| `nombre`      | Text                     | NO             | Nombre del track (ej: `Track Cloud & DevOps`).       |
+| `descripcion` | Text                     | SÍ             | Breve descripción o enfoque temático del track.      |
+| `created_at`  | Timestamp with Time Zone | NO             | Fecha y hora de creación automática.                 |
 
 ---
 

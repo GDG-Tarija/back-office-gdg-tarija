@@ -11,7 +11,6 @@ export interface Event {
   updatedAt: Date | null;
   description: string | null;
   imageUrl: string | null;
-  logoUrl: string | null;
   bannerUrl: string | null;
   locationType: string | null;
   locationName: string | null;

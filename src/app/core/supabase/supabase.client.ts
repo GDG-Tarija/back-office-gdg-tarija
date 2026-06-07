@@ -45,7 +45,6 @@ export interface Database {
           updated_at: string | null;
           description: string | null;
           image_url: string | null;
-          logo_url: string | null;
           banner_url: string | null;
           location_type: string | null;
           location_name: string | null;
@@ -98,6 +97,8 @@ export interface Database {
           created_at: string | null;
           updated_at: string | null;
           payment_qr_url: string | null;
+          description: string | null;
+          image_url: string | null;
         };
         Insert: Omit<
           Database['public']['Tables']['ticket_types']['Row'],
@@ -108,6 +109,133 @@ export interface Database {
           updated_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['ticket_types']['Row']>;
+        Relationships: [];
+      };
+      sponsors: {
+        Row: {
+          id: string;
+          name: string | null;
+          description: string | null;
+          score: string | null;
+          state: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['sponsors']['Row'],
+          'id' | 'created_at' | 'updated_at'
+        > & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['sponsors']['Row']>;
+        Relationships: [];
+      };
+      inscripciones_sessions: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          session_id: string;
+          inscrito_en: string;
+          asistio: boolean;
+          checked_in_at: string | null;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['inscripciones_sessions']['Row'],
+          'id' | 'inscrito_en' | 'asistio' | 'checked_in_at'
+        > & {
+          id?: string;
+          inscrito_en?: string;
+          asistio?: boolean;
+          checked_in_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['inscripciones_sessions']['Row']>;
+        Relationships: [];
+      };
+      scan_logs: {
+        Row: {
+          id: string;
+          registration_id: string;
+          scanned_by: string | null;
+          scan_type: string;
+          scanned_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['scan_logs']['Row'],
+          'id' | 'created_at' | 'updated_at'
+        > & {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['scan_logs']['Row']>;
+        Relationships: [];
+      };
+      session_registrations: {
+        Row: {
+          registration_id: string;
+          session_id: string;
+          registered_at: string | null;
+        };
+        Insert: Database['public']['Tables']['session_registrations']['Row'];
+        Update: Partial<Database['public']['Tables']['session_registrations']['Row']>;
+        Relationships: [];
+      };
+      sessions: {
+        Row: {
+          id: string;
+          event_id: string;
+          title: string;
+          capacity: number;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['sessions']['Row'],
+          'id' | 'created_at' | 'updated_at'
+        > & {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['sessions']['Row']>;
+        Relationships: [];
+      };
+      staff_whitelist: {
+        Row: {
+          id: string;
+          email: string;
+          role: string;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['staff_whitelist']['Row'],
+          'id' | 'created_at' | 'updated_at'
+        > & {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['staff_whitelist']['Row']>;
+        Relationships: [];
+      };
+      tracks: {
+        Row: {
+          id: string;
+          evento_id: string;
+          nombre: string;
+          descripcion: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['tracks']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['tracks']['Row']>;
         Relationships: [];
       };
     };

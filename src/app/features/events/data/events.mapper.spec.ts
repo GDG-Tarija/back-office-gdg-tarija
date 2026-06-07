@@ -18,7 +18,6 @@ describe('Events Mapper', () => {
       updated_at: '2026-06-02T12:00:00Z',
       description: 'Gran evento de tecnología',
       image_url: 'https://example.com/image.png',
-      logo_url: 'https://example.com/logo.png',
       banner_url: 'https://example.com/banner.png',
       location_type: 'PHYSICAL',
       location_name: 'Edificio Postgrado UAJMS',

@@ -15,7 +15,6 @@ export function toDomainEvent(row: EventRow): Event {
     updatedAt: row.updated_at ? new Date(row.updated_at) : null,
     description: row.description,
     imageUrl: row.image_url,
-    logoUrl: row.logo_url,
     bannerUrl: row.banner_url,
     locationType: row.location_type,
     locationName: row.location_name,
