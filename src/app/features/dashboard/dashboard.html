@@ -12,7 +12,7 @@
     </header>
 
     <!-- Metrics Grid -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <!-- Card 1: Eventos -->
       <div
         class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
@@ -61,31 +61,7 @@
         </div>
       </div>
 
-      <!-- Card 3: Sponsors -->
-      <div
-        class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
-      >
-        <div class="flex items-center justify-between">
-          <span
-            class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
-            >Sponsors</span
-          >
-          <div
-            class="flex size-10 items-center justify-center rounded-xl bg-google-yellow-light dark:bg-google-yellow/20 text-google-yellow"
-          >
-            <i class="pi pi-briefcase text-lg"></i>
-          </div>
-        </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-3xl font-bold text-text-primary dark:text-neutral-100">8</span>
-          <span
-            class="text-xs font-semibold text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-850 px-2 py-0.5 rounded-full"
-            >Activos</span
-          >
-        </div>
-      </div>
-
-      <!-- Card 4: Comunidades -->
+      <!-- Card 3: Comunidades -->
       <div
         class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
       >
@@ -151,7 +127,7 @@
             </div>
             <div class="flex flex-col">
               <span class="text-sm font-medium text-text-primary dark:text-neutral-200"
-                >Sponsor "Google Cloud" fue marcado como Activo</span
+                >Se confirmaron 15 nuevos asistentes para el "DevFest Tarija 2026"</span
               >
               <span class="text-xs text-text-secondary dark:text-neutral-400 mt-1"
                 >Ayer a las 18:30</span
@@ -243,13 +219,7 @@
               label="Gestionar Eventos"
               icon="pi pi-calendar"
               styleClass="w-full justify-start gdg-btn-outlined py-2 px-4 text-sm"
-              [disabled]="true"
-            />
-            <p-button
-              label="Gestionar Sponsors"
-              icon="pi pi-briefcase"
-              styleClass="w-full justify-start gdg-btn-outlined py-2 px-4 text-sm"
-              [disabled]="true"
+              routerLink="/events"
             />
           </div>
         </div>
