@@ -23,9 +23,15 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/callback/callback').then((m) => m.Callback),
   },
   {
-    path: 'dashboard',
+    path: '',
     canActivate: [authGuard],
-    loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
+    loadComponent: () => import('./layouts/admin-layout/admin-layout').then((m) => m.AdminLayout),
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
+      },
+    ],
   },
   { path: '**', redirectTo: 'dashboard' },
 ];

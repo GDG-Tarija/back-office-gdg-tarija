@@ -1,5 +1,5 @@
 <div class="relative z-10 mx-auto w-full max-w-xl">
-  <div class="gdg-card overflow-hidden">
+  <div class="login-card overflow-hidden">
     <div class="p-8 sm:p-12">
       <img [src]="logo.src" [alt]="logo.alt" class="h-10 w-auto" />
 
@@ -24,18 +24,11 @@
 
       <div class="mt-8">
         <p-button
-          styleClass="w-full justify-center rounded-full px-6 py-3 font-semibold"
+          styleClass="w-full justify-center gdg-btn-filled"
           [loading]="loading()"
           [disabled]="loading()"
           (onClick)="loginWithGoogle()"
         >
-          <img
-            class="mr-3 inline-block"
-            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-            alt=""
-            width="20"
-            height="20"
-          />
           <span>Continuar con Google</span>
         </p-button>
       </div>

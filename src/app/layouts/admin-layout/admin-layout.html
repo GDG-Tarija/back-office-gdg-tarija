@@ -1,0 +1,147 @@
+<div class="flex min-h-screen bg-surface-main dark:bg-neutral-950 transition-all duration-300">
+  <!-- Sidebar Container (Desktop: fixed, Mobile: drawer) -->
+  <aside
+    [class.translate-x-0]="isSidebarOpen()"
+    [class.-translate-x-full]="!isSidebarOpen()"
+    class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 transition-transform duration-300 ease-in-out md:translate-x-0"
+  >
+    <!-- Logo Header in Sidebar -->
+    <div
+      class="flex h-16 items-center justify-between px-6 border-b border-black/5 dark:border-white/5"
+    >
+      <div class="flex items-center gap-2">
+        <img [src]="logo.src" [alt]="logo.alt" class="h-8 w-auto" />
+      </div>
+      <!-- Close button on Mobile -->
+      <p-button
+        icon="pi pi-times"
+        severity="secondary"
+        [text]="true"
+        [rounded]="true"
+        styleClass="md:hidden"
+        (onClick)="toggleSidebar()"
+        ariaLabel="Cerrar menú"
+      />
+    </div>
+
+    <!-- Navigation List -->
+    <nav class="flex-1 space-y-1 px-4 py-6">
+      <a
+        routerLink="/dashboard"
+        routerLinkActive="bg-google-blue-light/40 dark:bg-google-blue/10 text-google-blue font-semibold"
+        class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-50 dark:hover:bg-neutral-850"
+        (click)="closeSidebarOnMobile()"
+      >
+        <i class="pi pi-home text-lg"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a
+        class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-neutral-400 dark:text-neutral-600 cursor-not-allowed"
+      >
+        <i class="pi pi-calendar text-lg"></i>
+        <span>Eventos</span>
+      </a>
+
+      <a
+        class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-neutral-400 dark:text-neutral-600 cursor-not-allowed"
+      >
+        <i class="pi pi-briefcase text-lg"></i>
+        <span>Sponsors</span>
+      </a>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="border-t border-black/5 dark:border-white/5 p-4 flex flex-col gap-4">
+      <!-- Theme Switcher & Logout Row -->
+      <div
+        class="flex items-center justify-between bg-surface-main dark:bg-neutral-950 p-1.5 rounded-xl"
+      >
+        <!-- Theme Toggle -->
+        <p-button
+          [icon]="theme.isDark() ? 'pi pi-sun' : 'pi pi-moon'"
+          [text]="true"
+          [rounded]="true"
+          (onClick)="theme.toggle()"
+          ariaLabel="Alternar tema"
+          styleClass="!text-text-secondary dark:!text-neutral-300 !w-7 !h-7 !p-0 !min-w-[1.75rem]"
+        />
+        <span class="text-xs font-medium text-text-secondary dark:text-neutral-400">
+          {{ theme.isDark() ? 'Oscuro' : 'Claro' }}
+        </span>
+        <!-- Logout -->
+        <p-button
+          icon="pi pi-sign-out"
+          [text]="true"
+          [rounded]="true"
+          severity="danger"
+          (onClick)="auth.signOut()"
+          ariaLabel="Cerrar sesión"
+          styleClass="!w-7 !h-7 !p-0 !min-w-[1.75rem]"
+        />
+      </div>
+
+      <!-- User Profile summary -->
+      @if (auth.user(); as user) {
+        <div class="flex items-center gap-3 px-2 py-1">
+          @if (user.avatar_url) {
+            <img
+              class="size-10 rounded-full object-cover"
+              [src]="user.avatar_url"
+              alt="Avatar"
+              referrerpolicy="no-referrer"
+            />
+          } @else {
+            <div
+              class="flex size-10 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-sm font-bold"
+            >
+              {{ user.first_name[0] }}{{ user.last_name[0] }}
+            </div>
+          }
+          <div class="flex flex-col min-w-0">
+            <span class="truncate text-sm font-bold text-text-primary dark:text-neutral-200">
+              {{ user.first_name }} {{ user.last_name }}
+            </span>
+            <span class="truncate text-xs text-text-secondary dark:text-neutral-400">
+              {{ user.email }}
+            </span>
+          </div>
+        </div>
+      }
+    </div>
+  </aside>
+
+  <!-- Mobile Overlay Backdrop -->
+  @if (isSidebarOpen()) {
+    <button
+      type="button"
+      class="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm md:hidden w-full h-full cursor-default border-none outline-none"
+      (click)="toggleSidebar()"
+      aria-label="Cerrar menú"
+    ></button>
+  }
+
+  <!-- Main Content Layout Area -->
+  <div class="flex flex-1 flex-col md:pl-64">
+    <!-- Top Mobile Header -->
+    <header
+      class="flex h-16 items-center justify-between border-b border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 px-6 md:hidden"
+    >
+      <div class="flex items-center gap-3">
+        <p-button
+          icon="pi pi-bars"
+          [text]="true"
+          [rounded]="true"
+          (onClick)="toggleSidebar()"
+          ariaLabel="Abrir menú"
+        />
+        <img [src]="logo.src" [alt]="logo.alt" class="h-6 w-auto" />
+      </div>
+    </header>
+
+    <!-- Main router content outlet page -->
+    <div class="flex-1">
+      <router-outlet />
+    </div>
+  </div>
+</div>

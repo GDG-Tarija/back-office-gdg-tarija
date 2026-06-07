@@ -2,3 +2,51 @@
   display: block;
   width: 100%;
 }
+
+.login-card {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.02),
+    0 1px 3px rgba(0, 0, 0, 0.01),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 16px 40px rgba(0, 0, 0, 0.04),
+      0 2px 8px rgba(0, 0, 0, 0.02),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+}
+
+// Para modo oscuro mediante atributo data-theme="dark"
+[data-theme='dark'] {
+  .login-card {
+    background: rgba(23, 23, 23, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 4px 30px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+    &:hover {
+      box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+  }
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

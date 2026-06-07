@@ -3,6 +3,8 @@
 @use 'primeicons/primeicons.css';
 @plugin "tailwindcss-primeui";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @layer tailwind, primeng;
 
 @theme {
@@ -15,10 +17,10 @@
   --color-google-yellow-light: #fde293;
   --color-google-green-light: #ceead6;
 
-  --color-surface-main: #f8f9fa;
-  --color-surface-paper: #ffffff;
-  --color-text-primary: #202124;
-  --color-text-secondary: #5f6368;
+  --color-surface-main: var(--color-surface-main);
+  --color-surface-paper: var(--color-surface-paper);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
 
   --font-google: 'Google Sans', system-ui, sans-serif;
 
@@ -115,16 +117,40 @@ body {
     @apply rounded-full font-semibold transition-all duration-300 ease-in-out;
   }
 
-  .gdg-btn-filled {
-    @apply rounded-full bg-google-blue px-8 py-3 font-semibold text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-blue-600 active:scale-95;
+  .gdg-btn-filled,
+  .p-button.gdg-btn-filled {
+    background-color: var(--gdg-google-blue) !important;
+    color: #ffffff !important;
+    border: none !important;
+    @apply rounded-full px-8 py-3 font-semibold shadow-sm transition-all duration-300 ease-in-out active:scale-95;
+
+    &:not(:disabled):hover {
+      background-color: #357ae8 !important;
+    }
   }
 
-  .gdg-btn-outlined {
-    @apply rounded-full border-2 border-google-blue px-8 py-3 font-semibold text-google-blue transition-all duration-300 ease-in-out hover:bg-google-blue-light;
+  .gdg-btn-outlined,
+  .p-button.gdg-btn-outlined {
+    background-color: transparent !important;
+    color: var(--gdg-google-blue) !important;
+    border: 2px solid var(--gdg-google-blue) !important;
+    @apply rounded-full px-8 py-3 font-semibold transition-all duration-300 ease-in-out;
+
+    &:not(:disabled):hover {
+      background-color: var(--gdg-google-blue-light) !important;
+    }
   }
 
-  .gdg-btn-ghost {
-    @apply rounded-full px-6 py-2 font-semibold text-google-blue transition-all duration-300 ease-in-out hover:bg-google-blue-light;
+  .gdg-btn-ghost,
+  .p-button.gdg-btn-ghost {
+    background-color: transparent !important;
+    color: var(--gdg-google-blue) !important;
+    border: none !important;
+    @apply rounded-full px-6 py-2 font-semibold transition-all duration-300 ease-in-out;
+
+    &:not(:disabled):hover {
+      background-color: var(--gdg-google-blue-light) !important;
+    }
   }
 
   .gdg-card {
