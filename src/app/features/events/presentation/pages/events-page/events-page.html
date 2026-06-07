@@ -1,0 +1,334 @@
+<div class="gdg-page p-6 sm:p-8 space-y-6">
+  <!-- Header Section -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-3xl font-extrabold tracking-tight text-text-primary dark:text-neutral-100">
+        Administración de Eventos
+      </h1>
+      <p class="mt-1 text-sm text-text-secondary dark:text-neutral-400">
+        Gestiona y visualiza la lista de eventos creados de la comunidad GDG Tarija.
+      </p>
+    </div>
+  </div>
+
+  @if (errorMsg(); as err) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-red-light/30 border border-google-red/20 p-4 text-sm font-medium text-google-red"
+    >
+      <i class="pi pi-exclamation-circle text-lg"></i>
+      <span>{{ err }}</span>
+    </div>
+  }
+
+  <!-- Events List Table Card -->
+  <div
+    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden shadow-sm"
+  >
+    <div class="overflow-x-auto w-full">
+      <p-table
+        #dt
+        [value]="events()"
+        [loading]="loadingEvents()"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [globalFilterFields]="['title', 'category', 'locationName', 'eventType']"
+        styleClass="p-datatable-striped"
+        [tableStyle]="{ 'min-width': '60rem' }"
+      >
+        <ng-template pTemplate="caption">
+          <div
+            class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 bg-neutral-50/50 dark:bg-neutral-850/50 border-b border-black/5 dark:border-white/5"
+          >
+            <span class="text-base font-bold text-text-primary dark:text-neutral-200"
+              >Eventos Registrados</span
+            >
+            <p-iconfield iconPosition="left">
+              <p-inputicon class="pi pi-search"></p-inputicon>
+              <input
+                type="text"
+                pInputText
+                placeholder="Buscar evento..."
+                class="w-full sm:w-64"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+              />
+            </p-iconfield>
+          </div>
+        </ng-template>
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="title" class="dark:text-neutral-300">
+              Evento <p-sortIcon field="title"></p-sortIcon>
+            </th>
+            <th pSortableColumn="eventType" class="dark:text-neutral-300">
+              Tipo <p-sortIcon field="eventType"></p-sortIcon>
+            </th>
+            <th pSortableColumn="capacity" class="dark:text-neutral-300 text-center">
+              Capacidad <p-sortIcon field="capacity"></p-sortIcon>
+            </th>
+            <th pSortableColumn="dateStart" class="dark:text-neutral-300">
+              Fecha <p-sortIcon field="dateStart"></p-sortIcon>
+            </th>
+            <th pSortableColumn="locationName" class="dark:text-neutral-300">
+              Lugar <p-sortIcon field="locationName"></p-sortIcon>
+            </th>
+            <th pSortableColumn="isPublished" class="dark:text-neutral-300">
+              Estado <p-sortIcon field="isPublished"></p-sortIcon>
+            </th>
+            <th class="dark:text-neutral-300 text-center w-40">Acciones</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-event>
+          <tr class="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+            <td>
+              <div class="flex flex-col">
+                <span class="font-bold text-text-primary dark:text-neutral-200">{{
+                  event.title
+                }}</span>
+                <span class="text-xs text-text-secondary dark:text-neutral-400 mt-0.5">{{
+                  event.category || 'Sin categoría'
+                }}</span>
+              </div>
+            </td>
+            <td>
+              <span
+                class="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-text-secondary dark:text-neutral-300 border border-black/5 dark:border-white/5"
+              >
+                {{ event.eventType }}
+              </span>
+            </td>
+            <td class="text-center font-semibold text-text-primary dark:text-neutral-200">
+              {{ event.capacity }} personas
+            </td>
+            <td>
+              <div class="flex flex-col text-sm text-text-primary dark:text-neutral-200">
+                <span class="font-medium">{{ event.dateStart | date: 'dd/MM/yyyy' }}</span>
+                <span class="text-xs text-text-secondary dark:text-neutral-400 mt-0.5"
+                  >{{ event.dateStart | date: 'HH:mm' }} hrs</span
+                >
+              </div>
+            </td>
+            <td>
+              <div
+                class="flex items-center gap-1.5 text-sm text-text-secondary dark:text-neutral-300"
+              >
+                <i class="pi pi-map-marker text-google-blue"></i>
+                <span class="truncate max-w-[200px]" [title]="event.locationName">{{
+                  event.locationName || 'No especificado'
+                }}</span>
+              </div>
+            </td>
+            <td>
+              <p-tag
+                [value]="event.isPublished ? 'Publicado' : 'Borrador'"
+                [severity]="getEventStatusSeverity(event)"
+              />
+            </td>
+            <td class="text-center">
+              <p-button
+                icon="pi pi-users"
+                label="Asistentes"
+                [text]="true"
+                severity="info"
+                size="small"
+                (onClick)="viewAttendees(event)"
+                styleClass="!py-1.5"
+              />
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="7" class="text-center p-8 text-text-secondary dark:text-neutral-400">
+              <div class="flex flex-col items-center gap-2">
+                <i class="pi pi-calendar-times text-4xl text-neutral-300"></i>
+                <span class="font-medium text-base">No se encontraron eventos</span>
+                <span class="text-xs"
+                  >Intenta ajustar tu búsqueda o registra nuevos eventos en la base de datos.</span
+                >
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+
+  <!-- Attendees Detailed Modal Dialog -->
+  <p-dialog
+    [header]="'Asistentes: ' + (selectedEvent()?.title || '')"
+    [modal]="true"
+    [(visible)]="showAttendeesDialog"
+    [style]="{ width: '85vw', maxWidth: '1000px' }"
+    [breakpoints]="{ '960px': '90vw', '640px': '100vw' }"
+    [draggable]="false"
+    [resizable]="false"
+    styleClass="custom-dialog rounded-3xl"
+    maskStyleClass="dialog-backdrop"
+  >
+    <div class="space-y-4 pt-2">
+      @if (loadingAttendees()) {
+        <div class="flex flex-col items-center justify-center p-12 gap-3">
+          <p-progressspinner styleClass="w-12 h-12" strokeWidth="4" />
+          <span class="text-sm font-semibold text-text-secondary dark:text-neutral-400"
+            >Cargando asistentes...</span
+          >
+        </div>
+      } @else {
+        <!-- Dialog Search Header -->
+        <div
+          class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-neutral-50/50 dark:bg-neutral-850/50 p-4 rounded-2xl border border-black/5 dark:border-white/5"
+        >
+          <div class="flex items-center gap-2.5">
+            <i class="pi pi-users text-google-blue text-lg"></i>
+            <span class="text-sm font-bold text-text-primary dark:text-neutral-200">
+              {{ attendees().length }} inscritos en total
+            </span>
+          </div>
+
+          <p-iconfield iconPosition="left">
+            <p-inputicon class="pi pi-search"></p-inputicon>
+            <input
+              type="text"
+              pInputText
+              placeholder="Buscar asistente..."
+              class="w-full sm:w-60 p-inputtext-sm"
+              (input)="dtAttendees.filterGlobal($any($event.target).value, 'contains')"
+            />
+          </p-iconfield>
+        </div>
+
+        <!-- Attendees Table -->
+        <div
+          class="border border-black/5 dark:border-white/5 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900"
+        >
+          <div class="overflow-x-auto w-full">
+            <p-table
+              #dtAttendees
+              [value]="attendees()"
+              [paginator]="true"
+              [rows]="50"
+              [rowsPerPageOptions]="[25, 50, 100]"
+              [globalFilterFields]="[
+                'firstName',
+                'lastName',
+                'email',
+                'phone',
+                'role',
+                'status',
+                'ticketName',
+              ]"
+              styleClass="p-datatable-striped p-datatable-sm"
+              [tableStyle]="{ 'min-width': '50rem' }"
+            >
+              <ng-template pTemplate="header">
+                <tr>
+                  <th pSortableColumn="firstName" class="dark:text-neutral-300">
+                    Asistente <p-sortIcon field="firstName"></p-sortIcon>
+                  </th>
+                  <th pSortableColumn="email" class="dark:text-neutral-300">
+                    Contacto <p-sortIcon field="email"></p-sortIcon>
+                  </th>
+                  <th pSortableColumn="ticketName" class="dark:text-neutral-300">
+                    Entrada <p-sortIcon field="ticketName"></p-sortIcon>
+                  </th>
+                  <th pSortableColumn="role" class="dark:text-neutral-300">
+                    Rol <p-sortIcon field="role"></p-sortIcon>
+                  </th>
+                  <th pSortableColumn="status" class="dark:text-neutral-300">
+                    Estado <p-sortIcon field="status"></p-sortIcon>
+                  </th>
+                  <th pSortableColumn="registeredAt" class="dark:text-neutral-300">
+                    Registro <p-sortIcon field="registeredAt"></p-sortIcon>
+                  </th>
+                </tr>
+              </ng-template>
+
+              <ng-template pTemplate="body" let-attendee>
+                <tr class="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                  <td>
+                    <div class="flex items-center gap-3">
+                      @if (attendee.avatarUrl) {
+                        <img
+                          [src]="attendee.avatarUrl"
+                          alt="Avatar"
+                          class="size-8 rounded-full object-cover"
+                          referrerpolicy="no-referrer"
+                        />
+                      } @else {
+                        <div
+                          class="flex size-8 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-xs font-bold"
+                        >
+                          {{ attendee.firstName[0] }}{{ attendee.lastName[0] }}
+                        </div>
+                      }
+                      <span class="font-bold text-text-primary dark:text-neutral-200">
+                        {{ attendee.firstName }} {{ attendee.lastName }}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="flex flex-col text-xs">
+                      <span class="text-text-primary dark:text-neutral-200 font-medium">{{
+                        attendee.email
+                      }}</span>
+                      <span class="text-text-secondary dark:text-neutral-400 mt-0.5">{{
+                        attendee.phone || 'Sin celular'
+                      }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="flex flex-col">
+                      <span class="font-semibold text-text-primary dark:text-neutral-200 text-xs">{{
+                        attendee.ticketName
+                      }}</span>
+                      <span class="text-[10px] text-text-secondary dark:text-neutral-400 mt-0.5">
+                        {{
+                          attendee.ticketPrice === 0
+                            ? 'Gratuito'
+                            : (attendee.ticketPrice | currency: 'BOB ' : 'symbol' : '1.0-2')
+                        }}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <p-tag
+                      [value]="translateRole(attendee.role)"
+                      [severity]="getRoleSeverity(attendee.role)"
+                      styleClass="!text-[10px] !px-2 !py-0.5"
+                    />
+                  </td>
+                  <td>
+                    <p-tag
+                      [value]="translateStatus(attendee.status)"
+                      [severity]="getStatusSeverity(attendee.status)"
+                      styleClass="!text-[10px] !px-2 !py-0.5"
+                    />
+                  </td>
+                  <td class="text-xs text-text-primary dark:text-neutral-200">
+                    {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
+                  </td>
+                </tr>
+              </ng-template>
+
+              <ng-template pTemplate="emptymessage">
+                <tr>
+                  <td colspan="6" class="text-center p-8 text-text-secondary dark:text-neutral-400">
+                    <div class="flex flex-col items-center gap-2">
+                      <i class="pi pi-users text-4xl text-neutral-300"></i>
+                      <span class="font-medium text-base">No hay asistentes inscritos</span>
+                      <span class="text-xs">Nadie se ha registrado a este evento aún.</span>
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </div>
+        </div>
+      }
+    </div>
+  </p-dialog>
+</div>

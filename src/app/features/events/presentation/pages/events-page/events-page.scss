@@ -1,0 +1,155 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+::ng-deep {
+  // Premium Table Customization
+  .p-datatable {
+    .p-datatable-thead > tr > th {
+      background-color: var(--color-surface-paper) !important;
+      color: var(--color-text-primary) !important;
+      font-weight: 600 !important;
+      padding: 1.25rem 1.5rem !important;
+      font-size: 0.875rem !important;
+      border-bottom: 2px solid var(--color-border) !important;
+      transition: background-color 0.2s;
+    }
+
+    .p-datatable-tbody > tr {
+      background-color: var(--color-surface-paper) !important;
+      color: var(--color-text-primary) !important;
+      transition: all 0.2s ease-in-out;
+
+      &.p-row-odd {
+        background-color: rgba(0, 0, 0, 0.01) !important;
+      }
+
+      &:hover {
+        background-color: rgba(66, 133, 244, 0.04) !important; // Soft Google Blue overlay
+      }
+
+      > td {
+        padding: 1.25rem 1.5rem !important;
+        font-size: 0.875rem !important;
+        border-bottom: 1px solid var(--color-border) !important;
+      }
+    }
+
+    // Paginator styling
+    .p-paginator {
+      background-color: var(--color-surface-paper) !important;
+      border-top: 1px solid var(--color-border) !important;
+      padding: 1rem !important;
+
+      .p-paginator-pages .p-paginator-page {
+        border-radius: 50% !important;
+        transition: all 0.2s;
+
+        &.p-highlight {
+          background-color: var(--gdg-google-blue) !important;
+          color: white !important;
+        }
+      }
+    }
+  }
+
+  // Premium Input Search styling
+  .p-iconfield {
+    position: relative !important;
+    display: inline-block;
+
+    .p-inputtext {
+      border-radius: 9999px !important; // Rounded pill shape
+      padding-left: 2.5rem !important;
+      border: 1px solid var(--color-border) !important;
+      background-color: var(--color-surface-paper) !important;
+      color: var(--color-text-primary) !important;
+      font-size: 0.875rem !important;
+      transition: all 0.2s ease-in-out;
+
+      &:focus {
+        border-color: var(--gdg-google-blue) !important;
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15) !important;
+      }
+    }
+
+    p-inputicon,
+    .p-inputicon {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: 1rem !important;
+      transform: translateY(-50%) !important;
+      margin-top: 0 !important;
+      pointer-events: none;
+      color: var(--color-text-secondary) !important;
+
+      i {
+        font-size: 0.9rem !important;
+      }
+    }
+  }
+
+  // Custom dialog styling override to match layout theme variables
+  .p-dialog.custom-dialog {
+    background-color: var(--color-surface-paper) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+    border-radius: 24px !important;
+    overflow: hidden;
+
+    .p-dialog-header {
+      background-color: var(--color-surface-paper) !important;
+      color: var(--color-text-primary) !important;
+      border-bottom: 1px solid var(--color-border) !important;
+      padding: 1.5rem !important;
+    }
+
+    .p-dialog-content {
+      background-color: var(--color-surface-paper) !important;
+      color: var(--color-text-primary) !important;
+      padding: 1.5rem !important;
+    }
+  }
+
+  [data-theme='dark'] {
+    .p-datatable {
+      .p-datatable-thead > tr > th {
+        border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+      }
+
+      .p-datatable-tbody > tr {
+        &.p-row-odd {
+          background-color: rgba(255, 255, 255, 0.02) !important;
+        }
+
+        &:hover {
+          background-color: rgba(66, 133, 244, 0.08) !important;
+        }
+
+        > td {
+          border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+        }
+      }
+    }
+
+    .p-dialog.custom-dialog {
+      border: 1px solid rgba(255, 255, 255, 0.05) !important;
+      box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5) !important;
+
+      .p-dialog-header {
+        border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+      }
+    }
+  }
+
+  .dialog-backdrop.p-dialog-mask {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    backdrop-blur: 4px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}

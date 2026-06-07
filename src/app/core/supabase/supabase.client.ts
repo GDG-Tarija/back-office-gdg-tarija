@@ -31,6 +31,85 @@ export interface Database {
         };
         Relationships: [];
       };
+      events: {
+        Row: {
+          id: string;
+          title: string;
+          slug: string;
+          event_type: string;
+          capacity: number;
+          date_start: string;
+          date_end: string | null;
+          is_published: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+          description: string | null;
+          image_url: string | null;
+          logo_url: string | null;
+          banner_url: string | null;
+          location_type: string | null;
+          location_name: string | null;
+          address_link: string | null;
+          category: string | null;
+          extra_info: Record<string, unknown> | null;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['events']['Row'],
+          'id' | 'created_at' | 'updated_at'
+        > & {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['events']['Row']>;
+        Relationships: [];
+      };
+      registrations: {
+        Row: {
+          id: string;
+          event_id: string;
+          user_id: string | null;
+          ticket_type_id: string;
+          event_role: string;
+          status: string;
+          created_at: string | null;
+          updated_at: string | null;
+          custom_responses: Record<string, unknown> | null;
+          payment_proof_url: string | null;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['registrations']['Row'],
+          'id' | 'created_at' | 'updated_at'
+        > & {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['registrations']['Row']>;
+        Relationships: [];
+      };
+      ticket_types: {
+        Row: {
+          id: string;
+          event_id: string;
+          name: string;
+          price: number;
+          ticket_capacity: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+          payment_qr_url: string | null;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['ticket_types']['Row'],
+          'id' | 'created_at' | 'updated_at'
+        > & {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['ticket_types']['Row']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

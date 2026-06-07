@@ -29,7 +29,7 @@
       <a
         routerLink="/dashboard"
         routerLinkActive="bg-google-blue-light/40 dark:bg-google-blue/10 text-google-blue font-semibold"
-        class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-50 dark:hover:bg-neutral-850"
+        class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
         (click)="closeSidebarOnMobile()"
       >
         <i class="pi pi-home text-lg"></i>
@@ -37,7 +37,10 @@
       </a>
 
       <a
-        class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-neutral-400 dark:text-neutral-600 cursor-not-allowed"
+        routerLink="/events"
+        routerLinkActive="bg-google-blue-light/40 dark:bg-google-blue/10 text-google-blue font-semibold"
+        class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
+        (click)="closeSidebarOnMobile()"
       >
         <i class="pi pi-calendar text-lg"></i>
         <span>Eventos</span>

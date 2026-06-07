@@ -31,6 +31,10 @@ export const routes: Routes = [
         path: 'dashboard',
         loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
       },
+      {
+        path: 'events',
+        loadChildren: () => import('./features/events/events.routes').then((m) => m.EVENTS_ROUTES),
+      },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },
