@@ -7,223 +7,586 @@
         Back Office GDG Tarija
       </h1>
       <p class="text-text-secondary dark:text-neutral-400">
-        Panel administrativo listo para conectar los módulos de gestión.
+        Panel administrativo con métricas reales y filtros dinámicos por evento, fecha o rol.
       </p>
     </header>
 
-    <!-- Metrics Grid -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <!-- Card 1: Eventos -->
+    @if (loading()) {
+      <div class="flex flex-col items-center justify-center py-20 gap-3">
+        <p-progressspinner styleClass="w-12 h-12" strokeWidth="3" />
+        <p class="text-sm text-text-secondary dark:text-neutral-400">Cargando datos reales...</p>
+      </div>
+    } @else if (error()) {
       <div
-        class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+        class="flex flex-col items-center justify-center py-10 gap-3 border border-google-red/20 bg-google-red-light/10 dark:bg-google-red/5 rounded-3xl p-6"
       >
-        <div class="flex items-center justify-between">
-          <span
-            class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
-            >Eventos Activos</span
-          >
-          <div
-            class="flex size-10 items-center justify-center rounded-xl bg-google-blue-light dark:bg-google-blue/20 text-google-blue"
-          >
-            <i class="pi pi-calendar text-lg"></i>
-          </div>
+        <i class="pi pi-exclamation-triangle text-3xl text-google-red"></i>
+        <p class="text-sm text-google-red font-semibold text-center">{{ error() }}</p>
+        <p-button
+          label="Reintentar"
+          icon="pi pi-refresh"
+          styleClass="p-button-sm"
+          (click)="loadDashboardData()"
+        />
+      </div>
+    } @else {
+      <!-- Filters Panel -->
+      <div
+        class="flex flex-wrap items-center gap-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-4 shadow-sm"
+      >
+        <div class="flex items-center gap-2">
+          <i class="pi pi-filter text-text-secondary"></i>
+          <span class="text-sm font-bold text-text-primary dark:text-neutral-200">Filtros:</span>
         </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-3xl font-bold text-text-primary dark:text-neutral-100">12</span>
-          <span
-            class="text-xs font-semibold text-google-green bg-google-green-light dark:bg-google-green/20 px-2 py-0.5 rounded-full"
-            >+2 este mes</span
-          >
+
+        <!-- Event Select -->
+        <div class="flex flex-col gap-1 min-w-[200px] max-w-xs">
+          <p-select
+            [options]="eventOptions()"
+            [(ngModel)]="filterEventId"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Todos los eventos"
+            styleClass="w-full text-sm"
+          />
         </div>
+
+        <!-- Role Select -->
+        <div class="flex flex-col gap-1 min-w-[150px]">
+          <p-select
+            [options]="roleOptions"
+            [(ngModel)]="filterRole"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Todos los roles"
+            styleClass="w-full text-sm"
+          />
+        </div>
+
+        <!-- Date Range DatePicker -->
+        <div class="flex flex-col gap-1 min-w-[220px]">
+          <p-datepicker
+            [(ngModel)]="filterDateRange"
+            selectionMode="range"
+            [showIcon]="true"
+            placeholder="Rango de fechas"
+            styleClass="w-full text-sm"
+            dateFormat="dd/mm/yy"
+            [readonlyInput]="true"
+          />
+        </div>
+
+        <!-- Reset Button -->
+        @if (filterEventId() || filterRole() || filterDateRange()) {
+          <p-button
+            icon="pi pi-filter-slash"
+            label="Limpiar"
+            styleClass="p-button-outlined p-button-sm text-sm"
+            (click)="resetFilters()"
+          />
+        }
       </div>
 
-      <!-- Card 2: Miembros -->
-      <div
-        class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
-      >
-        <div class="flex items-center justify-between">
-          <span
-            class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
-            >Miembros</span
-          >
-          <div
-            class="flex size-10 items-center justify-center rounded-xl bg-google-red-light dark:bg-google-red/20 text-google-red"
-          >
-            <i class="pi pi-users text-lg"></i>
-          </div>
-        </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-3xl font-bold text-text-primary dark:text-neutral-100">452</span>
-          <span
-            class="text-xs font-semibold text-google-green bg-google-green-light dark:bg-google-green/20 px-2 py-0.5 rounded-full"
-            >+12%</span
-          >
-        </div>
-      </div>
-
-      <!-- Card 3: Comunidades -->
-      <div
-        class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
-      >
-        <div class="flex items-center justify-between">
-          <span
-            class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
-            >Comunidades</span
-          >
-          <div
-            class="flex size-10 items-center justify-center rounded-xl bg-google-green-light dark:bg-google-green/20 text-google-green"
-          >
-            <i class="pi pi-globe text-lg"></i>
-          </div>
-        </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-3xl font-bold text-text-primary dark:text-neutral-100">4</span>
-          <span
-            class="text-xs font-semibold text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-850 px-2 py-0.5 rounded-full"
-            >Aliadas</span
-          >
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Grid -->
-    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-      <!-- Recent Activity -->
-      <div
-        class="md:col-span-2 flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
-      >
-        <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
-          Actividad Reciente
-        </h3>
-
-        <div class="flex flex-col gap-4 mt-2">
-          <!-- Activity 1 -->
-          <div
-            class="flex items-start gap-4 border-b border-neutral-100 dark:border-neutral-800 pb-4"
-          >
-            <div
-              class="flex size-8 shrink-0 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue"
-            >
-              <i class="pi pi-plus text-xs"></i>
-            </div>
-            <div class="flex flex-col">
-              <span class="text-sm font-medium text-text-primary dark:text-neutral-200"
-                >Se creó el borrador del evento "DevFest Tarija 2026"</span
-              >
-              <span class="text-xs text-text-secondary dark:text-neutral-400 mt-1"
-                >Hace 2 horas por Admin</span
-              >
-            </div>
-          </div>
-
-          <!-- Activity 2 -->
-          <div
-            class="flex items-start gap-4 border-b border-neutral-100 dark:border-neutral-800 pb-4"
-          >
-            <div
-              class="flex size-8 shrink-0 items-center justify-center rounded-full bg-google-green-light dark:bg-google-green/20 text-google-green"
-            >
-              <i class="pi pi-check text-xs"></i>
-            </div>
-            <div class="flex flex-col">
-              <span class="text-sm font-medium text-text-primary dark:text-neutral-200"
-                >Se confirmaron 15 nuevos asistentes para el "DevFest Tarija 2026"</span
-              >
-              <span class="text-xs text-text-secondary dark:text-neutral-400 mt-1"
-                >Ayer a las 18:30</span
-              >
-            </div>
-          </div>
-
-          <!-- Activity 3 -->
-          <div class="flex items-start gap-4 pb-2">
-            <div
-              class="flex size-8 shrink-0 items-center justify-center rounded-full bg-google-yellow-light dark:bg-google-yellow/20 text-google-yellow"
-            >
-              <i class="pi pi-user text-xs"></i>
-            </div>
-            <div class="flex flex-col">
-              <span class="text-sm font-medium text-text-primary dark:text-neutral-200"
-                >Nuevo miembro se unió a la comunidad de Tarija</span
-              >
-              <span class="text-xs text-text-secondary dark:text-neutral-400 mt-1"
-                >Hace 3 días</span
-              >
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column: Profile & Quick Links -->
-      <div class="flex flex-col gap-6">
-        <!-- Profile Card -->
+      <!-- Metrics Grid -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- Card 1: Eventos -->
         <div
-          class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+          class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
         >
-          <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">Mi Perfil</h3>
+          <div class="flex items-center justify-between">
+            <span
+              class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
+              >Eventos Filtrados</span
+            >
+            <div
+              class="flex size-10 items-center justify-center rounded-xl bg-google-blue-light dark:bg-google-blue/20 text-google-blue"
+            >
+              <i class="pi pi-calendar text-lg"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span class="text-3xl font-bold text-text-primary dark:text-neutral-100">
+              {{ totalEventsCount() }}
+            </span>
+            <span
+              class="text-xs font-semibold text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-850 px-2 py-0.5 rounded-full"
+            >
+              Total de eventos
+            </span>
+          </div>
+        </div>
 
-          @if (auth.user(); as user) {
-            <div class="flex flex-col items-center text-center gap-3 py-2">
-              @if (user.avatar_url) {
-                <img
-                  class="size-20 rounded-full object-cover border-4 border-google-blue-light dark:border-google-blue/20"
-                  [src]="user.avatar_url"
-                  alt="Avatar"
-                  referrerpolicy="no-referrer"
-                />
-              } @else {
-                <div
-                  class="flex size-20 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-2xl font-bold"
+        <!-- Card 2: Inscritos -->
+        <div
+          class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+        >
+          <div class="flex items-center justify-between">
+            <span
+              class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
+              >Inscritos Totales</span
+            >
+            <div
+              class="flex size-10 items-center justify-center rounded-xl bg-google-red-light dark:bg-google-red/20 text-google-red"
+            >
+              <i class="pi pi-users text-lg"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span class="text-3xl font-bold text-text-primary dark:text-neutral-100">
+              {{ totalRegistrationsCount() }}
+            </span>
+            <span
+              class="text-xs font-semibold text-google-green bg-google-green-light dark:bg-google-green/20 px-2 py-0.5 rounded-full"
+            >
+              {{ confirmedAttendeesCount() }} confirmados
+            </span>
+          </div>
+        </div>
+
+        <!-- Card 3: Flujo de Caja -->
+        <div
+          class="flex flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+        >
+          <div class="flex items-center justify-between">
+            <span
+              class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
+              >Flujo de Caja</span
+            >
+            <div
+              class="flex size-10 items-center justify-center rounded-xl bg-google-green-light dark:bg-google-green/20 text-google-green"
+            >
+              <i class="pi pi-wallet text-lg"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex flex-col gap-1 w-full">
+            <span class="text-3xl font-bold text-text-primary dark:text-neutral-100">
+              {{ totalCashFlow() | currency: 'BOB ' : 'symbol' : '1.0-2' }}
+            </span>
+            <div class="flex gap-2 w-full mt-1">
+              <span
+                class="text-[10px] font-semibold text-google-green bg-google-green-light dark:bg-google-green/20 px-2 py-0.5 rounded-full"
+              >
+                {{ approvedCashFlow() | currency: 'BOB ' : 'symbol' : '1.0-0' }} conf.
+              </span>
+              <span
+                class="text-[10px] font-semibold text-google-yellow bg-google-yellow-light dark:bg-google-yellow/20 px-2 py-0.5 rounded-full"
+              >
+                {{ pendingCashFlow() | currency: 'BOB ' : 'symbol' : '1.0-0' }} pend.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout Grid -->
+      <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <!-- Daily Trend Bar Chart (Spans 2 columns) -->
+        <div
+          class="md:col-span-2 flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+        >
+          <div class="flex flex-col gap-1">
+            <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
+              Tendencia de Inscripciones
+            </h3>
+            <p class="text-xs text-text-secondary dark:text-neutral-400">
+              Registros diarios en la ventana de actividad más reciente (últimos 7 días).
+            </p>
+          </div>
+
+          @if (dailyTrend().length > 0) {
+            <div class="relative w-full h-48 mt-4">
+              <svg
+                class="w-full h-full overflow-visible"
+                viewBox="0 0 500 150"
+                preserveAspectRatio="none"
+              >
+                <!-- Bar Gradient Definition -->
+                <defs>
+                  <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--google-blue)" stop-opacity="1"></stop>
+                    <stop offset="100%" stop-color="var(--google-blue)" stop-opacity="0.4"></stop>
+                  </linearGradient>
+                </defs>
+
+                <!-- Grid lines -->
+                <line
+                  x1="40"
+                  y1="20"
+                  x2="460"
+                  y2="20"
+                  class="stroke-neutral-100 dark:stroke-neutral-800"
+                  stroke-dasharray="4"
+                  stroke-width="0.75"
+                ></line>
+                <line
+                  x1="40"
+                  y1="70"
+                  x2="460"
+                  y2="70"
+                  class="stroke-neutral-100 dark:stroke-neutral-800"
+                  stroke-dasharray="4"
+                  stroke-width="0.75"
+                ></line>
+                <line
+                  x1="40"
+                  y1="120"
+                  x2="460"
+                  y2="120"
+                  class="stroke-neutral-200 dark:stroke-neutral-750"
+                  stroke-width="1"
+                ></line>
+
+                <!-- Y axis labels -->
+                <text
+                  x="12"
+                  y="24"
+                  class="text-[10px] font-medium fill-neutral-400 dark:fill-neutral-500"
+                  text-anchor="start"
                 >
-                  {{ user.first_name[0] }}{{ user.last_name[0] }}
-                </div>
-              }
-              <div class="flex flex-col">
-                <h4 class="text-lg font-bold text-text-primary dark:text-neutral-100">
-                  {{ user.first_name }} {{ user.last_name }}
-                </h4>
-                <p class="text-sm text-text-secondary dark:text-neutral-400 mt-0.5">
-                  {{ user.email }}
-                </p>
-                <div class="mt-3 mx-auto flex gap-2">
-                  <span
-                    class="text-xs font-semibold text-google-blue bg-google-blue-light dark:bg-google-blue/20 px-3 py-1 rounded-full"
-                  >
-                    Staff
-                  </span>
-                  @if (user.is_staff) {
-                    <span
-                      class="text-xs font-semibold text-google-green bg-google-green-light dark:bg-google-green/20 px-3 py-1 rounded-full"
-                    >
-                      Admin
-                    </span>
+                  {{ maxTrendValue() }}
+                </text>
+                <text
+                  x="12"
+                  y="74"
+                  class="text-[10px] font-medium fill-neutral-400 dark:fill-neutral-500"
+                  text-anchor="start"
+                >
+                  {{ maxTrendValue() / 2 | number: '1.0-0' }}
+                </text>
+                <text
+                  x="12"
+                  y="124"
+                  class="text-[10px] font-medium fill-neutral-400 dark:fill-neutral-500"
+                  text-anchor="start"
+                >
+                  0
+                </text>
+
+                <!-- SVG Bars -->
+                @for (bar of barCoords(); track $index) {
+                  <!-- Column Bar -->
+                  @if (bar.height > 0) {
+                    <rect
+                      [attr.x]="bar.x"
+                      [attr.y]="bar.y"
+                      [attr.width]="bar.width"
+                      [attr.height]="bar.height"
+                      rx="4"
+                      fill="url(#barGrad)"
+                      class="transition-all duration-200 hover:opacity-85"
+                    />
+                  } @else {
+                    <!-- Placeholder dot/line for zero registrations -->
+                    <circle
+                      [attr.cx]="bar.x + bar.width / 2"
+                      cy="120"
+                      r="2"
+                      class="fill-neutral-300 dark:fill-neutral-700"
+                    />
                   }
-                </div>
-              </div>
+
+                  <!-- Count label above bars -->
+                  <text
+                    [attr.x]="bar.x + bar.width / 2"
+                    [attr.y]="bar.y - 8"
+                    class="text-[10px] fill-text-primary dark:fill-neutral-200 font-bold"
+                    text-anchor="middle"
+                  >
+                    {{ bar.count }}
+                  </text>
+
+                  <!-- X axis labels (Date) -->
+                  <text
+                    [attr.x]="bar.x + bar.width / 2"
+                    y="142"
+                    class="text-[10px] font-semibold fill-neutral-500 dark:fill-neutral-400"
+                    text-anchor="middle"
+                  >
+                    {{ bar.label }}
+                  </text>
+                }
+              </svg>
             </div>
           } @else {
-            <div class="flex flex-col gap-2 py-4 items-center">
-              <i class="pi pi-spin pi-spinner text-2xl text-google-blue"></i>
-              <p class="text-sm text-text-secondary dark:text-neutral-400">Cargando perfil...</p>
+            <div
+              class="flex flex-col items-center justify-center h-40 bg-neutral-50 dark:bg-neutral-850 rounded-2xl"
+            >
+              <p class="text-sm text-text-secondary dark:text-neutral-400">
+                No hay datos de registros en este periodo.
+              </p>
             </div>
           }
         </div>
 
-        <!-- Quick Access -->
-        <div
-          class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
-        >
-          <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">Accesos Rápidos</h3>
-          <div class="flex flex-col gap-2">
-            <p-button
-              label="Gestionar Eventos"
-              icon="pi pi-calendar"
-              styleClass="w-full justify-start gdg-btn-outlined py-2 px-4 text-sm"
-              routerLink="/events"
-            />
+        <!-- Right Column: Profile -->
+        <div class="flex flex-col gap-6">
+          <!-- Profile Card -->
+          <div
+            class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+          >
+            <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">Mi Perfil</h3>
+
+            @if (auth.user(); as user) {
+              <div class="flex flex-col items-center text-center gap-3 py-2">
+                @if (user.avatar_url) {
+                  <img
+                    class="size-20 rounded-full object-cover border-4 border-google-blue-light dark:border-google-blue/20"
+                    [src]="user.avatar_url"
+                    alt="Avatar"
+                    referrerpolicy="no-referrer"
+                  />
+                } @else {
+                  <div
+                    class="flex size-20 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-2xl font-bold"
+                  >
+                    {{ user.first_name[0] }}{{ user.last_name[0] }}
+                  </div>
+                }
+                <div class="flex flex-col">
+                  <h4 class="text-lg font-bold text-text-primary dark:text-neutral-100">
+                    {{ user.first_name }} {{ user.last_name }}
+                  </h4>
+                  <p class="text-sm text-text-secondary dark:text-neutral-400 mt-0.5">
+                    {{ user.email }}
+                  </p>
+                  <div class="mt-3 mx-auto flex gap-2">
+                    <span
+                      class="text-xs font-semibold text-google-blue bg-google-blue-light dark:bg-google-blue/20 px-3 py-1 rounded-full"
+                    >
+                      Staff
+                    </span>
+                    @if (user.is_staff) {
+                      <span
+                        class="text-xs font-semibold text-google-green bg-google-green-light dark:bg-google-green/20 px-3 py-1 rounded-full"
+                      >
+                        Admin
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div class="flex flex-col gap-2 py-4 items-center">
+                <i class="pi pi-spin pi-spinner text-2xl text-google-blue"></i>
+                <p class="text-sm text-text-secondary dark:text-neutral-400">Cargando perfil...</p>
+              </div>
+            }
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Secondary Info Grid -->
+      <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <!-- Roles Distribution -->
+        <div
+          class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+        >
+          <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
+            Miembros por Rol
+          </h3>
+          <div class="flex flex-col gap-3">
+            @for (item of roleDistribution(); track item.label) {
+              <div class="flex flex-col gap-1">
+                <div class="flex items-center justify-between text-xs font-semibold">
+                  <span class="text-text-primary dark:text-neutral-300">{{ item.label }}</span>
+                  <span class="{{ item.textClass }} font-bold"
+                    >{{ item.value }} ({{ item.percentage | percent: '1.0-0' }})</span
+                  >
+                </div>
+                <div
+                  class="w-full bg-neutral-100 dark:bg-neutral-850 h-1.5 rounded-full overflow-hidden"
+                >
+                  <div
+                    class="h-full rounded-full {{ item.colorClass }}"
+                    [style.width]="item.percentage * 100 + '%'"
+                  ></div>
+                </div>
+              </div>
+            } @empty {
+              <p class="text-sm text-text-secondary dark:text-neutral-400 text-center py-4">
+                No hay datos de roles.
+              </p>
+            }
+          </div>
+        </div>
+
+        <!-- Payment States Distribution -->
+        <div
+          class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+        >
+          <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">Estados de Pago</h3>
+          <div class="flex flex-col gap-3">
+            @for (item of statusDistribution(); track item.label) {
+              <div class="flex flex-col gap-1">
+                <div class="flex items-center justify-between text-xs font-semibold">
+                  <span class="text-text-primary dark:text-neutral-300">{{ item.label }}</span>
+                  <span class="text-text-secondary font-bold"
+                    >{{ item.value }} ({{ item.percentage | percent: '1.0-0' }})</span
+                  >
+                </div>
+                <div
+                  class="w-full bg-neutral-100 dark:bg-neutral-850 h-1.5 rounded-full overflow-hidden"
+                >
+                  <div
+                    class="h-full rounded-full {{ item.colorClass }}"
+                    [style.width]="item.percentage * 100 + '%'"
+                  ></div>
+                </div>
+              </div>
+            } @empty {
+              <p class="text-sm text-text-secondary dark:text-neutral-400 text-center py-4">
+                No hay datos de estados.
+              </p>
+            }
+          </div>
+        </div>
+
+        <!-- Event Fill Rate & Quick Access -->
+        <div class="flex flex-col gap-6">
+          <div
+            class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+          >
+            <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
+              Ocupación de Eventos
+            </h3>
+            <div class="flex items-center justify-center gap-4 py-1">
+              <div class="relative flex items-center justify-center shrink-0">
+                <svg class="size-20 transform -rotate-90">
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="34"
+                    stroke="var(--divider)"
+                    stroke-width="5"
+                    fill="transparent"
+                    class="stroke-neutral-100 dark:stroke-neutral-850"
+                  />
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="34"
+                    stroke="var(--google-green)"
+                    stroke-width="5"
+                    fill="transparent"
+                    [attr.stroke-dasharray]="2 * 3.14159 * 34"
+                    [attr.stroke-dashoffset]="2 * 3.14159 * 34 * (1 - capacityFillRate())"
+                    stroke-linecap="round"
+                    class="transition-all duration-500 ease-out text-google-green stroke-google-green"
+                  />
+                </svg>
+                <div class="absolute flex flex-col items-center justify-center">
+                  <span class="text-base font-bold text-text-primary dark:text-neutral-100">
+                    {{ capacityFillRate() | percent: '1.0-0' }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-[11px] text-text-secondary dark:text-neutral-400 leading-normal">
+                Capacidad máxima cubierta por inscripciones activas (excluye cancelados).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Registrations (5-column table) -->
+      <div
+        class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-sm"
+      >
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
+            Inscripciones Recientes
+          </h3>
+          <p-button
+            label="Gestionar Eventos"
+            icon="pi pi-calendar"
+            styleClass="gdg-btn-outlined py-1.5 px-3 text-xs"
+            routerLink="/events"
+          />
+        </div>
+
+        <p-table
+          [value]="recentRegistrations()"
+          [rows]="5"
+          [paginator]="true"
+          styleClass="w-full gdg-table text-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th class="w-1/4">Asistente</th>
+              <th class="w-1/4">Evento</th>
+              <th class="w-1/6">Rol</th>
+              <th class="w-1/6">Estado</th>
+              <th class="w-1/6">Fecha</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-reg>
+            <tr
+              class="hover:bg-neutral-50 dark:hover:bg-neutral-850/50 transition-colors duration-150"
+            >
+              <!-- Column 1: Asistente -->
+              <td>
+                <div class="flex items-center gap-3">
+                  @if (reg.avatarUrl) {
+                    <img
+                      class="size-8 rounded-full object-cover"
+                      [src]="reg.avatarUrl"
+                      alt="Avatar"
+                      referrerpolicy="no-referrer"
+                    />
+                  } @else {
+                    <div
+                      class="flex size-8 shrink-0 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-xs font-bold"
+                    >
+                      {{ reg.userInitials }}
+                    </div>
+                  }
+                  <div class="flex flex-col">
+                    <span class="font-medium text-text-primary dark:text-neutral-200">{{
+                      reg.userName
+                    }}</span>
+                    <span class="text-xs text-text-secondary dark:text-neutral-400">{{
+                      reg.userEmail
+                    }}</span>
+                  </div>
+                </div>
+              </td>
+              <!-- Column 2: Evento -->
+              <td
+                class="text-text-primary dark:text-neutral-200 font-medium truncate max-w-[200px]"
+              >
+                {{ reg.eventTitle }}
+              </td>
+              <!-- Column 3: Rol -->
+              <td>
+                <p-tag
+                  [value]="translateRole(reg.role)"
+                  [severity]="getRoleSeverity(reg.role)"
+                  styleClass="text-xs px-2.5 py-0.5 rounded-full"
+                />
+              </td>
+              <!-- Column 4: Estado -->
+              <td>
+                <p-tag
+                  [value]="translateStatus(reg.status)"
+                  [severity]="getStatusSeverity(reg.status)"
+                  styleClass="text-xs px-2.5 py-0.5 rounded-full"
+                />
+              </td>
+              <!-- Column 5: Fecha -->
+              <td class="text-xs text-text-secondary dark:text-neutral-400">
+                {{ reg.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5" class="text-center py-6 text-text-secondary dark:text-neutral-400">
+                No hay inscripciones recientes registradas.
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    }
   </div>
 </div>

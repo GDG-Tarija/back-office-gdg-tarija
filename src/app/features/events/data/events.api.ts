@@ -26,6 +26,21 @@ export class EventsApi implements EventsRepository {
     return (data || []).map(toDomainEvent);
   }
 
+  async getEventById(eventId: string): Promise<Event | null> {
+    const { data, error } = await this.supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching event by id:', error);
+      throw error;
+    }
+
+    return data ? toDomainEvent(data) : null;
+  }
+
   async getAttendees(eventId: string): Promise<Attendee[]> {
     const { data: regs, error: regsError } = await this.supabase
       .from('registrations')

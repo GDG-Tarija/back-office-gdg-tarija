@@ -1,0 +1,504 @@
+<div class="min-h-screen bg-neutral-50/30 dark:bg-neutral-950/20 p-4 sm:p-6 lg:p-8 space-y-6">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex flex-col items-center justify-center min-h-[50vh] gap-3">
+      <p-progressspinner styleClass="w-12 h-12" strokeWidth="4" />
+      <span class="text-sm font-semibold text-text-secondary dark:text-neutral-400">
+        Cargando información de asistentes...
+      </span>
+    </div>
+  }
+
+  <!-- Error State -->
+  @else if (errorMsg()) {
+    <div
+      class="flex flex-col items-center justify-center min-h-[50vh] gap-4 max-w-md mx-auto text-center"
+    >
+      <div
+        class="flex size-14 items-center justify-center rounded-full bg-google-red/10 text-google-red"
+      >
+        <i class="pi pi-exclamation-triangle text-2xl"></i>
+      </div>
+      <span class="text-base font-bold text-text-primary dark:text-neutral-200">
+        {{ errorMsg() }}
+      </span>
+      <p-button
+        icon="pi pi-arrow-left"
+        label="Volver a Eventos"
+        styleClass="p-button-outlined"
+        (onClick)="goBack()"
+      />
+    </div>
+  }
+
+  <!-- Content State -->
+  @else if (event()) {
+    <!-- Breadcrumb & Back Navigation -->
+    <div class="flex items-center gap-2">
+      <p-button
+        icon="pi pi-arrow-left"
+        [text]="true"
+        severity="secondary"
+        styleClass="!w-9 !h-9 !p-0 !min-w-[2.25rem]"
+        aria-label="Volver"
+        (onClick)="goBack()"
+      />
+      <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">
+        Eventos / Detalle / Asistentes
+      </span>
+    </div>
+
+    <!-- Header & Event Summary Card -->
+    <div
+      class="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-sm"
+    >
+      <div class="lg:col-span-2 space-y-4">
+        <div class="space-y-1">
+          <p-tag
+            [value]="event()?.isPublished ? 'Publicado' : 'Borrador'"
+            [severity]="event()?.isPublished ? 'success' : 'secondary'"
+            styleClass="!text-[10px] !px-2 !py-0.5"
+          />
+          <h1
+            class="text-2xl sm:text-3xl font-extrabold text-text-primary dark:text-neutral-100 bg-gradient-to-r from-google-blue via-google-red to-google-yellow bg-clip-text text-transparent"
+          >
+            {{ event()?.title }}
+          </h1>
+        </div>
+        <p class="text-sm text-text-secondary dark:text-neutral-400 line-clamp-2 max-w-2xl">
+          {{ event()?.description || 'Sin descripción detallada.' }}
+        </p>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="grid grid-cols-2 gap-4">
+        <div
+          class="flex items-center gap-3 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5"
+        >
+          <div
+            class="flex size-10 items-center justify-center rounded-xl bg-google-blue-light dark:bg-google-blue/10 text-google-blue"
+          >
+            <i class="pi pi-calendar text-lg"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[10px] text-text-secondary dark:text-neutral-400 font-medium"
+              >Inicio</span
+            >
+            <span class="text-xs font-bold text-text-primary dark:text-neutral-200">
+              {{ event()?.dateStart | date: 'dd/MM/yyyy' }}
+            </span>
+          </div>
+        </div>
+
+        <div
+          class="flex items-center gap-3 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5"
+        >
+          <div
+            class="flex size-10 items-center justify-center rounded-xl bg-google-green-light dark:bg-google-green/10 text-google-green"
+          >
+            <i class="pi pi-users text-lg"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[10px] text-text-secondary dark:text-neutral-400 font-medium"
+              >Inscritos</span
+            >
+            <span class="text-xs font-bold text-text-primary dark:text-neutral-200">
+              {{ attendees().length }} / {{ event()?.capacity }}
+            </span>
+          </div>
+        </div>
+
+        <div
+          class="flex items-center gap-3 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5"
+        >
+          <div
+            class="flex size-10 items-center justify-center rounded-xl bg-google-red-light dark:bg-google-red/10 text-google-red"
+          >
+            <i class="pi pi-map-marker text-lg"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[10px] text-text-secondary dark:text-neutral-400 font-medium"
+              >Modalidad</span
+            >
+            <span
+              class="text-xs font-bold text-text-primary dark:text-neutral-200 truncate max-w-[100px]"
+            >
+              {{ event()?.locationType === 'PHYSICAL' ? 'Presencial' : 'Virtual' }}
+            </span>
+          </div>
+        </div>
+
+        <div
+          class="flex items-center gap-3 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5"
+        >
+          <div
+            class="flex size-10 items-center justify-center rounded-xl bg-google-yellow-light dark:bg-google-yellow/10 text-google-yellow"
+          >
+            <i class="pi pi-bookmark text-lg"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[10px] text-text-secondary dark:text-neutral-400 font-medium"
+              >Categoría</span
+            >
+            <span
+              class="text-xs font-bold text-text-primary dark:text-neutral-200 truncate max-w-[100px]"
+            >
+              {{ event()?.category || 'General' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attendees List Section -->
+    <div class="space-y-4">
+      <div
+        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm"
+      >
+        <div class="flex items-center gap-2.5">
+          <div
+            class="flex size-9 items-center justify-center rounded-xl bg-google-blue-light dark:bg-google-blue/10 text-google-blue"
+          >
+            <i class="pi pi-users text-base"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-sm font-bold text-text-primary dark:text-neutral-200">
+              Listado de Asistentes
+            </span>
+            <span class="text-[11px] text-text-secondary dark:text-neutral-400">
+              Usa la expansión de fila para ver respuestas del formulario y comprobantes de pago.
+            </span>
+          </div>
+        </div>
+
+        <p-iconfield iconPosition="left">
+          <p-inputicon class="pi pi-search"></p-inputicon>
+          <input
+            type="text"
+            pInputText
+            placeholder="Buscar asistente..."
+            class="w-full sm:w-64 p-inputtext-sm"
+            (input)="dtAttendees.filterGlobal($any($event.target).value, 'contains')"
+          />
+        </p-iconfield>
+      </div>
+
+      <!-- Attendees Table -->
+      <div
+        class="border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden bg-white dark:bg-neutral-900 shadow-sm"
+      >
+        <div class="overflow-x-auto w-full">
+          <p-table
+            #dtAttendees
+            [value]="attendees()"
+            dataKey="id"
+            [paginator]="true"
+            [rows]="25"
+            [rowsPerPageOptions]="[25, 50, 100]"
+            [globalFilterFields]="[
+              'firstName',
+              'lastName',
+              'email',
+              'phone',
+              'role',
+              'status',
+              'ticketName',
+            ]"
+            styleClass="p-datatable-striped p-datatable-sm"
+            [tableStyle]="{ 'min-width': '60rem' }"
+          >
+            <ng-template pTemplate="header">
+              <tr>
+                <th style="width: 3rem"></th>
+                <th pSortableColumn="firstName" class="dark:text-neutral-300">
+                  Asistente <p-sortIcon field="firstName"></p-sortIcon>
+                </th>
+                <th pSortableColumn="email" class="dark:text-neutral-300">
+                  Contacto <p-sortIcon field="email"></p-sortIcon>
+                </th>
+                <th pSortableColumn="ticketName" class="dark:text-neutral-300">
+                  Entrada <p-sortIcon field="ticketName"></p-sortIcon>
+                </th>
+                <th pSortableColumn="role" class="dark:text-neutral-300">
+                  Rol <p-sortIcon field="role"></p-sortIcon>
+                </th>
+                <th pSortableColumn="status" class="dark:text-neutral-300">
+                  Estado <p-sortIcon field="status"></p-sortIcon>
+                </th>
+                <th pSortableColumn="registeredAt" class="dark:text-neutral-300">
+                  Registro <p-sortIcon field="registeredAt"></p-sortIcon>
+                </th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-attendee let-expanded="expanded">
+              <tr class="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                <td>
+                  <p-button
+                    type="button"
+                    [pRowToggler]="attendee"
+                    [text]="true"
+                    [rounded]="true"
+                    [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                    severity="secondary"
+                    styleClass="!w-8 !h-8 !p-0"
+                  />
+                </td>
+                <td>
+                  <div class="flex items-center gap-3">
+                    @if (attendee.avatarUrl) {
+                      <img
+                        [src]="attendee.avatarUrl"
+                        alt="Avatar"
+                        class="size-8 rounded-full object-cover"
+                        referrerpolicy="no-referrer"
+                      />
+                    } @else {
+                      <div
+                        class="flex size-8 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-xs font-bold"
+                      >
+                        {{ attendee.firstName[0] }}{{ attendee.lastName[0] }}
+                      </div>
+                    }
+                    <span
+                      class="font-bold text-text-primary dark:text-neutral-200 text-xs sm:text-sm"
+                    >
+                      {{ attendee.firstName }} {{ attendee.lastName }}
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <div class="flex flex-col text-xs">
+                    <a
+                      [href]="'mailto:' + attendee.email"
+                      class="text-text-primary dark:text-neutral-200 font-medium hover:underline"
+                    >
+                      {{ attendee.email }}
+                    </a>
+                    @if (attendee.phone) {
+                      <a
+                        [href]="'tel:' + attendee.phone"
+                        class="text-text-secondary dark:text-neutral-400 mt-0.5 hover:underline"
+                      >
+                        {{ attendee.phone }}
+                      </a>
+                    } @else {
+                      <span class="text-text-secondary dark:text-neutral-400 mt-0.5"
+                        >Sin celular</span
+                      >
+                    }
+                  </div>
+                </td>
+                <td>
+                  <div class="flex flex-col">
+                    <span class="font-semibold text-text-primary dark:text-neutral-200 text-xs">
+                      {{ attendee.ticketName }}
+                    </span>
+                    <span class="text-[10px] text-text-secondary dark:text-neutral-400 mt-0.5">
+                      {{
+                        attendee.ticketPrice === 0
+                          ? 'Gratuito'
+                          : (attendee.ticketPrice | currency: 'BOB ' : 'symbol' : '1.0-2')
+                      }}
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <p-tag
+                    [value]="translateRole(attendee.role)"
+                    [severity]="getRoleSeverity(attendee.role)"
+                    styleClass="!text-[10px] !px-2 !py-0.5"
+                  />
+                </td>
+                <td>
+                  <p-tag
+                    [value]="translateStatus(attendee.status)"
+                    [severity]="getStatusSeverity(attendee.status)"
+                    styleClass="!text-[10px] !px-2 !py-0.5"
+                  />
+                </td>
+                <td class="text-xs text-text-primary dark:text-neutral-200">
+                  {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
+                </td>
+              </tr>
+            </ng-template>
+
+            <!-- Row Expansion Detail -->
+            <ng-template pTemplate="rowexpansion" let-attendee>
+              <tr>
+                <td
+                  colspan="7"
+                  class="bg-neutral-50/40 dark:bg-neutral-900/30 p-4 sm:p-6 border-y border-black/5 dark:border-white/5"
+                >
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Panel Izquierdo: Respuestas del Formulario -->
+                    <div class="space-y-3">
+                      <h3
+                        class="text-xs font-bold text-text-primary dark:text-neutral-300 uppercase tracking-wider flex items-center gap-1.5"
+                      >
+                        <i class="pi pi-file-edit text-google-blue"></i>
+                        Respuestas del Formulario
+                      </h3>
+
+                      @if (hasCustomResponses(attendee)) {
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          @for (item of attendee.customResponses | keyvalue; track item.key) {
+                            <div
+                              class="p-3 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-2xl shadow-sm space-y-1"
+                            >
+                              <span
+                                class="text-[10px] text-text-secondary dark:text-neutral-400 font-semibold uppercase tracking-wider block"
+                              >
+                                {{ formatResponseKey(item.key) }}
+                              </span>
+                              <span
+                                class="text-xs font-bold text-text-primary dark:text-neutral-200 block break-words"
+                              >
+                                {{ item.value }}
+                              </span>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <div
+                          class="flex items-center gap-2 p-4 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-2xl text-text-secondary dark:text-neutral-400"
+                        >
+                          <i class="pi pi-info-circle"></i>
+                          <span class="text-xs font-medium"
+                            >El asistente no registró respuestas personalizadas en su
+                            inscripción.</span
+                          >
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Panel Derecho: Comprobante y Estado de Pago -->
+                    <div class="space-y-3">
+                      <h3
+                        class="text-xs font-bold text-text-primary dark:text-neutral-300 uppercase tracking-wider flex items-center gap-1.5"
+                      >
+                        <i class="pi pi-credit-card text-google-green"></i>
+                        Acreditación y Comprobante de Pago
+                      </h3>
+
+                      <div
+                        class="p-4 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-2xl shadow-sm space-y-4"
+                      >
+                        <!-- Estado del Pago -->
+                        <div class="flex items-center justify-between">
+                          <span
+                            class="text-xs text-text-secondary dark:text-neutral-400 font-medium"
+                            >Tipo de Ticket:</span
+                          >
+                          <span class="text-xs font-bold text-text-primary dark:text-neutral-200">
+                            {{ attendee.ticketName }} ({{
+                              attendee.ticketPrice === 0
+                                ? 'Gratuito'
+                                : 'BOB ' + attendee.ticketPrice
+                            }})
+                          </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span
+                            class="text-xs text-text-secondary dark:text-neutral-400 font-medium"
+                            >Estado de Inscripción:</span
+                          >
+                          <p-tag
+                            [value]="translateStatus(attendee.status)"
+                            [severity]="getStatusSeverity(attendee.status)"
+                            styleClass="!text-[10px] !px-2 !py-0.5"
+                          />
+                        </div>
+
+                        <!-- Comprobante de Pago -->
+                        @if (attendee.paymentProofUrl) {
+                          <div class="border-t border-black/5 dark:border-white/5 pt-3 space-y-3">
+                            <span
+                              class="text-[10px] text-text-secondary dark:text-neutral-400 font-semibold uppercase tracking-wider block"
+                            >
+                              Comprobante Registrado
+                            </span>
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                              <!-- Miniature Image Preview if image -->
+                              @if (isImageProof(attendee.paymentProofUrl)) {
+                                <div
+                                  class="relative group size-20 rounded-xl overflow-hidden border border-black/5 dark:border-white/10 shrink-0 bg-neutral-100 shadow-inner"
+                                >
+                                  <img
+                                    [src]="attendee.paymentProofUrl"
+                                    alt="Comprobante"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                  <a
+                                    [href]="attendee.paymentProofUrl"
+                                    target="_blank"
+                                    class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity duration-200"
+                                    aria-label="Abrir imagen completa"
+                                  >
+                                    <i class="pi pi-external-link text-xs"></i>
+                                  </a>
+                                </div>
+                              }
+
+                              <div class="space-y-1">
+                                <span
+                                  class="text-xs font-medium text-text-secondary dark:text-neutral-400 block truncate max-w-[200px]"
+                                >
+                                  Archivo de Pago
+                                </span>
+                                <p-button
+                                  icon="pi pi-download"
+                                  label="Descargar / Ver Completo"
+                                  [text]="true"
+                                  size="small"
+                                  severity="success"
+                                  styleClass="!p-0"
+                                  (onClick)="openProof(attendee.paymentProofUrl)"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        } @else if (attendee.ticketPrice > 0) {
+                          <div
+                            class="flex items-center gap-2 p-3 bg-google-red/5 text-google-red border border-google-red/10 rounded-xl"
+                          >
+                            <i class="pi pi-exclamation-circle text-sm"></i>
+                            <span class="text-xs font-medium"
+                              >Ticket de pago pero no se ha cargado ningún comprobante.</span
+                            >
+                          </div>
+                        } @else {
+                          <div
+                            class="flex items-center gap-2 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 text-text-secondary dark:text-neutral-400 border border-black/5 dark:border-white/5 rounded-xl"
+                          >
+                            <i class="pi pi-info-circle text-sm"></i>
+                            <span class="text-xs font-medium"
+                              >Evento gratuito. No requiere comprobante de pago.</span
+                            >
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+
+            <!-- Empty State -->
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="7" class="text-center p-12 text-text-secondary dark:text-neutral-400">
+                  <div class="flex flex-col items-center gap-2">
+                    <i class="pi pi-users text-4xl text-neutral-300"></i>
+                    <span class="font-bold text-base">No hay asistentes inscritos</span>
+                    <span class="text-xs">Nadie se ha registrado a este evento aún.</span>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </div>
+      </div>
+    </div>
+  }
+</div>
