@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -45,6 +45,17 @@ export class AttendeesPage implements OnInit {
 
   // Global table search filter
   readonly globalFilter = signal<string>('');
+
+  // unique custom response keys computed from all attendees
+  readonly customResponseKeys = computed<string[]>(() => {
+    const keysSet = new Set<string>();
+    this.attendees().forEach((attendee) => {
+      if (attendee.customResponses) {
+        Object.keys(attendee.customResponses).forEach((k) => keysSet.add(k));
+      }
+    });
+    return Array.from(keysSet);
+  });
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
