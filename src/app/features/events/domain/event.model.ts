@@ -32,4 +32,6 @@ export interface Attendee {
   ticketPrice: number;
   registeredAt: Date | null;
   customResponses: Record<string, unknown> | null;
+  paymentProofUrl: string | null;
+  checkedIn: boolean;
 }

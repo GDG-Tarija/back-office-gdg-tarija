@@ -51,7 +51,7 @@ describe('Events Mapper', () => {
       created_at: '2026-06-05T15:30:00Z',
       updated_at: '2026-06-05T16:00:00Z',
       custom_responses: { t_shirt_size: 'L' },
-      payment_proof_url: null,
+      payment_proof_url: 'https://example.com/proof.png',
       users: {
         id: 'user-uuid-1',
         email: 'expositor@gdgtarija.org',
@@ -65,6 +65,7 @@ describe('Events Mapper', () => {
         name: 'Pase Expositor',
         price: 0,
       },
+      scan_logs: [{ id: 'scan-1' }],
     };
 
     const domainAttendee = toDomainAttendee(rawRow);
@@ -83,5 +84,7 @@ describe('Events Mapper', () => {
       new Date(rawRow.created_at!).toISOString(),
     );
     expect(domainAttendee.customResponses).toEqual({ t_shirt_size: 'L' });
+    expect(domainAttendee.paymentProofUrl).toBe('https://example.com/proof.png');
+    expect(domainAttendee.checkedIn).toBe(true);
   });
 });

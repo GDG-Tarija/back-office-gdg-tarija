@@ -14,6 +14,7 @@ export interface RawRegistrationRow {
   updated_at: string | null;
   custom_responses: Record<string, unknown> | null;
   payment_proof_url: string | null;
+  scan_logs?: { id: string }[] | null;
 }
 
 export interface RegistrationWithDetailsRow extends RawRegistrationRow {

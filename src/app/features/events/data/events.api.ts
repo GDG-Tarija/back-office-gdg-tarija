@@ -60,6 +60,9 @@ export class EventsApi implements EventsRepository {
           id,
           name,
           price
+        ),
+        scan_logs (
+          id
         )
       `,
       )
@@ -77,6 +80,7 @@ export class EventsApi implements EventsRepository {
     // Explicitly cast regs to resolve type inference issues
     const regsData = regs as unknown as (RawRegistrationRow & {
       ticket_types: { id: string; name: string; price: number } | null;
+      scan_logs: { id: string }[] | null;
     })[];
 
     const userIds = regsData.map((r) => r.user_id).filter((id): id is string => !!id);
@@ -135,6 +139,7 @@ export class EventsApi implements EventsRepository {
         updated_at: r.updated_at,
         custom_responses: r.custom_responses,
         payment_proof_url: r.payment_proof_url,
+        scan_logs: r.scan_logs,
         users: user,
         ticket_types: r.ticket_types,
       } as RegistrationWithDetailsRow;
