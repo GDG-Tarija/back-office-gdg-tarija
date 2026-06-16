@@ -174,16 +174,25 @@
           </div>
         </div>
 
-        <p-iconfield iconPosition="left">
-          <p-inputicon class="pi pi-search"></p-inputicon>
-          <input
-            type="text"
-            pInputText
-            placeholder="Buscar asistente..."
-            class="w-full sm:w-64 p-inputtext-sm"
-            (input)="dtAttendees.filterGlobal($any($event.target).value, 'contains')"
+        <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+          <p-button
+            icon="pi pi-download"
+            label="Exportar CSV"
+            styleClass="p-button-outlined p-button-sm !rounded-xl !border-black/10 dark:!border-white/10 hover:!bg-neutral-50 dark:hover:!bg-neutral-800"
+            (onClick)="exportToCSV()"
+            [disabled]="attendees().length === 0"
           />
-        </p-iconfield>
+          <p-iconfield iconPosition="left" class="w-full sm:w-auto">
+            <p-inputicon class="pi pi-search"></p-inputicon>
+            <input
+              type="text"
+              pInputText
+              placeholder="Buscar asistente..."
+              class="w-full sm:w-64 p-inputtext-sm"
+              (input)="dtAttendees.filterGlobal($any($event.target).value, 'contains')"
+            />
+          </p-iconfield>
+        </div>
       </div>
 
       <!-- Attendees Table -->
@@ -196,6 +205,8 @@
             [value]="attendees()"
             dataKey="id"
             [scrollable]="true"
+            sortField="registeredAt"
+            [sortOrder]="-1"
             [paginator]="true"
             [rows]="25"
             [rowsPerPageOptions]="[25, 50, 100]"
@@ -346,7 +357,17 @@
                 <!-- Celdas dinámicas de respuestas de formulario -->
                 @for (key of customResponseKeys(); track key) {
                   <td class="text-xs text-text-primary dark:text-neutral-200 font-medium">
-                    {{ attendee.customResponses?.[key] || '-' }}
+                    @if (isUrl(attendee.customResponses?.[key])) {
+                      <a
+                        [href]="attendee.customResponses?.[key]"
+                        target="_blank"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-google-blue bg-google-blue-light/20 hover:bg-google-blue-light/35 dark:bg-google-blue/10 dark:hover:bg-google-blue/20 rounded-full font-bold transition-all"
+                      >
+                        <i class="pi pi-external-link text-[10px]"></i> Ver Enlace
+                      </a>
+                    } @else {
+                      {{ attendee.customResponses?.[key] || '-' }}
+                    }
                   </td>
                 }
 

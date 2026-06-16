@@ -208,4 +208,127 @@ export class AttendeesPage implements OnInit {
       window.open(url, '_blank');
     }
   }
+
+  isUrl(val: unknown): boolean {
+    if (typeof val !== 'string') return false;
+    const trimmed = val.trim();
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+  }
+
+  exportToCSV(): void {
+    const attendeesList = this.attendees();
+    if (!attendeesList || attendeesList.length === 0) {
+      return;
+    }
+
+    const headers = [
+      'first_name',
+      'last_name',
+      'email',
+      'checked_in',
+      'job_title',
+      'company',
+      'ticket_type',
+    ];
+
+    const getValueByPattern = (
+      customResponses: Record<string, unknown> | null,
+      patterns: string[],
+    ): string => {
+      if (!customResponses) return '';
+      const keys = Object.keys(customResponses);
+
+      // 1. Try exact or lowercase matches first
+      for (const pattern of patterns) {
+        const lowercasePattern = pattern.toLowerCase();
+        for (const key of keys) {
+          if (key.toLowerCase() === lowercasePattern) {
+            return String(customResponses[key] ?? '');
+          }
+        }
+      }
+
+      // 2. Try partial matches (key contains pattern or pattern contains key)
+      for (const pattern of patterns) {
+        const lowercasePattern = pattern.toLowerCase();
+        for (const key of keys) {
+          const lowercaseKey = key.toLowerCase();
+          if (lowercaseKey.includes(lowercasePattern) || lowercasePattern.includes(lowercaseKey)) {
+            return String(customResponses[key] ?? '');
+          }
+        }
+      }
+
+      return '';
+    };
+
+    const escapeCSVValue = (val: unknown): string => {
+      if (val === null || val === undefined) return '';
+      let str = String(val);
+      str = str.replace(/"/g, '""');
+      if (
+        str.includes(',') ||
+        str.includes('"') ||
+        str.includes('\n') ||
+        str.includes('\r') ||
+        str.includes('\t')
+      ) {
+        return `"${str}"`;
+      }
+      return str;
+    };
+
+    const rows = attendeesList.map((attendee) => {
+      const responses = attendee.customResponses;
+
+      const firstName = attendee.firstName;
+      const lastName = attendee.lastName;
+      const email = attendee.email;
+      const checkedIn = attendee.checkedIn ? 'TRUE' : 'FALSE';
+
+      const jobTitle = getValueByPattern(responses, [
+        'job_title',
+        'occupation',
+        'ocupacion',
+        'ocupación',
+        'cargo',
+        'trabajo',
+        'puesto',
+        'title',
+      ]);
+
+      const company = getValueByPattern(responses, [
+        'company',
+        'organization',
+        'empresa',
+        'institucion',
+        'institución',
+        'organizacion',
+        'organización',
+      ]);
+
+      const ticketType = attendee.ticketName;
+
+      return [firstName, lastName, email, checkedIn, jobTitle, company, ticketType].map(
+        escapeCSVValue,
+      );
+    });
+
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+
+    const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
+      type: 'text/csv;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    const eventSlug = this.event()?.slug || 'asistentes';
+    link.setAttribute('href', url);
+    link.setAttribute('download', `asistentes_${eventSlug}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 }

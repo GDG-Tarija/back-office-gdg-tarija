@@ -27,6 +27,7 @@ export function toDomainEvent(row: EventRow): Event {
 export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
   const user = row.users;
   const ticket = row.ticket_types;
+  const scanLogs = row.scan_logs;
 
   return {
     id: row.id,
@@ -41,5 +42,7 @@ export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
     ticketPrice: ticket?.price || 0,
     registeredAt: row.created_at ? new Date(row.created_at) : null,
     customResponses: row.custom_responses,
+    paymentProofUrl: row.payment_proof_url || null,
+    checkedIn: !!(scanLogs && scanLogs.length > 0),
   };
 }
