@@ -1,3 +1,14 @@
+export interface CredentialPosition {
+  nameX: number;
+  nameY: number;
+  roleX: number;
+  roleY: number;
+  qrX: number;
+  qrY: number;
+  qrSize: number;
+  fontSize: number;
+}
+
 export interface Event {
   id: string;
   title: string;

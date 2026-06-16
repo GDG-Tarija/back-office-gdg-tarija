@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 
@@ -9,10 +9,12 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 
 import { EventsRepository } from '../../../domain/events.repository';
 import { EventsApi } from '../../../data/events.api';
 import { Event } from '../../../domain/event.model';
+import { CredentialGenerator } from '../../components/credential-generator/credential-generator';
 
 @Component({
   selector: 'app-events-page',
@@ -26,7 +28,9 @@ import { Event } from '../../../domain/event.model';
     InputIconModule,
     ProgressSpinnerModule,
     TagModule,
+    TooltipModule,
     DatePipe,
+    CredentialGenerator,
   ],
   providers: [{ provide: EventsRepository, useClass: EventsApi }],
   templateUrl: './events-page.html',
@@ -35,6 +39,7 @@ import { Event } from '../../../domain/event.model';
 export class EventsPage implements OnInit {
   private readonly eventsRepo = inject(EventsRepository);
   private readonly router = inject(Router);
+  readonly credentialGenerator = viewChild<CredentialGenerator>(CredentialGenerator);
 
   readonly events = signal<Event[]>([]);
   readonly loadingEvents = signal<boolean>(false);
@@ -67,5 +72,9 @@ export class EventsPage implements OnInit {
 
   getEventStatusSeverity(event: Event): 'success' | 'secondary' {
     return event.isPublished ? 'success' : 'secondary';
+  }
+
+  openCredentialGenerator(event: Event): void {
+    this.credentialGenerator()?.open(event);
   }
 }

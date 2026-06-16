@@ -76,7 +76,7 @@
             <th pSortableColumn="isPublished" class="dark:text-neutral-300">
               Estado <p-sortIcon field="isPublished"></p-sortIcon>
             </th>
-            <th class="dark:text-neutral-300 text-center w-40">Acciones</th>
+            <th class="dark:text-neutral-300 text-center w-48">Acciones</th>
           </tr>
         </ng-template>
 
@@ -127,15 +127,28 @@
               />
             </td>
             <td class="text-center">
-              <p-button
-                icon="pi pi-users"
-                label="Asistentes"
-                [text]="true"
-                severity="info"
-                size="small"
-                (onClick)="viewAttendees(event)"
-                styleClass="!py-1.5"
-              />
+              <div class="flex items-center justify-center gap-1">
+                <p-button
+                  icon="pi pi-id-card"
+                  label="Credenciales"
+                  [text]="true"
+                  severity="contrast"
+                  size="small"
+                  (onClick)="openCredentialGenerator(event)"
+                  styleClass="!py-1.5"
+                  pTooltip="Generar credenciales"
+                  tooltipPosition="top"
+                />
+                <p-button
+                  icon="pi pi-users"
+                  label="Asistentes"
+                  [text]="true"
+                  severity="info"
+                  size="small"
+                  (onClick)="viewAttendees(event)"
+                  styleClass="!py-1.5"
+                />
+              </div>
             </td>
           </tr>
         </ng-template>
@@ -156,4 +169,6 @@
       </p-table>
     </div>
   </div>
+
+  <app-credential-generator />
 </div>
