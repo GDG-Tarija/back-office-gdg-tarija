@@ -8,6 +8,7 @@ export interface CredentialPosition {
   qrSize: number;
   fontSize: number;
   showRole?: boolean;
+  nameMaxWidth?: number;
 }
 
 export interface Event {

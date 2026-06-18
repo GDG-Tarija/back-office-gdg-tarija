@@ -30,6 +30,7 @@ const DEFAULT_POSITIONS: CredentialPosition = {
   qrSize: 120,
   fontSize: 24,
   showRole: true,
+  nameMaxWidth: 400,
 };
 
 const ROLE_OPTIONS = [
@@ -112,6 +113,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       qrSize,
       fontSize,
       showRole: true,
+      nameMaxWidth: Math.round(width * 0.8),
     });
     this.savePositions();
   }
@@ -237,26 +239,31 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     x: number,
     y: number,
     fontSize: number,
+    maxWidth?: number,
   ): void {
     const words = fullName
       .trim()
       .split(/\s+/)
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
-    const shouldBreak = words.length >= 3 && fullName.length > 20;
 
     ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.fillStyle = '#000000';
     ctx.textBaseline = 'top';
     ctx.textAlign = 'center';
 
-    if (shouldBreak) {
-      const firstLine = `${words[0]} ${words[1]}`;
-      const remaining = words.slice(2).join(' ');
-      ctx.fillText(firstLine, x, y);
-      ctx.fillText(remaining, x, y + fontSize);
-    } else {
-      ctx.fillText(fullName, x, y);
+    if (maxWidth && maxWidth > 0) {
+      while (words.length > 1) {
+        const textLine = words.join(' ');
+        const currentWidth = ctx.measureText(textLine).width;
+        if (currentWidth <= maxWidth) {
+          break;
+        }
+        words.pop();
+      }
     }
+
+    const finalName = words.join(' ');
+    ctx.fillText(finalName, x, y);
   }
 
   async renderPreview(): Promise<void> {
@@ -278,7 +285,39 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
     if (previewAttendee) {
       const fullName = `${previewAttendee.firstName} ${previewAttendee.lastName}`;
-      this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize);
+      this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize, pos.nameMaxWidth);
+
+      if (pos.nameMaxWidth && pos.nameMaxWidth > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#4285f4';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+
+        const startX = pos.nameX - pos.nameMaxWidth / 2;
+        const endX = pos.nameX + pos.nameMaxWidth / 2;
+        const lineY = pos.nameY - 8;
+
+        ctx.beginPath();
+        ctx.moveTo(startX, lineY);
+        ctx.lineTo(endX, lineY);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(startX, lineY - 6);
+        ctx.lineTo(startX, lineY + 6);
+        ctx.moveTo(endX, lineY - 6);
+        ctx.lineTo(endX, lineY + 6);
+        ctx.stroke();
+
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillStyle = '#4285f4';
+        ctx.textBaseline = 'bottom';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${pos.nameMaxWidth}px`, pos.nameX, lineY - 4);
+
+        ctx.restore();
+      }
 
       if (pos.showRole !== false) {
         ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
@@ -409,7 +448,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       ctx.drawImage(img, 0, 0);
 
       const fullName = `${attendee.firstName} ${attendee.lastName}`;
-      this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize);
+      this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize, pos.nameMaxWidth);
 
       if (pos.showRole !== false) {
         ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
