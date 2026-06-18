@@ -7,6 +7,7 @@ export interface CredentialPosition {
   qrY: number;
   qrSize: number;
   fontSize: number;
+  showRole?: boolean;
 }
 
 export interface Event {

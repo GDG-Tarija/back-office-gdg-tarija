@@ -29,12 +29,14 @@ const DEFAULT_POSITIONS: CredentialPosition = {
   qrY: 250,
   qrSize: 120,
   fontSize: 24,
+  showRole: true,
 };
 
 const ROLE_OPTIONS = [
   { label: 'Participante', value: 'ATTENDEE' },
   { label: 'Speaker', value: 'SPEAKER' },
   { label: 'Staff', value: 'ORGANIZER' },
+  { label: 'Voluntario', value: 'VOLUNTEER' },
 ];
 
 const MAX_PREVIEW_HEIGHT = 480;
@@ -80,9 +82,38 @@ export class CredentialGenerator implements OnInit, OnDestroy {
   readonly previewHeight = signal(0);
 
   private templateImg: HTMLImageElement | null = null;
+  private hasStoredPositions = false;
 
   ngOnInit(): void {
     this.loadPositions();
+  }
+
+  private adjustDefaultPositions(width: number, height: number): void {
+    if (this.hasStoredPositions) return;
+
+    const qrSize = Math.max(Math.round(width * 0.2), 80);
+    const fontSize = Math.max(Math.round(width * 0.04), 16);
+
+    const nameX = Math.round(width / 2);
+    const roleX = Math.round(width / 2);
+    const qrX = Math.round((width - qrSize) / 2);
+
+    const nameY = Math.round(height * 0.45);
+    const roleY = Math.round(height * 0.53);
+    const qrY = Math.round(height * 0.65);
+
+    this.positions.set({
+      nameX,
+      nameY,
+      roleX,
+      roleY,
+      qrX,
+      qrY,
+      qrSize,
+      fontSize,
+      showRole: true,
+    });
+    this.savePositions();
   }
 
   ngOnDestroy(): void {
@@ -130,6 +161,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
   async onEventChange(): Promise<void> {
     await this.loadAttendees();
+    this.renderPreview();
   }
 
   async loadAttendees(): Promise<void> {
@@ -149,7 +181,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
   }
 
   onRoleChange(): void {
-    // Filtering is handled via computed in template
+    this.renderPreview();
   }
 
   onTemplateUpload(e: Event): void {
@@ -173,7 +205,10 @@ export class CredentialGenerator implements OnInit, OnDestroy {
         this.previewHeight.set(img.height * scale);
 
         this.templateImage.set(img);
-        this.renderPreview();
+        this.adjustDefaultPositions(img.width, img.height);
+        setTimeout(() => {
+          this.renderPreview();
+        }, 50);
       };
       img.src = dataUrl;
     };
@@ -212,6 +247,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.fillStyle = '#000000';
     ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
 
     if (shouldBreak) {
       const firstLine = `${words[0]} ${words[1]}`;
@@ -244,9 +280,13 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       const fullName = `${previewAttendee.firstName} ${previewAttendee.lastName}`;
       this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize);
 
-      ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
-      ctx.fillStyle = '#333333';
-      ctx.fillText(this.translateRole(previewAttendee.role), pos.roleX, pos.roleY);
+      if (pos.showRole !== false) {
+        ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
+        ctx.fillStyle = '#333333';
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.translateRole(previewAttendee.role), pos.roleX, pos.roleY);
+      }
 
       try {
         const qrDataUrl = await QRCode.toDataURL(previewAttendee.id, {
@@ -255,10 +295,13 @@ export class CredentialGenerator implements OnInit, OnDestroy {
           color: { dark: '#000000', light: '#ffffff' },
         });
         const qrImg = new Image();
-        qrImg.onload = () => {
-          ctx.drawImage(qrImg, pos.qrX, pos.qrY, pos.qrSize, pos.qrSize);
-        };
-        qrImg.src = qrDataUrl;
+        await new Promise<void>((resolve) => {
+          qrImg.onload = () => {
+            ctx.drawImage(qrImg, pos.qrX, pos.qrY, pos.qrSize, pos.qrSize);
+            resolve();
+          };
+          qrImg.src = qrDataUrl;
+        });
       } catch {
         console.warn('Failed to generate QR for preview');
       }
@@ -267,6 +310,44 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
   onPositionChange(): void {
     this.positions.update((p) => ({ ...p }));
+    this.renderPreview();
+    this.savePositions();
+  }
+
+  centerHorizontal(target: 'name' | 'role' | 'qr'): void {
+    if (!this.templateImg) return;
+    const width = this.templateImg.width;
+    const pos = this.positions();
+
+    if (target === 'name') {
+      pos.nameX = Math.round(width / 2);
+    } else if (target === 'role') {
+      pos.roleX = Math.round(width / 2);
+    } else if (target === 'qr') {
+      pos.qrX = Math.round((width - pos.qrSize) / 2);
+    }
+
+    this.positions.update((p) => ({ ...p }));
+    this.renderPreview();
+    this.savePositions();
+  }
+
+  centerVertical(target: 'name' | 'role' | 'qr'): void {
+    if (!this.templateImg) return;
+    const height = this.templateImg.height;
+    const pos = this.positions();
+
+    if (target === 'name') {
+      pos.nameY = Math.round(height / 2);
+    } else if (target === 'role') {
+      pos.roleY = Math.round(height / 2);
+    } else if (target === 'qr') {
+      pos.qrY = Math.round((height - pos.qrSize) / 2);
+    }
+
+    this.positions.update((p) => ({ ...p }));
+    this.renderPreview();
+    this.savePositions();
   }
 
   updatePreview(): void {
@@ -280,15 +361,21 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       if (stored) {
         const parsed = JSON.parse(stored) as CredentialPosition;
         this.positions.set({ ...DEFAULT_POSITIONS, ...parsed });
+        this.hasStoredPositions = true;
+      } else {
+        this.positions.set({ ...DEFAULT_POSITIONS });
+        this.hasStoredPositions = false;
       }
     } catch {
       this.positions.set({ ...DEFAULT_POSITIONS });
+      this.hasStoredPositions = false;
     }
   }
 
   private savePositions(): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.positions()));
+      this.hasStoredPositions = true;
     } catch {
       console.warn('Failed to save positions to localStorage');
     }
@@ -324,9 +411,13 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       const fullName = `${attendee.firstName} ${attendee.lastName}`;
       this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize);
 
-      ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
-      ctx.fillStyle = '#333333';
-      ctx.fillText(this.translateRole(attendee.role), pos.roleX, pos.roleY);
+      if (pos.showRole !== false) {
+        ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
+        ctx.fillStyle = '#333333';
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.translateRole(attendee.role), pos.roleX, pos.roleY);
+      }
 
       try {
         const qrDataUrl = await QRCode.toDataURL(attendee.id, {
