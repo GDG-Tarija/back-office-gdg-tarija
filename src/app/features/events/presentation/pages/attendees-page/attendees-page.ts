@@ -54,7 +54,26 @@ export class AttendeesPage implements OnInit {
         Object.keys(attendee.customResponses).forEach((k) => keysSet.add(k));
       }
     });
-    return Array.from(keysSet);
+
+    const orderedKeys = [
+      'discovery_source',
+      'experience_level',
+      'has_laptop',
+      'dietary_restrictions',
+      'additional_notes',
+    ];
+
+    return Array.from(keysSet).sort((a, b) => {
+      const idxA = orderedKeys.indexOf(a);
+      const idxB = orderedKeys.indexOf(b);
+
+      if (idxA !== -1 && idxB !== -1) {
+        return idxA - idxB;
+      }
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
   });
 
   ngOnInit(): void {
@@ -151,6 +170,8 @@ export class AttendeesPage implements OnInit {
 
   formatResponseKey(key: string | number | symbol): string {
     const keyStr = String(key);
+    const lowerKey = keyStr.toLowerCase();
+
     const commonKeys: Record<string, string> = {
       t_shirt_size: 'Talla de polera',
       tshirt: 'Talla de polera',
@@ -171,11 +192,25 @@ export class AttendeesPage implements OnInit {
       first_time: '¿Es tu primera vez?',
       github: 'Usuario de GitHub',
       linkedin: 'Perfil de LinkedIn',
+      has_laptop: '¿Cuentas con una laptop?',
+      discovery_source: '¿Cómo se enteró del evento?',
+      experience_level: 'Nivel de experiencia',
+      dietary_restrictions: 'Restricciones alimentarias',
+      additional_notes: '¿Tiene alguna consulta o duda?',
     };
 
-    const translation = commonKeys[keyStr.toLowerCase()];
+    const translation = commonKeys[lowerKey];
     if (translation) {
       return translation;
+    }
+
+    // Detección genérica de preguntas sobre computadora/laptop
+    if (
+      lowerKey.includes('compu') ||
+      lowerKey.includes('laptop') ||
+      lowerKey.includes('computer')
+    ) {
+      return '¿Llevará computadora?';
     }
 
     return keyStr
@@ -215,6 +250,24 @@ export class AttendeesPage implements OnInit {
     return trimmed.startsWith('http://') || trimmed.startsWith('https://');
   }
 
+  isBooleanTrue(val: unknown): boolean {
+    if (val === true || val === 'true') return true;
+    if (typeof val === 'string') {
+      const lower = val.trim().toLowerCase();
+      return lower === 'yes' || lower === 'si' || lower === 'sí' || lower === 'on' || lower === '1';
+    }
+    return false;
+  }
+
+  isBooleanFalse(val: unknown): boolean {
+    if (val === false || val === 'false') return true;
+    if (typeof val === 'string') {
+      const lower = val.trim().toLowerCase();
+      return lower === 'no' || lower === 'off' || lower === '0';
+    }
+    return false;
+  }
+
   exportToCSV(): void {
     const attendeesList = this.attendees();
     if (!attendeesList || attendeesList.length === 0) {
@@ -229,6 +282,7 @@ export class AttendeesPage implements OnInit {
       'job_title',
       'company',
       'ticket_type',
+      'trae_computadora',
     ];
 
     const getValueByPattern = (
@@ -309,9 +363,33 @@ export class AttendeesPage implements OnInit {
 
       const ticketType = attendee.ticketName;
 
-      return [firstName, lastName, email, checkedIn, jobTitle, company, ticketType].map(
-        escapeCSVValue,
-      );
+      const rawBringsComputer = getValueByPattern(responses, [
+        'computer',
+        'laptop',
+        'computadora',
+        'compu',
+        'has_laptop',
+        'llevar_computadora',
+        'traeras_computadora',
+        'llevaras_computadora',
+        'llevaras_laptop',
+      ]);
+      const bringsComputer = this.isBooleanTrue(rawBringsComputer)
+        ? 'Sí'
+        : this.isBooleanFalse(rawBringsComputer)
+          ? 'No'
+          : String(rawBringsComputer ?? '');
+
+      return [
+        firstName,
+        lastName,
+        email,
+        checkedIn,
+        jobTitle,
+        company,
+        ticketType,
+        bringsComputer,
+      ].map(escapeCSVValue);
     });
 
     const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');

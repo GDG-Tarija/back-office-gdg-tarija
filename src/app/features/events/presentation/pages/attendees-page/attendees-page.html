@@ -365,6 +365,18 @@
                       >
                         <i class="pi pi-external-link text-[10px]"></i> Ver Enlace
                       </a>
+                    } @else if (isBooleanTrue(attendee.customResponses?.[key])) {
+                      <span
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-google-green-light/30 text-google-green dark:bg-google-green/10 dark:text-google-green"
+                      >
+                        <i class="pi pi-check text-[10px]"></i> Sí
+                      </span>
+                    } @else if (isBooleanFalse(attendee.customResponses?.[key])) {
+                      <span
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-text-secondary dark:bg-neutral-800 dark:text-neutral-400"
+                      >
+                        <i class="pi pi-times text-[10px]"></i> No
+                      </span>
                     } @else {
                       {{ attendee.customResponses?.[key] || '-' }}
                     }
