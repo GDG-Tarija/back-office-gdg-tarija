@@ -91,6 +91,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
   readonly pdfLayoutMode = signal<
     'auto' | 'portrait_normal' | 'landscape_normal' | 'portrait_rotated' | 'landscape_rotated'
   >('auto');
+  readonly pdfImageQuality = signal<'high' | 'medium' | 'low'>('medium');
 
   private templateImg: HTMLImageElement | null = null;
   private hasStoredPositions = false;
@@ -627,6 +628,13 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     rotated.height = original.width;
     const ctx = rotated.getContext('2d');
     if (ctx) {
+      // Si la calidad seleccionada no es 'alta', rellenamos el fondo con blanco
+      // para evitar que la transparencia del canvas se convierta en negro en JPEG.
+      const qualityMode = this.pdfImageQuality();
+      if (qualityMode !== 'high') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, rotated.width, rotated.height);
+      }
       ctx.translate(rotated.width / 2, rotated.height / 2);
       ctx.rotate((90 * Math.PI) / 180);
       ctx.drawImage(original, -original.width / 2, -original.height / 2);
@@ -673,6 +681,12 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       const pos = this.positions();
       const itemsPerPage = layout.capacity;
 
+      // Determinar parámetros de calidad y formato de imagen
+      const qualityMode = this.pdfImageQuality();
+      const imgFormat = qualityMode === 'high' ? 'PNG' : 'JPEG';
+      const mimeType = qualityMode === 'high' ? 'image/png' : 'image/jpeg';
+      const compressionQuality = qualityMode === 'medium' ? 0.85 : 0.7;
+
       for (let i = 0; i < attendees.length; i++) {
         const attendee = attendees[i];
 
@@ -699,6 +713,12 @@ export class CredentialGenerator implements OnInit, OnDestroy {
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
         if (!ctx) continue;
+
+        // Rellenar fondo blanco si exportamos en formato JPEG (evita fondo negro por transparencia)
+        if (mimeType === 'image/jpeg') {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
         ctx.drawImage(img, 0, 0);
 
@@ -736,8 +756,12 @@ export class CredentialGenerator implements OnInit, OnDestroy {
           finalCanvas = this.rotateCanvas90(canvas);
         }
 
-        const imgDataUrl = finalCanvas.toDataURL('image/png');
-        doc.addImage(imgDataUrl, 'PNG', x, y, currentCardW, currentCardH);
+        // Obtener data URL con el formato y nivel de compresión correspondientes
+        const imgDataUrl = finalCanvas.toDataURL(
+          mimeType,
+          qualityMode === 'high' ? undefined : compressionQuality,
+        );
+        doc.addImage(imgDataUrl, imgFormat, x, y, currentCardW, currentCardH, undefined, 'FAST');
 
         this.generationProgress.set(Math.round(((i + 1) / attendees.length) * 100));
 
@@ -751,6 +775,107 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     } finally {
       this.generating.set(false);
       this.generationProgress.set(0);
+    }
+  }
+
+  // Generar y descargar 1 página con credenciales vacías (sin texto ni QR) en base a la grilla calculada
+  async generateEmptyPdf(): Promise<void> {
+    const event = this.selectedEvent();
+    const img = this.templateImg;
+
+    if (!event || !img) return;
+
+    this.generating.set(true);
+
+    try {
+      const { jsPDF } = await import('jspdf');
+
+      const format = this.pdfPageSize();
+      const margin = this.pdfMargin();
+      const spacing = this.pdfSpacing();
+      const cardW = this.pdfCredentialWidth();
+      const cardH = this.pdfCredentialHeight();
+
+      const layout = this.calculatePdfLayout();
+
+      // Formato y dimensiones para jsPDF
+      let pdfFormat: string | [number, number] = 'a4';
+      if (format === 'LETTER') {
+        pdfFormat = 'letter';
+      } else if (format === 'OFICIO') {
+        pdfFormat = [21.6, 33.0];
+      }
+
+      const doc = new jsPDF({
+        orientation: layout.pageOrientation,
+        unit: 'cm',
+        format: pdfFormat,
+      });
+
+      const itemsCount = layout.capacity;
+
+      // Determinar parámetros de calidad y formato de imagen
+      const qualityMode = this.pdfImageQuality();
+      const imgFormat = qualityMode === 'high' ? 'PNG' : 'JPEG';
+      const mimeType = qualityMode === 'high' ? 'image/png' : 'image/jpeg';
+      const compressionQuality = qualityMode === 'medium' ? 0.85 : 0.7;
+
+      // Si la credencial está rotada, rotamos el canvas de la plantilla una sola vez en memoria
+      let imgDataUrl = '';
+      if (layout.rotateCards) {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          if (mimeType === 'image/jpeg') {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+          ctx.drawImage(img, 0, 0);
+          const rotatedCanvas = this.rotateCanvas90(canvas);
+          imgDataUrl = rotatedCanvas.toDataURL(
+            mimeType,
+            qualityMode === 'high' ? undefined : compressionQuality,
+          );
+        }
+      } else {
+        if (qualityMode === 'high' && this.templateDataUrl()) {
+          imgDataUrl = this.templateDataUrl()!;
+        } else {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            if (mimeType === 'image/jpeg') {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            ctx.drawImage(img, 0, 0);
+            imgDataUrl = canvas.toDataURL(mimeType, compressionQuality);
+          }
+        }
+      }
+
+      const currentCardW = layout.rotateCards ? cardH : cardW;
+      const currentCardH = layout.rotateCards ? cardW : cardH;
+
+      for (let i = 0; i < itemsCount; i++) {
+        const col = i % layout.cols;
+        const row = Math.floor(i / layout.cols);
+
+        const x = margin + col * (currentCardW + spacing);
+        const y = margin + row * (currentCardH + spacing);
+
+        doc.addImage(imgDataUrl, imgFormat, x, y, currentCardW, currentCardH, undefined, 'FAST');
+      }
+
+      doc.save(`credenciales-vacias-${event.slug}.pdf`);
+    } catch (err) {
+      console.error('Error generating empty PDF:', err);
+    } finally {
+      this.generating.set(false);
     }
   }
 }
