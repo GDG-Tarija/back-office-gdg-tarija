@@ -82,6 +82,16 @@ export class CredentialGenerator implements OnInit, OnDestroy {
   readonly previewWidth = signal(0);
   readonly previewHeight = signal(0);
 
+  // Propiedades de exportación PDF
+  readonly pdfPageSize = signal<'A4' | 'LETTER' | 'OFICIO'>('A4');
+  readonly pdfSpacing = signal<number>(0.2); // en cm
+  readonly pdfMargin = signal<number>(1.0); // en cm
+  readonly pdfCredentialWidth = signal<number>(6.0); // en cm
+  readonly pdfCredentialHeight = signal<number>(9.0); // en cm
+  readonly pdfLayoutMode = signal<
+    'auto' | 'portrait_normal' | 'landscape_normal' | 'portrait_rotated' | 'landscape_rotated'
+  >('auto');
+
   private templateImg: HTMLImageElement | null = null;
   private hasStoredPositions = false;
 
@@ -208,6 +218,11 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
         this.templateImage.set(img);
         this.adjustDefaultPositions(img.width, img.height);
+
+        // Calcular el alto de la credencial en base a la proporción original
+        const ratio = img.height / img.width;
+        this.pdfCredentialHeight.set(parseFloat((this.pdfCredentialWidth() * ratio).toFixed(2)));
+
         setTimeout(() => {
           this.renderPreview();
         }, 50);
@@ -491,5 +506,245 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
     this.generating.set(false);
     this.generationProgress.set(0);
+  }
+
+  // Ajustar el alto proporcional de forma dinámica al cambiar el ancho
+  onPdfWidthChange(width: number): void {
+    this.pdfCredentialWidth.set(width);
+    if (this.templateImg) {
+      const ratio = this.templateImg.height / this.templateImg.width;
+      this.pdfCredentialHeight.set(parseFloat((width * ratio).toFixed(2)));
+    }
+  }
+
+  // Calcular la cuadrícula óptima para aprovechar mejor el papel
+  calculatePdfLayout(): {
+    pageOrientation: 'portrait' | 'landscape';
+    rotateCards: boolean;
+    cols: number;
+    rows: number;
+    capacity: number;
+    totalPages: number;
+  } {
+    const format = this.pdfPageSize();
+    const margin = this.pdfMargin();
+    const spacing = this.pdfSpacing();
+    const w = this.pdfCredentialWidth();
+    const h = this.pdfCredentialHeight();
+    const totalAttendees = this.getFilteredAttendees().length;
+
+    // Dimensiones de página en centímetros
+    let pw = 21.0;
+    let ph = 29.7;
+    if (format === 'LETTER') {
+      pw = 21.59;
+      ph = 27.94;
+    } else if (format === 'OFICIO') {
+      pw = 21.6;
+      ph = 33.0;
+    }
+
+    const mode = this.pdfLayoutMode();
+
+    // Helper para calcular la grilla dada una dimensión de página y tarjeta
+    const getGrid = (pageW: number, pageH: number, cardW: number, cardH: number) => {
+      const availW = pageW - 2 * margin;
+      const availH = pageH - 2 * margin;
+      const cols = Math.max(1, Math.floor((availW + spacing) / (cardW + spacing)));
+      const rows = Math.max(1, Math.floor((availH + spacing) / (cardH + spacing)));
+      return { cols, rows, capacity: cols * rows };
+    };
+
+    // Estructuras de las 4 combinaciones
+    const layouts = [
+      {
+        key: 'portrait_normal' as const,
+        pageOrientation: 'portrait' as const,
+        rotateCards: false,
+        ...getGrid(pw, ph, w, h),
+        preference: 4, // Sin rotación en vertical preferido
+      },
+      {
+        key: 'landscape_normal' as const,
+        pageOrientation: 'landscape' as const,
+        rotateCards: false,
+        ...getGrid(ph, pw, w, h),
+        preference: 3,
+      },
+      {
+        key: 'portrait_rotated' as const,
+        pageOrientation: 'portrait' as const,
+        rotateCards: true,
+        ...getGrid(pw, ph, h, w),
+        preference: 2,
+      },
+      {
+        key: 'landscape_rotated' as const,
+        pageOrientation: 'landscape' as const,
+        rotateCards: true,
+        ...getGrid(ph, pw, h, w),
+        preference: 1,
+      },
+    ];
+
+    let selectedLayout;
+    if (mode === 'auto') {
+      // Ordenar por capacidad máxima descendente y luego por preferencia estética
+      const sorted = [...layouts].sort((a, b) => {
+        if (b.capacity !== a.capacity) {
+          return b.capacity - a.capacity;
+        }
+        return b.preference - a.preference;
+      });
+      selectedLayout = sorted[0];
+    } else {
+      selectedLayout = layouts.find((l) => l.key === mode) || layouts[0];
+    }
+
+    const capacity = selectedLayout.capacity;
+    const totalPages = capacity > 0 ? Math.ceil(totalAttendees / capacity) : 0;
+
+    return {
+      pageOrientation: selectedLayout.pageOrientation,
+      rotateCards: selectedLayout.rotateCards,
+      cols: selectedLayout.cols,
+      rows: selectedLayout.rows,
+      capacity,
+      totalPages,
+    };
+  }
+
+  // Rotar el canvas 90 grados físicamente para mantener la calidad y consistencia
+  rotateCanvas90(original: HTMLCanvasElement): HTMLCanvasElement {
+    const rotated = document.createElement('canvas');
+    rotated.width = original.height;
+    rotated.height = original.width;
+    const ctx = rotated.getContext('2d');
+    if (ctx) {
+      ctx.translate(rotated.width / 2, rotated.height / 2);
+      ctx.rotate((90 * Math.PI) / 180);
+      ctx.drawImage(original, -original.width / 2, -original.height / 2);
+    }
+    return rotated;
+  }
+
+  // Generar y descargar el PDF con la grilla optimizada
+  async generatePdf(): Promise<void> {
+    const event = this.selectedEvent();
+    const attendees = this.getFilteredAttendees();
+    const img = this.templateImg;
+
+    if (!event || !img || attendees.length === 0) return;
+
+    this.generating.set(true);
+    this.generationProgress.set(0);
+
+    try {
+      const { jsPDF } = await import('jspdf');
+
+      const format = this.pdfPageSize();
+      const margin = this.pdfMargin();
+      const spacing = this.pdfSpacing();
+      const cardW = this.pdfCredentialWidth();
+      const cardH = this.pdfCredentialHeight();
+
+      const layout = this.calculatePdfLayout();
+
+      // Formato y dimensiones para jsPDF
+      let pdfFormat: string | [number, number] = 'a4';
+      if (format === 'LETTER') {
+        pdfFormat = 'letter';
+      } else if (format === 'OFICIO') {
+        pdfFormat = [21.6, 33.0];
+      }
+
+      const doc = new jsPDF({
+        orientation: layout.pageOrientation,
+        unit: 'cm',
+        format: pdfFormat,
+      });
+
+      const pos = this.positions();
+      const itemsPerPage = layout.capacity;
+
+      for (let i = 0; i < attendees.length; i++) {
+        const attendee = attendees[i];
+
+        // Calcular la ubicación en la grilla
+        const pageIndex = i % itemsPerPage;
+        const col = pageIndex % layout.cols;
+        const row = Math.floor(pageIndex / layout.cols);
+
+        // Si ya completamos una página, insertar una nueva
+        if (i > 0 && pageIndex === 0) {
+          doc.addPage();
+        }
+
+        // Si la credencial está rotada, sus dimensiones de impresión física se intercambian
+        const currentCardW = layout.rotateCards ? cardH : cardW;
+        const currentCardH = layout.rotateCards ? cardW : cardH;
+
+        const x = margin + col * (currentCardW + spacing);
+        const y = margin + row * (currentCardH + spacing);
+
+        // Crear canvas temporal para dibujar la credencial de este asistente
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+
+        ctx.drawImage(img, 0, 0);
+
+        const fullName = `${attendee.firstName} ${attendee.lastName}`;
+        this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize, pos.nameMaxWidth);
+
+        if (pos.showRole !== false) {
+          ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
+          ctx.fillStyle = '#333333';
+          ctx.textBaseline = 'top';
+          ctx.textAlign = 'center';
+          ctx.fillText(this.translateRole(attendee.role), pos.roleX, pos.roleY);
+        }
+
+        try {
+          const qrDataUrl = await QRCode.toDataURL(attendee.id, {
+            width: pos.qrSize,
+            margin: 1,
+            color: { dark: '#000000', light: '#ffffff' },
+          });
+          const qrImg = new Image();
+          await new Promise<void>((resolve) => {
+            qrImg.onload = () => {
+              ctx.drawImage(qrImg, pos.qrX, pos.qrY, pos.qrSize, pos.qrSize);
+              resolve();
+            };
+            qrImg.src = qrDataUrl;
+          });
+        } catch {
+          console.warn(`Failed to generate QR for ${attendee.id}`);
+        }
+
+        let finalCanvas = canvas;
+        if (layout.rotateCards) {
+          finalCanvas = this.rotateCanvas90(canvas);
+        }
+
+        const imgDataUrl = finalCanvas.toDataURL('image/png');
+        doc.addImage(imgDataUrl, 'PNG', x, y, currentCardW, currentCardH);
+
+        this.generationProgress.set(Math.round(((i + 1) / attendees.length) * 100));
+
+        // Liberar el hilo de UI para poder renderizar la barra de progreso
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      }
+
+      doc.save(`credenciales-${event.slug}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+    } finally {
+      this.generating.set(false);
+      this.generationProgress.set(0);
+    }
   }
 }
