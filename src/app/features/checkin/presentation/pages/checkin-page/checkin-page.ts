@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -63,16 +63,6 @@ export class CheckinPage implements OnInit, OnDestroy {
     { label: 'Entrega de Refrigerio / Snack', value: 'refrigerio' },
     { label: 'Ingreso a Sesión / Taller', value: 'session' },
   ];
-
-  constructor() {
-    // Al cambiar la cámara si está activo el escáner, reiniciamos el stream
-    effect(() => {
-      const camId = this.selectedCameraId();
-      if (camId && this.scanning()) {
-        void this.startScanner(camId);
-      }
-    });
-  }
 
   ngOnInit(): void {
     void this.loadEvents();
@@ -171,6 +161,15 @@ export class CheckinPage implements OnInit, OnDestroy {
     const event = this.selectedEvent();
     if (this.selectedMode() === 'session' && event) {
       void this.loadSessions(event.id);
+    }
+  }
+
+  onCameraChange(): void {
+    if (this.scanning()) {
+      const camId = this.selectedCameraId();
+      if (camId) {
+        void this.startScanner(camId);
+      }
     }
   }
 
