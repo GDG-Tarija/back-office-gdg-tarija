@@ -98,27 +98,7 @@
                 placeholder="Seleccione una sesión"
                 styleClass="w-full !rounded-xl"
                 appendTo="body"
-              >
-                <ng-template #selectedItem let-selectedOption>
-                  <div class="py-0.5 text-xs text-text-primary dark:text-neutral-200">
-                    <span class="truncate max-w-[240px] sm:max-w-xs">
-                      {{ selectedOption.title }}
-                    </span>
-                  </div>
-                </ng-template>
-                <ng-template #item let-option>
-                  <div
-                    class="py-1 w-full border-b border-neutral-100 dark:border-neutral-800 last:border-b-0"
-                  >
-                    <!-- Título de la charla con ajuste de línea automático y peso normal -->
-                    <span
-                      class="text-xs text-text-primary dark:text-neutral-100 whitespace-normal break-words leading-snug"
-                    >
-                      {{ option.title }}
-                    </span>
-                  </div>
-                </ng-template>
-              </p-select>
+              />
               @if (sessions().length === 0) {
                 <span class="text-xs text-google-red font-semibold">
                   No hay sesiones definidas para este evento.
@@ -292,6 +272,15 @@
                 <p class="truncate">
                   <i class="pi pi-ticket mr-1 text-[10px]"></i> {{ result.attendee.ticketName }}
                 </p>
+                @if (result.scannedCode) {
+                  <p class="truncate">
+                    <i class="pi pi-qrcode mr-1 text-[10px]"></i> Código:
+                    <span
+                      class="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded"
+                      >{{ result.scannedCode }}</span
+                    >
+                  </p>
+                }
                 @if (result.alreadyScanned || !result.success) {
                   <p class="text-google-red dark:text-red-400 font-bold mt-1.5 leading-snug">
                     {{ result.message }}
@@ -299,6 +288,22 @@
                 }
                 <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
                   Registrado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
+                </p>
+              </div>
+            } @else {
+              <!-- Failure detailed info with exact padding left alignment -->
+              <div class="text-xs text-text-secondary dark:text-neutral-400 pl-[56px] space-y-1">
+                @if (result.scannedCode) {
+                  <p class="truncate">
+                    <i class="pi pi-qrcode mr-1 text-[10px]"></i> Código:
+                    <span
+                      class="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded"
+                      >{{ result.scannedCode }}</span
+                    >
+                  </p>
+                }
+                <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
+                  Escaneado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
                 </p>
               </div>
             }

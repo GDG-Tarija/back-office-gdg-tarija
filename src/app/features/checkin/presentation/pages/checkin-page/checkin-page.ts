@@ -213,6 +213,18 @@ export class CheckinPage implements OnInit, OnDestroy {
           // Ignorar errores de escaneo de fotogramas sin código QR
         },
       );
+
+      // Evitar bloqueos de autoplay en navegadores estrictos (macOS/iOS) forzando la reproducción del stream
+      const videoEl = document.querySelector('#reader video') as HTMLVideoElement;
+      if (videoEl) {
+        videoEl.muted = true;
+        videoEl.setAttribute('playsinline', 'true');
+        if (videoEl.paused) {
+          void videoEl
+            .play()
+            .catch((err) => console.warn('Forzar autoplay de cámara fallido:', err));
+        }
+      }
     } catch (err) {
       console.error('Error starting Html5Qrcode:', err);
       this.scanning.set(false);
@@ -272,7 +284,18 @@ export class CheckinPage implements OnInit, OnDestroy {
         this.auth.user()?.id || null,
       );
 
-      this.scanResult.set(result);
+      // Enriquecer la etiqueta de tipo de escaneo para incluir el título de la charla
+      let scanTypeLabel = result.scanTypeLabel || '';
+      if (mode === 'session' && session) {
+        scanTypeLabel = `Sesión: ${session.title}`;
+      }
+
+      this.scanResult.set({
+        ...result,
+        scanTypeLabel,
+        scannedCode: decodedText,
+        scannedAt: result.scannedAt || new Date(),
+      });
 
       if (result.success) {
         this.playSuccessSound();
@@ -287,6 +310,7 @@ export class CheckinPage implements OnInit, OnDestroy {
       this.scanResult.set({
         success: false,
         message: 'Ocurrió un error inesperado al procesar la asistencia.',
+        scannedCode: decodedText,
       });
     } finally {
       this.isProcessing.set(false);

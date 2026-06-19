@@ -25,4 +25,5 @@ export interface ScanResult {
     ticketName: string;
   };
   scanTypeLabel?: string;
+  scannedCode?: string;
 }
