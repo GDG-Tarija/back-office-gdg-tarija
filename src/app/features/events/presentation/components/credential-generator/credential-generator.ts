@@ -36,7 +36,7 @@ const DEFAULT_POSITIONS: CredentialPosition = {
 const ROLE_OPTIONS = [
   { label: 'Participante', value: 'ATTENDEE' },
   { label: 'Speaker', value: 'SPEAKER' },
-  { label: 'Staff', value: 'ORGANIZER' },
+  { label: 'Staff', value: 'STAFF' },
   { label: 'Voluntario', value: 'VOLUNTEER' },
 ];
 
@@ -235,6 +235,11 @@ export class CredentialGenerator implements OnInit, OnDestroy {
   getFilteredAttendees(): Attendee[] {
     const role = this.selectedRole();
     if (!role) return this.filteredAttendees();
+    if (role === 'STAFF') {
+      return this.filteredAttendees().filter(
+        (a) => a.role?.toUpperCase() === 'STAFF' || a.role?.toUpperCase() === 'ORGANIZER',
+      );
+    }
     return this.filteredAttendees().filter((a) => a.role === role);
   }
 
@@ -243,9 +248,10 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       ATTENDEE: 'Participante',
       SPEAKER: 'Speaker',
       ORGANIZER: 'Staff',
+      STAFF: 'Staff',
       VOLUNTEER: 'Voluntario',
     };
-    return map[role] || role;
+    return map[role?.toUpperCase()] || role;
   }
 
   drawNameText(

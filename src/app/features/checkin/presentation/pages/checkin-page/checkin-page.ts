@@ -390,6 +390,7 @@ export class CheckinPage implements OnInit, OnDestroy {
   getRoleSeverity(role?: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
     switch (role?.toUpperCase()) {
       case 'ORGANIZER':
+      case 'STAFF':
         return 'danger';
       case 'SPEAKER':
         return 'warn';
@@ -403,7 +404,8 @@ export class CheckinPage implements OnInit, OnDestroy {
   translateRole(role?: string): string {
     switch (role?.toUpperCase()) {
       case 'ORGANIZER':
-        return 'Organizador';
+      case 'STAFF':
+        return 'Staff';
       case 'SPEAKER':
         return 'Expositor';
       case 'VOLUNTEER':
