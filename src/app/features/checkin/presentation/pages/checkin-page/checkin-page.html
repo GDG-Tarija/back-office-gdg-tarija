@@ -1,0 +1,310 @@
+<div
+  class="min-h-screen bg-neutral-50/30 dark:bg-neutral-950/20 p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden w-full max-w-full"
+>
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2">
+    <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">
+      Panel / Control de Asistencias / Escáner QR
+    </span>
+  </div>
+
+  <!-- Header -->
+  <div
+    class="flex items-center bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-5 shadow-sm"
+  >
+    <h1 class="text-xl sm:text-2xl font-black text-text-primary dark:text-neutral-100">Check-in</h1>
+  </div>
+
+  <!-- Unified Workspace Card -->
+  <div
+    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl shadow-sm overflow-hidden w-full"
+  >
+    <div
+      class="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-neutral-100 dark:divide-neutral-800"
+    >
+      <!-- Left Panel: Controls (5 Cols) -->
+      <div class="lg:col-span-5 p-6 sm:p-8 space-y-5">
+        <div
+          class="border-b border-neutral-100 dark:border-neutral-800 pb-3 flex items-center gap-2.5"
+        >
+          <i class="pi pi-cog text-google-blue text-lg"></i>
+          <span class="font-bold text-text-primary dark:text-neutral-200"
+            >Parámetros del Escaneo</span
+          >
+        </div>
+
+        <!-- Event Selection -->
+        <div class="flex flex-col gap-1.5">
+          <label
+            for="event-select"
+            class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300"
+          >
+            Evento
+          </label>
+          <p-select
+            id="event-select"
+            [options]="events()"
+            [loading]="loadingEvents()"
+            [(ngModel)]="selectedEvent"
+            optionLabel="title"
+            placeholder="Seleccione un evento"
+            styleClass="w-full !rounded-xl"
+            (onChange)="onEventChange()"
+            appendTo="body"
+          />
+        </div>
+
+        <!-- Scan Mode -->
+        <div class="flex flex-col gap-1.5">
+          <label
+            for="mode-select"
+            class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300"
+          >
+            Tipo de Control / Registro
+          </label>
+          <p-select
+            id="mode-select"
+            [options]="modeOptions"
+            [(ngModel)]="selectedMode"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccione modo"
+            styleClass="w-full !rounded-xl"
+            (onChange)="onModeChange()"
+            appendTo="body"
+          />
+        </div>
+
+        <!-- Session Selection (Condicional) -->
+        @if (selectedMode() === 'session') {
+          <div class="flex flex-col gap-1.5 animate-fade-in">
+            <label
+              for="session-select"
+              class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300"
+            >
+              Sesión / Charla / Taller
+            </label>
+            @if (loadingSessions()) {
+              <div class="flex items-center gap-2 text-xs text-text-secondary py-2">
+                <p-progressspinner styleClass="w-5 h-5" strokeWidth="4" />
+                <span>Cargando sesiones...</span>
+              </div>
+            } @else {
+              <p-select
+                id="session-select"
+                [options]="sessions()"
+                [(ngModel)]="selectedSession"
+                optionLabel="title"
+                placeholder="Seleccione una sesión"
+                styleClass="w-full !rounded-xl"
+                appendTo="body"
+              >
+                <ng-template #selectedItem let-selectedOption>
+                  <div class="py-0.5 text-xs text-text-primary dark:text-neutral-200">
+                    <span class="truncate max-w-[240px] sm:max-w-xs">
+                      {{ selectedOption.title }}
+                    </span>
+                  </div>
+                </ng-template>
+                <ng-template #item let-option>
+                  <div
+                    class="py-1 w-full border-b border-neutral-100 dark:border-neutral-800 last:border-b-0"
+                  >
+                    <!-- Título de la charla con ajuste de línea automático y peso normal -->
+                    <span
+                      class="text-xs text-text-primary dark:text-neutral-100 whitespace-normal break-words leading-snug"
+                    >
+                      {{ option.title }}
+                    </span>
+                  </div>
+                </ng-template>
+              </p-select>
+              @if (sessions().length === 0) {
+                <span class="text-xs text-google-red font-semibold">
+                  No hay sesiones definidas para este evento.
+                </span>
+              }
+            }
+          </div>
+        }
+
+        <!-- Camera Selection -->
+        <div class="flex flex-col gap-1.5">
+          <label
+            for="camera-select"
+            class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300"
+          >
+            Cámara de Entrada
+          </label>
+          <p-select
+            id="camera-select"
+            [options]="cameras()"
+            [(ngModel)]="selectedCameraId"
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Seleccione dispositivo"
+            styleClass="w-full !rounded-xl"
+            [disabled]="cameras().length === 0"
+            appendTo="body"
+          />
+        </div>
+
+        <!-- Toggle Scanning button -->
+        <div class="pt-2">
+          <p-button
+            [label]="scanning() ? 'Apagar Cámara' : 'Encender Cámara'"
+            [icon]="scanning() ? 'pi pi-camera-slash' : 'pi pi-camera'"
+            [severity]="scanning() ? 'danger' : 'success'"
+            styleClass="w-full !py-3 !rounded-xl font-bold transition-all shadow-sm"
+            (onClick)="toggleCamera()"
+            [disabled]="!selectedEvent() || (selectedMode() === 'session' && !selectedSession())"
+          />
+        </div>
+      </div>
+
+      <!-- Right Panel: Viewport & Results (7 Cols) -->
+      <div
+        class="lg:col-span-7 p-6 sm:p-8 flex flex-col items-center justify-start min-h-[360px] relative gap-6"
+      >
+        <!-- Overlay if Processing DB -->
+        @if (isProcessing()) {
+          <div
+            class="absolute inset-0 bg-white/75 dark:bg-neutral-900/75 z-20 flex flex-col items-center justify-center gap-2 backdrop-blur-[1px]"
+          >
+            <p-progressspinner styleClass="w-12 h-12" strokeWidth="4" />
+            <span class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+              Procesando registro...
+            </span>
+          </div>
+        }
+
+        <!-- Error messages -->
+        @if (qrError()) {
+          <div
+            class="p-4 bg-google-red/10 border border-google-red/25 text-google-red rounded-2xl w-full text-center text-xs font-bold flex items-center justify-center gap-2"
+          >
+            <i class="pi pi-exclamation-triangle"></i>
+            {{ qrError() }}
+          </div>
+        }
+
+        <!-- Camera box container (clean scanning, no overlays or laser lines) -->
+        <div
+          class="relative w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-950 flex items-center justify-center shadow-inner"
+        >
+          <div id="reader" class="w-full h-full"></div>
+
+          @if (!scanning()) {
+            <!-- Beautiful glassmorphic illustration placeholder when off -->
+            <div
+              class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-6 bg-neutral-950/90 backdrop-blur-[1px]"
+            >
+              <div
+                class="size-20 rounded-3xl bg-neutral-900/95 border border-white/10 flex items-center justify-center text-google-blue shadow-lg animate-pulse"
+              >
+                <i class="pi pi-qrcode text-4xl"></i>
+              </div>
+              <span class="text-sm text-neutral-300 font-bold max-w-xs">
+                Escáner Listo para Iniciar
+              </span>
+              <p class="text-xs text-neutral-500 max-w-xs leading-relaxed">
+                Selecciona un evento y propósito a la izquierda y presiona "Encender Cámara" para
+                habilitar la lectura QR.
+              </p>
+            </div>
+          }
+        </div>
+
+        <!-- Inline Scanned Attendee Result -->
+        @if (scanResult(); as result) {
+          <div
+            class="w-full pt-6 border-t border-neutral-100 dark:border-neutral-800/80 animate-fade-in space-y-4"
+          >
+            <div class="flex items-start gap-4">
+              <!-- Inline compact success/warning/error icon status circle -->
+              <div
+                [class]="
+                  'size-10 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm ' +
+                  (result.success
+                    ? 'bg-google-green'
+                    : result.alreadyScanned
+                      ? 'bg-google-yellow text-neutral-900'
+                      : 'bg-google-red')
+                "
+              >
+                <i
+                  [class]="
+                    'pi ' +
+                    (result.success
+                      ? 'pi-check'
+                      : result.alreadyScanned
+                        ? 'pi-exclamation-triangle'
+                        : 'pi-times')
+                  "
+                ></i>
+              </div>
+
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span
+                    [class]="
+                      'text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ' +
+                      (result.success
+                        ? 'bg-google-green/10 text-google-green'
+                        : result.alreadyScanned
+                          ? 'bg-google-yellow/20 text-google-yellow-dark'
+                          : 'bg-google-red/10 text-google-red')
+                    "
+                  >
+                    {{ result.scanTypeLabel || (result.success ? 'Exitoso' : 'Error') }}
+                  </span>
+                  @if (result.attendee) {
+                    <p-tag
+                      [value]="translateRole(result.attendee.role)"
+                      [severity]="getRoleSeverity(result.attendee.role)"
+                      styleClass="!text-[9px] !px-2 !py-0"
+                    />
+                  }
+                </div>
+
+                @if (result.attendee) {
+                  <h3
+                    class="text-sm font-bold text-text-primary dark:text-neutral-100 mt-1 truncate"
+                  >
+                    {{ result.attendee.firstName }} {{ result.attendee.lastName }}
+                  </h3>
+                } @else {
+                  <h3
+                    class="text-sm font-bold text-text-primary dark:text-neutral-100 mt-1 leading-snug"
+                  >
+                    {{ result.message }}
+                  </h3>
+                }
+              </div>
+            </div>
+
+            @if (result.attendee) {
+              <!-- Detailed Attendee info with exact padding left alignment -->
+              <div class="text-xs text-text-secondary dark:text-neutral-400 pl-[56px] space-y-1">
+                <p class="truncate">
+                  <i class="pi pi-envelope mr-1 text-[10px]"></i> {{ result.attendee.email }}
+                </p>
+                <p class="truncate">
+                  <i class="pi pi-ticket mr-1 text-[10px]"></i> {{ result.attendee.ticketName }}
+                </p>
+                @if (result.alreadyScanned || !result.success) {
+                  <p class="text-google-red dark:text-red-400 font-bold mt-1.5 leading-snug">
+                    {{ result.message }}
+                  </p>
+                }
+                <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
+                  Registrado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
+                </p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

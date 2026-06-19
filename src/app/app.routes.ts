@@ -35,6 +35,11 @@ export const routes: Routes = [
         path: 'events',
         loadChildren: () => import('./features/events/events.routes').then((m) => m.EVENTS_ROUTES),
       },
+      {
+        path: 'checkin',
+        loadChildren: () =>
+          import('./features/checkin/presentation/checkin.routes').then((m) => m.CHECKIN_ROUTES),
+      },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

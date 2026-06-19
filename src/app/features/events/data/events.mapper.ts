@@ -43,6 +43,6 @@ export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
     registeredAt: row.created_at ? new Date(row.created_at) : null,
     customResponses: row.custom_responses,
     paymentProofUrl: row.payment_proof_url || null,
-    checkedIn: !!(scanLogs && scanLogs.length > 0),
+    checkedIn: !!(scanLogs && scanLogs.some((log) => log.scan_type === 'checkin')),
   };
 }

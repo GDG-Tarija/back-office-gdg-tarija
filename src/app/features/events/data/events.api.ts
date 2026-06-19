@@ -62,7 +62,8 @@ export class EventsApi implements EventsRepository {
           price
         ),
         scan_logs (
-          id
+          id,
+          scan_type
         )
       `,
       )

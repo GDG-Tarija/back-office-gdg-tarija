@@ -65,7 +65,7 @@ describe('Events Mapper', () => {
         name: 'Pase Expositor',
         price: 0,
       },
-      scan_logs: [{ id: 'scan-1' }],
+      scan_logs: [{ id: 'scan-1', scan_type: 'checkin' }],
     };
 
     const domainAttendee = toDomainAttendee(rawRow);
