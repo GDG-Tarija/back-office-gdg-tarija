@@ -411,4 +411,60 @@ export class AttendeesPage implements OnInit {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }
+
+  async exportToExcel(): Promise<void> {
+    const attendeesList = this.attendees();
+    if (!attendeesList || attendeesList.length === 0) {
+      return;
+    }
+
+    const customKeys = this.customResponseKeys();
+
+    const dataRows = attendeesList.map((attendee) => {
+      const responses = attendee.customResponses;
+
+      const rowData: Record<string, string | number> = {
+        Nombre: attendee.firstName,
+        Apellido: attendee.lastName,
+        Correo: attendee.email,
+        Teléfono: attendee.phone || '',
+        Rol: this.translateRole(attendee.role),
+        Estado: this.translateStatus(attendee.status),
+        'Tipo de Entrada': attendee.ticketName,
+        'Precio ($)': attendee.ticketPrice,
+        '¿Asistió?': attendee.checkedIn ? 'Sí' : 'No',
+        'Fecha Registro': attendee.registeredAt
+          ? new Date(attendee.registeredAt).toLocaleString()
+          : '',
+        'Comprobante de Pago': attendee.paymentProofUrl || '',
+      };
+
+      customKeys.forEach((key) => {
+        const columnHeader = this.formatResponseKey(key);
+        const rawValue = responses ? responses[key] : '';
+
+        const formattedValue = this.isBooleanTrue(rawValue)
+          ? 'Sí'
+          : this.isBooleanFalse(rawValue)
+            ? 'No'
+            : String(rawValue ?? '');
+
+        rowData[columnHeader] = formattedValue;
+      });
+
+      return rowData;
+    });
+
+    try {
+      const XLSX = await import('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(dataRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Asistentes');
+
+      const eventSlug = this.event()?.slug || 'asistentes';
+      XLSX.writeFile(workbook, `asistentes_${eventSlug}.xlsx`);
+    } catch (err) {
+      console.error('Error al exportar a Excel:', err);
+    }
+  }
 }
