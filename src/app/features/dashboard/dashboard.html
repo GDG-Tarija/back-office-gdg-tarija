@@ -1,4 +1,4 @@
-<div class="p-6 transition-all duration-300">
+<div class="p-4 sm:p-6 transition-all duration-300">
   <div class="mx-auto flex max-w-6xl flex-col gap-6">
     <!-- Header -->
     <header class="flex flex-col gap-2">
@@ -40,7 +40,7 @@
         </div>
 
         <!-- Event Select -->
-        <div class="flex flex-col gap-1 min-w-[200px] max-w-xs">
+        <div class="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
           <p-select
             [options]="eventOptions()"
             [(ngModel)]="filterEventId"
@@ -52,7 +52,7 @@
         </div>
 
         <!-- Role Select -->
-        <div class="flex flex-col gap-1 min-w-[150px]">
+        <div class="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[150px]">
           <p-select
             [options]="roleOptions"
             [(ngModel)]="filterRole"
@@ -64,7 +64,7 @@
         </div>
 
         <!-- Date Range DatePicker -->
-        <div class="flex flex-col gap-1 min-w-[220px]">
+        <div class="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[220px]">
           <p-datepicker
             [(ngModel)]="filterDateRange"
             selectionMode="range"
@@ -504,88 +504,90 @@
           />
         </div>
 
-        <p-table
-          [value]="recentRegistrations()"
-          [rows]="5"
-          [paginator]="true"
-          styleClass="w-full gdg-table text-sm"
-        >
-          <ng-template pTemplate="header">
-            <tr>
-              <th class="w-1/4">Asistente</th>
-              <th class="w-1/4">Evento</th>
-              <th class="w-1/6">Rol</th>
-              <th class="w-1/6">Estado</th>
-              <th class="w-1/6">Fecha</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-reg>
-            <tr
-              class="hover:bg-neutral-50 dark:hover:bg-neutral-850/50 transition-colors duration-150"
-            >
-              <!-- Column 1: Asistente -->
-              <td>
-                <div class="flex items-center gap-3">
-                  @if (reg.avatarUrl) {
-                    <img
-                      class="size-8 rounded-full object-cover"
-                      [src]="reg.avatarUrl"
-                      alt="Avatar"
-                      referrerpolicy="no-referrer"
-                    />
-                  } @else {
-                    <div
-                      class="flex size-8 shrink-0 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-xs font-bold"
-                    >
-                      {{ reg.userInitials }}
-                    </div>
-                  }
-                  <div class="flex flex-col">
-                    <span class="font-medium text-text-primary dark:text-neutral-200">{{
-                      reg.userName
-                    }}</span>
-                    <span class="text-xs text-text-secondary dark:text-neutral-400">{{
-                      reg.userEmail
-                    }}</span>
-                  </div>
-                </div>
-              </td>
-              <!-- Column 2: Evento -->
-              <td
-                class="text-text-primary dark:text-neutral-200 font-medium truncate max-w-[200px]"
+        <div class="w-full overflow-x-auto">
+          <p-table
+            [value]="recentRegistrations()"
+            [rows]="5"
+            [paginator]="true"
+            styleClass="w-full gdg-table text-sm min-w-[650px]"
+          >
+            <ng-template pTemplate="header">
+              <tr>
+                <th class="w-1/4">Asistente</th>
+                <th class="w-1/4">Evento</th>
+                <th class="w-1/6">Rol</th>
+                <th class="w-1/6">Estado</th>
+                <th class="w-1/6">Fecha</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-reg>
+              <tr
+                class="hover:bg-neutral-50 dark:hover:bg-neutral-850/50 transition-colors duration-150"
               >
-                {{ reg.eventTitle }}
-              </td>
-              <!-- Column 3: Rol -->
-              <td>
-                <p-tag
-                  [value]="translateRole(reg.role)"
-                  [severity]="getRoleSeverity(reg.role)"
-                  styleClass="text-xs px-2.5 py-0.5 rounded-full"
-                />
-              </td>
-              <!-- Column 4: Estado -->
-              <td>
-                <p-tag
-                  [value]="translateStatus(reg.status)"
-                  [severity]="getStatusSeverity(reg.status)"
-                  styleClass="text-xs px-2.5 py-0.5 rounded-full"
-                />
-              </td>
-              <!-- Column 5: Fecha -->
-              <td class="text-xs text-text-secondary dark:text-neutral-400">
-                {{ reg.createdAt | date: 'dd/MM/yyyy HH:mm' }}
-              </td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="5" class="text-center py-6 text-text-secondary dark:text-neutral-400">
-                No hay inscripciones recientes registradas.
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
+                <!-- Column 1: Asistente -->
+                <td>
+                  <div class="flex items-center gap-3">
+                    @if (reg.avatarUrl) {
+                      <img
+                        class="size-8 rounded-full object-cover"
+                        [src]="reg.avatarUrl"
+                        alt="Avatar"
+                        referrerpolicy="no-referrer"
+                      />
+                    } @else {
+                      <div
+                        class="flex size-8 shrink-0 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-xs font-bold"
+                      >
+                        {{ reg.userInitials }}
+                      </div>
+                    }
+                    <div class="flex flex-col min-w-0">
+                      <span class="font-medium text-text-primary dark:text-neutral-200 truncate">{{
+                        reg.userName
+                      }}</span>
+                      <span class="text-xs text-text-secondary dark:text-neutral-400 truncate">{{
+                        reg.userEmail
+                      }}</span>
+                    </div>
+                  </div>
+                </td>
+                <!-- Column 2: Evento -->
+                <td
+                  class="text-text-primary dark:text-neutral-200 font-medium truncate max-w-[200px]"
+                >
+                  {{ reg.eventTitle }}
+                </td>
+                <!-- Column 3: Rol -->
+                <td>
+                  <p-tag
+                    [value]="translateRole(reg.role)"
+                    [severity]="getRoleSeverity(reg.role)"
+                    styleClass="text-xs px-2.5 py-0.5 rounded-full"
+                  />
+                </td>
+                <!-- Column 4: Estado -->
+                <td>
+                  <p-tag
+                    [value]="translateStatus(reg.status)"
+                    [severity]="getStatusSeverity(reg.status)"
+                    styleClass="text-xs px-2.5 py-0.5 rounded-full"
+                  />
+                </td>
+                <!-- Column 5: Fecha -->
+                <td class="text-xs text-text-secondary dark:text-neutral-400">
+                  {{ reg.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="5" class="text-center py-6 text-text-secondary dark:text-neutral-400">
+                  No hay inscripciones recientes registradas.
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </div>
       </div>
     }
   </div>
