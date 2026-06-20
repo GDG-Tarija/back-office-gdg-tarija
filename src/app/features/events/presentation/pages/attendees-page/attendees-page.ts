@@ -46,6 +46,22 @@ export class AttendeesPage implements OnInit {
   // Global table search filter
   readonly globalFilter = signal<string>('');
 
+  // Métricas computadas para las tarjetas del header
+  readonly totalConfirmed = computed(
+    () => this.attendees().filter((a) => a.status?.toUpperCase() === 'CONFIRMED').length,
+  );
+
+  readonly totalCheckedIn = computed(() => this.attendees().filter((a) => a.checkedIn).length);
+
+  readonly totalPending = computed(
+    () => this.attendees().filter((a) => a.status?.toUpperCase() === 'PENDING').length,
+  );
+
+  readonly checkinRate = computed(() => {
+    const confirmed = this.totalConfirmed();
+    return confirmed > 0 ? Math.round((this.totalCheckedIn() / confirmed) * 100) : 0;
+  });
+
   // unique custom response keys computed from all attendees
   readonly customResponseKeys = computed<string[]>(() => {
     const keysSet = new Set<string>();
