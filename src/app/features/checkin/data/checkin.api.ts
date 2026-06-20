@@ -231,7 +231,7 @@ export class CheckinApi implements CheckinRepository {
           attendee,
         };
       }
-      scanType = `sess:${sessionId.substring(0, 25)}`;
+      scanType = `session_entry:${(sessionId || '').substring(0, 16)}`;
       scanTypeLabel = 'Ingreso a Sesión';
     }
 
@@ -331,7 +331,7 @@ export class CheckinApi implements CheckinRepository {
       scanType = 'refrigerio';
       scanTypeLabel = 'Entrega de Refrigerio';
     } else if (mode === 'session') {
-      scanType = `sess:${(sessionId || '').substring(0, 25)}`;
+      scanType = `session_entry:${(sessionId || '').substring(0, 16)}`;
       scanTypeLabel = 'Ingreso a Sesión';
     }
 
