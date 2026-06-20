@@ -194,168 +194,247 @@
               </p>
             </div>
           }
-          <!-- Inline Scanned Attendee Result -->
-          @if (scanResult(); as result) {
-            <div
-              class="w-full pt-6 border-t border-neutral-100 dark:border-neutral-800/80 animate-fade-in space-y-4"
-            >
-              <div class="flex items-start gap-4">
-                <!-- Inline compact status icon circle -->
-                <div
-                  [class]="
-                    'size-10 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm ' +
-                    (pendingConfirmCode()
-                      ? 'bg-google-blue'
-                      : result.success
-                        ? 'bg-google-green'
-                        : result.alreadyScanned
-                          ? 'bg-google-yellow text-neutral-900'
-                          : 'bg-google-red')
-                  "
-                >
-                  <i
-                    [class]="
-                      'pi ' +
-                      (pendingConfirmCode()
-                        ? 'pi-user'
-                        : result.success
-                          ? 'pi-check'
-                          : result.alreadyScanned
-                            ? 'pi-exclamation-triangle'
-                            : 'pi-times')
-                    "
-                  ></i>
-                </div>
-
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span
-                      [class]="
-                        'text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ' +
-                        (pendingConfirmCode()
-                          ? 'bg-google-blue/10 text-google-blue'
-                          : result.success
-                            ? 'bg-google-green/10 text-google-green'
-                            : result.alreadyScanned
-                              ? 'bg-google-yellow/20 text-google-yellow-dark'
-                              : 'bg-google-red/10 text-google-red')
-                      "
-                    >
-                      {{
-                        pendingConfirmCode()
-                          ? 'Confirmación Pendiente'
-                          : result.scanTypeLabel || (result.success ? 'Exitoso' : 'Error')
-                      }}
-                    </span>
-                    @if (result.attendee) {
-                      <p-tag
-                        [value]="translateRole(result.attendee.role)"
-                        [severity]="getRoleSeverity(result.attendee.role)"
-                        styleClass="!text-[9px] !px-2 !py-0"
-                      />
-                    }
-                  </div>
-
-                  @if (result.attendee) {
-                    <h3
-                      class="text-sm font-bold text-text-primary dark:text-neutral-100 mt-1 truncate"
-                    >
-                      {{ result.attendee.firstName }} {{ result.attendee.lastName }}
-                    </h3>
-                  } @else {
-                    <h3
-                      class="text-sm font-bold text-text-primary dark:text-neutral-100 mt-1 leading-snug"
-                    >
-                      {{ result.message }}
-                    </h3>
-                  }
-                </div>
-              </div>
-
-              @if (result.attendee) {
-                <!-- Detailed Attendee info with exact padding left alignment -->
-                <div class="text-xs text-text-secondary dark:text-neutral-400 pl-[56px] space-y-1">
-                  <p class="truncate">
-                    <i class="pi pi-envelope mr-1 text-[10px]"></i> {{ result.attendee.email }}
-                  </p>
-                  <p class="truncate">
-                    <i class="pi pi-ticket mr-1 text-[10px]"></i> {{ result.attendee.ticketName }}
-                  </p>
-                  @if (result.scannedCode) {
-                    <p class="truncate">
-                      <i class="pi pi-qrcode mr-1 text-[10px]"></i> Código:
-                      <span
-                        class="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded"
-                        >{{ result.scannedCode }}</span
-                      >
-                    </p>
-                  }
-
-                  @if (pendingConfirmCode()) {
-                    <!-- Mensaje de aviso de que está listo para confirmar -->
-                    <p
-                      class="text-google-blue font-bold mt-2 flex items-center gap-1.5 animate-pulse"
-                    >
-                      <i class="pi pi-question-circle"></i>
-                      Verificación completa. ¿Confirmar registro de este participante?
-                    </p>
-                  } @else {
-                    @if (result.alreadyScanned || !result.success) {
-                      <p class="text-google-red dark:text-red-400 font-bold mt-1.5 leading-snug">
-                        {{ result.message }}
-                      </p>
-                    } @else {
-                      <p class="text-google-green font-bold mt-1.5 leading-snug">
-                        {{ result.message }}
-                      </p>
-                    }
-                    <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
-                      Registrado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
-                    </p>
-                  }
-                </div>
-              } @else {
-                <!-- Failure detailed info with exact padding left alignment -->
-                <div class="text-xs text-text-secondary dark:text-neutral-400 pl-[56px] space-y-1">
-                  @if (result.scannedCode) {
-                    <p class="truncate">
-                      <i class="pi pi-qrcode mr-1 text-[10px]"></i> Código:
-                      <span
-                        class="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded"
-                        >{{ result.scannedCode }}</span
-                      >
-                    </p>
-                  }
-                  <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
-                    Escaneado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
-                  </p>
-                </div>
-              }
-
-              <!-- Botones de Acción de Confirmación si está pendiente -->
-              @if (pendingConfirmCode()) {
-                <div class="flex items-center gap-3 pl-[56px] pt-2">
-                  <p-button
-                    label="Confirmar Registro"
-                    icon="pi pi-check-circle"
-                    severity="success"
-                    styleClass="!py-2 !px-4 !rounded-xl font-bold transition-all shadow-sm"
-                    (onClick)="confirmCheckin()"
-                  />
-                  <p-button
-                    label="Cancelar"
-                    icon="pi pi-times-circle"
-                    severity="secondary"
-                    [text]="true"
-                    styleClass="!py-2 !px-4 !rounded-xl font-bold transition-all"
-                    (onClick)="cancelCheckin()"
-                  />
-                </div>
-              }
-            </div>
-          }
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Modal de Verificación y Confirmación de Asistente -->
+  <p-dialog
+    [visible]="showConfirmDialog()"
+    [modal]="true"
+    [closable]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '90vw', maxWidth: '480px' }"
+    styleClass="checkin-confirm-dialog"
+    header="Verificación de Credencial"
+    (onHide)="cancelCheckin()"
+  >
+    @if (scanResult(); as result) {
+      <div class="flex flex-col items-center text-center w-full py-2">
+        <!-- Icono de Estado -->
+        <div class="mb-4">
+          @if (pendingConfirmCode()) {
+            <!-- Confirmación Pendiente -->
+            <div
+              class="size-16 rounded-full bg-google-blue/10 dark:bg-google-blue/20 text-google-blue flex items-center justify-center text-2xl shadow-sm"
+            >
+              <i class="pi pi-user"></i>
+            </div>
+          } @else if (result.success && !result.alreadyScanned) {
+            <!-- Registro Exitoso -->
+            <div
+              class="size-16 rounded-full bg-google-green/10 dark:bg-google-green/20 text-google-green flex items-center justify-center text-2xl shadow-sm animate-scale-up"
+            >
+              <i class="pi pi-check"></i>
+            </div>
+          } @else if (result.alreadyScanned) {
+            <!-- Ya Registrado -->
+            <div
+              class="size-16 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center text-2xl shadow-sm"
+            >
+              <i class="pi pi-exclamation-triangle"></i>
+            </div>
+          } @else {
+            <!-- Error / No Registrado -->
+            <div
+              class="size-16 rounded-full bg-google-red/10 dark:bg-google-red/20 text-google-red flex items-center justify-center text-2xl shadow-sm"
+            >
+              <i class="pi pi-times"></i>
+            </div>
+          }
+        </div>
+
+        <!-- Título del Estado -->
+        <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">
+          @if (pendingConfirmCode()) {
+            Confirmar Registro
+          } @else if (result.success && !result.alreadyScanned) {
+            ¡Registro Exitoso!
+          } @else if (result.alreadyScanned) {
+            Asistencia Ya Registrada
+          } @else {
+            Error de Registro
+          }
+        </h2>
+
+        <!-- Rol y Ticket (Si hay asistente) -->
+        @if (result.attendee) {
+          <div class="flex items-center gap-2 mt-2 flex-wrap justify-center">
+            <p-tag
+              [value]="translateRole(result.attendee.role)"
+              [severity]="getRoleSeverity(result.attendee.role)"
+              styleClass="!text-xs !px-2.5 !py-0.5 !rounded-full"
+            />
+            <p-tag
+              [value]="result.attendee.ticketName"
+              severity="secondary"
+              styleClass="!text-xs !px-2.5 !py-0.5 !rounded-full !bg-neutral-100 !text-neutral-600 dark:!bg-neutral-800 dark:!text-neutral-300"
+            />
+          </div>
+
+          <!-- Nombre Completo -->
+          <h3 class="text-xl font-black text-text-primary dark:text-neutral-50 mt-3 leading-snug">
+            {{ result.attendee.firstName }} {{ result.attendee.lastName }}
+          </h3>
+        } @else {
+          <!-- Mensaje de Error en caso de que no haya asistente -->
+          <p
+            class="text-sm font-semibold text-google-red dark:text-red-400 mt-2 px-4 leading-relaxed"
+          >
+            {{ result.message }}
+          </p>
+        }
+
+        <!-- Caja de Detalles Técnicos -->
+        <div
+          class="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200/60 dark:border-neutral-800/80 rounded-2xl p-4 mt-4 space-y-2.5 text-left text-xs sm:text-sm"
+        >
+          <!-- Evento -->
+          @if (selectedEvent(); as event) {
+            <div class="flex items-start gap-2.5">
+              <i class="pi pi-bookmark text-neutral-400 mt-0.5"></i>
+              <div class="min-w-0 flex-1">
+                <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
+                  >Evento</span
+                >
+                <span
+                  class="font-semibold text-text-primary dark:text-neutral-200 block truncate"
+                  >{{ event.title }}</span
+                >
+              </div>
+            </div>
+          }
+
+          <!-- Control -->
+          <div
+            class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
+          >
+            <i class="pi pi-calendar text-neutral-400 mt-0.5"></i>
+            <div class="min-w-0 flex-1">
+              <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
+                >Control / Propósito</span
+              >
+              <span class="font-semibold text-text-primary dark:text-neutral-200 block truncate">{{
+                result.scanTypeLabel || 'Check-in General'
+              }}</span>
+            </div>
+          </div>
+
+          @if (result.attendee) {
+            <!-- Correo -->
+            <div
+              class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
+            >
+              <i class="pi pi-envelope text-neutral-400 mt-0.5"></i>
+              <div class="min-w-0 flex-1">
+                <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
+                  >Correo</span
+                >
+                <span class="text-text-primary dark:text-neutral-200 block truncate font-medium">{{
+                  result.attendee.email
+                }}</span>
+              </div>
+            </div>
+          }
+
+          <!-- Código QR Scanned -->
+          @if (result.scannedCode) {
+            <div
+              class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
+            >
+              <i class="pi pi-qrcode text-neutral-400 mt-0.5"></i>
+              <div class="min-w-0 flex-1">
+                <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
+                  >Código</span
+                >
+                <span
+                  class="font-mono text-xs text-text-primary dark:text-neutral-300 block truncate"
+                  >{{ result.scannedCode }}</span
+                >
+              </div>
+            </div>
+          }
+
+          <!-- Fecha / Hora del escaneo -->
+          @if (result.scannedAt) {
+            <div
+              class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
+            >
+              <i class="pi pi-clock text-neutral-400 mt-0.5"></i>
+              <div class="min-w-0 flex-1">
+                <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+                  {{ pendingConfirmCode() ? 'Hora de Escaneo' : 'Hora de Registro' }}
+                </span>
+                <span class="text-text-secondary dark:text-neutral-400 block font-medium">
+                  {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Mensajes informativos de estado -->
+        @if (pendingConfirmCode()) {
+          <div
+            class="mt-4 p-3 bg-google-blue/5 border border-google-blue/15 rounded-xl w-full flex items-start gap-2 text-left"
+          >
+            <i class="pi pi-question-circle text-google-blue mt-0.5 shrink-0"></i>
+            <p class="text-xs text-google-blue font-semibold leading-relaxed">
+              Verificación exitosa. Confirma a continuación para realizar el registro en la base de
+              datos.
+            </p>
+          </div>
+        } @else if (result.alreadyScanned || !result.success) {
+          <div
+            class="mt-4 p-3 bg-google-red/5 border border-google-red/15 rounded-xl w-full flex items-start gap-2 text-left"
+          >
+            <i class="pi pi-info-circle text-google-red mt-0.5 shrink-0"></i>
+            <p class="text-xs text-google-red dark:text-red-400 font-semibold leading-relaxed">
+              {{ result.message }}
+            </p>
+          </div>
+        } @else {
+          <div
+            class="mt-4 p-3 bg-google-green/5 border border-google-green/15 rounded-xl w-full flex items-start gap-2 text-left"
+          >
+            <i class="pi pi-check-circle text-google-green mt-0.5 shrink-0"></i>
+            <p class="text-xs text-google-green font-semibold leading-relaxed font-medium">
+              El check-in se ha registrado físicamente con éxito.
+            </p>
+          </div>
+        }
+
+        <!-- Botones de Acción -->
+        <div
+          class="flex items-center gap-3 w-full pt-6 border-t border-neutral-100 dark:border-neutral-800/80 mt-6"
+        >
+          @if (pendingConfirmCode()) {
+            <p-button
+              label="Cancelar"
+              icon="pi pi-times-circle"
+              styleClass="flex-1 !bg-neutral-100 dark:!bg-neutral-800 !text-neutral-700 dark:!text-neutral-300 !py-3.5 !rounded-xl font-bold transition-all border-none hover:!bg-neutral-200 dark:hover:!bg-neutral-700"
+              (onClick)="cancelCheckin()"
+              [disabled]="isProcessing()"
+            />
+            <p-button
+              label="Confirmar Registro"
+              icon="pi pi-check-circle"
+              styleClass="flex-1 !bg-google-green !text-white !py-3.5 !rounded-xl font-bold transition-all shadow-md border-none hover:!bg-google-green/90"
+              (onClick)="confirmCheckin()"
+              [loading]="isProcessing()"
+            />
+          } @else {
+            <p-button
+              label="Cerrar"
+              icon="pi pi-times"
+              styleClass="w-full !bg-neutral-100 dark:!bg-neutral-800 !text-neutral-700 dark:!text-neutral-300 !py-3.5 !rounded-xl font-bold transition-all border-none hover:!bg-neutral-200 dark:hover:!bg-neutral-700"
+              (onClick)="cancelCheckin()"
+            />
+          }
+        </div>
+      </div>
+    }
+  </p-dialog>
 </div>

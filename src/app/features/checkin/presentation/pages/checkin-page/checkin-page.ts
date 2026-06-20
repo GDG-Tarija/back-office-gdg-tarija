@@ -7,6 +7,7 @@ import { SelectModule } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
+import { DialogModule } from 'primeng/dialog';
 
 import { CheckinRepository } from '../../../domain/checkin.repository';
 import { CheckinApi } from '../../../../checkin/data/checkin.api';
@@ -24,6 +25,7 @@ import { AuthService } from '../../../../../core/auth/services/auth.service';
     ButtonModule,
     ProgressSpinnerModule,
     TagModule,
+    DialogModule,
   ],
   providers: [{ provide: CheckinRepository, useClass: CheckinApi }],
   templateUrl: './checkin-page.html',
@@ -57,6 +59,7 @@ export class CheckinPage implements OnInit, OnDestroy {
   // Resultados del escaneo
   readonly scanResult = signal<ScanResult | null>(null);
   readonly pendingConfirmCode = signal<string | null>(null);
+  readonly showConfirmDialog = signal<boolean>(false);
 
   // Modos de escaneo disponibles
   readonly modeOptions = [
@@ -141,6 +144,7 @@ export class CheckinPage implements OnInit, OnDestroy {
     this.selectedSession.set(null);
     this.scanResult.set(null);
     this.pendingConfirmCode.set(null);
+    this.showConfirmDialog.set(false);
     this.lastScannedCode = null;
 
     if (event && this.selectedMode() === 'session') {
@@ -159,6 +163,7 @@ export class CheckinPage implements OnInit, OnDestroy {
   onModeChange(): void {
     this.scanResult.set(null);
     this.pendingConfirmCode.set(null);
+    this.showConfirmDialog.set(false);
     this.lastScannedCode = null;
 
     const event = this.selectedEvent();
@@ -251,8 +256,12 @@ export class CheckinPage implements OnInit, OnDestroy {
   async handleQrDecoded(decodedText: string): Promise<void> {
     const now = Date.now();
 
-    // Evitar llamadas duplicadas consecutivas dentro de 3 segundos para el mismo código
-    if (this.lastScannedCode === decodedText && now - this.lastScannedTime < 3000) {
+    // Evitar llamadas duplicadas consecutivas o mientras haya un diálogo abierto
+    if (
+      this.showConfirmDialog() ||
+      this.isProcessing() ||
+      (this.lastScannedCode === decodedText && now - this.lastScannedTime < 3000)
+    ) {
       return;
     }
 
@@ -299,6 +308,9 @@ export class CheckinPage implements OnInit, OnDestroy {
         scannedAt: result.scannedAt || new Date(),
       });
 
+      // Abrir el diálogo para mostrar la información del participante
+      this.showConfirmDialog.set(true);
+
       if (result.success && !result.alreadyScanned) {
         // Marcamos que hay un check-in listo para confirmación manual
         this.pendingConfirmCode.set(decodedText);
@@ -320,6 +332,7 @@ export class CheckinPage implements OnInit, OnDestroy {
         message: 'Ocurrió un error inesperado al verificar la asistencia.',
         scannedCode: decodedText,
       });
+      this.showConfirmDialog.set(true);
     } finally {
       this.isProcessing.set(false);
     }
@@ -358,15 +371,24 @@ export class CheckinPage implements OnInit, OnDestroy {
         scannedAt: result.scannedAt || new Date(),
       });
 
+      // Limpiar el código pendiente para pasar de "Confirmación Pendiente" a "Registro Exitoso" (u otro estado)
       this.pendingConfirmCode.set(null);
 
       // Reproducir sonido final según el resultado de inserción
       if (result.success) {
         this.playSuccessSound();
-      } else if (result.alreadyScanned) {
-        this.playWarningSound();
+        // Si fue exitoso, auto-cerrar el diálogo tras 1.5 segundos para agilizar el flujo de check-in
+        setTimeout(() => {
+          if (this.showConfirmDialog() && this.scanResult()?.scannedCode === code) {
+            this.cancelCheckin();
+          }
+        }, 1500);
       } else {
-        this.playErrorSound();
+        if (result.alreadyScanned) {
+          this.playWarningSound();
+        } else {
+          this.playErrorSound();
+        }
       }
     } catch (err) {
       console.error('Error confirming check-in:', err);
@@ -376,12 +398,14 @@ export class CheckinPage implements OnInit, OnDestroy {
         message: 'Ocurrió un error inesperado al confirmar la asistencia.',
         scannedCode: code,
       });
+      this.pendingConfirmCode.set(null);
     } finally {
       this.isProcessing.set(false);
     }
   }
 
   cancelCheckin(): void {
+    this.showConfirmDialog.set(false);
     this.pendingConfirmCode.set(null);
     this.scanResult.set(null);
     this.lastScannedCode = null;

@@ -139,6 +139,91 @@
       }
     }
   }
+
+  // Estilo del modal de confirmación del Check-in
+  .checkin-confirm-dialog {
+    border-radius: 1.5rem !important;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+
+    .p-dialog-header {
+      padding: 1.25rem 1.5rem 0.5rem 1.5rem !important;
+      font-size: 1.1rem !important;
+      font-weight: 800 !important;
+      background-color: transparent !important;
+      border-bottom: none !important;
+    }
+
+    .p-dialog-content {
+      padding: 0 1.5rem 1.5rem 1.5rem !important;
+      background-color: transparent !important;
+
+      .p-button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+
+        .p-button-icon {
+          font-size: 1.1rem !important;
+          margin-right: 0 !important; // Evitar el margen por defecto de PrimeNG para alineación perfecta
+        }
+
+        .p-button-label {
+          flex: none !important;
+        }
+      }
+    }
+
+    .p-dialog-header-actions {
+      .p-dialog-close-button {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        border-radius: 50% !important;
+        background-color: rgba(0, 0, 0, 0.03) !important;
+        color: var(--text-secondary) !important;
+        transition: all 0.2s ease !important;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.06) !important;
+        }
+      }
+    }
+  }
+
+  .dark {
+    .checkin-confirm-dialog {
+      background-color: #171717 !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+
+      .p-dialog-header-actions {
+        .p-dialog-close-button {
+          background-color: rgba(255, 255, 255, 0.03) !important;
+          color: rgba(255, 255, 255, 0.6) !important;
+
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Animaciones de escala para el ícono de éxito
+.animate-scale-up {
+  animation: scaleUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes scaleUp {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 // Estilos específicos para ocultar controles nativos de la cámara html5-qrcode
