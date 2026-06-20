@@ -194,122 +194,167 @@
               </p>
             </div>
           }
-        </div>
-
-        <!-- Inline Scanned Attendee Result -->
-        @if (scanResult(); as result) {
-          <div
-            class="w-full pt-6 border-t border-neutral-100 dark:border-neutral-800/80 animate-fade-in space-y-4"
-          >
-            <div class="flex items-start gap-4">
-              <!-- Inline compact success/warning/error icon status circle -->
-              <div
-                [class]="
-                  'size-10 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm ' +
-                  (result.success
-                    ? 'bg-google-green'
-                    : result.alreadyScanned
-                      ? 'bg-google-yellow text-neutral-900'
-                      : 'bg-google-red')
-                "
-              >
-                <i
+          <!-- Inline Scanned Attendee Result -->
+          @if (scanResult(); as result) {
+            <div
+              class="w-full pt-6 border-t border-neutral-100 dark:border-neutral-800/80 animate-fade-in space-y-4"
+            >
+              <div class="flex items-start gap-4">
+                <!-- Inline compact status icon circle -->
+                <div
                   [class]="
-                    'pi ' +
-                    (result.success
-                      ? 'pi-check'
-                      : result.alreadyScanned
-                        ? 'pi-exclamation-triangle'
-                        : 'pi-times')
-                  "
-                ></i>
-              </div>
-
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span
-                    [class]="
-                      'text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ' +
-                      (result.success
-                        ? 'bg-google-green/10 text-google-green'
+                    'size-10 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm ' +
+                    (pendingConfirmCode()
+                      ? 'bg-google-blue'
+                      : result.success
+                        ? 'bg-google-green'
                         : result.alreadyScanned
-                          ? 'bg-google-yellow/20 text-google-yellow-dark'
-                          : 'bg-google-red/10 text-google-red')
+                          ? 'bg-google-yellow text-neutral-900'
+                          : 'bg-google-red')
+                  "
+                >
+                  <i
+                    [class]="
+                      'pi ' +
+                      (pendingConfirmCode()
+                        ? 'pi-user'
+                        : result.success
+                          ? 'pi-check'
+                          : result.alreadyScanned
+                            ? 'pi-exclamation-triangle'
+                            : 'pi-times')
                     "
-                  >
-                    {{ result.scanTypeLabel || (result.success ? 'Exitoso' : 'Error') }}
-                  </span>
-                  @if (result.attendee) {
-                    <p-tag
-                      [value]="translateRole(result.attendee.role)"
-                      [severity]="getRoleSeverity(result.attendee.role)"
-                      styleClass="!text-[9px] !px-2 !py-0"
-                    />
-                  }
+                  ></i>
                 </div>
 
-                @if (result.attendee) {
-                  <h3
-                    class="text-sm font-bold text-text-primary dark:text-neutral-100 mt-1 truncate"
-                  >
-                    {{ result.attendee.firstName }} {{ result.attendee.lastName }}
-                  </h3>
-                } @else {
-                  <h3
-                    class="text-sm font-bold text-text-primary dark:text-neutral-100 mt-1 leading-snug"
-                  >
-                    {{ result.message }}
-                  </h3>
-                }
-              </div>
-            </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span
+                      [class]="
+                        'text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ' +
+                        (pendingConfirmCode()
+                          ? 'bg-google-blue/10 text-google-blue'
+                          : result.success
+                            ? 'bg-google-green/10 text-google-green'
+                            : result.alreadyScanned
+                              ? 'bg-google-yellow/20 text-google-yellow-dark'
+                              : 'bg-google-red/10 text-google-red')
+                      "
+                    >
+                      {{
+                        pendingConfirmCode()
+                          ? 'Confirmación Pendiente'
+                          : result.scanTypeLabel || (result.success ? 'Exitoso' : 'Error')
+                      }}
+                    </span>
+                    @if (result.attendee) {
+                      <p-tag
+                        [value]="translateRole(result.attendee.role)"
+                        [severity]="getRoleSeverity(result.attendee.role)"
+                        styleClass="!text-[9px] !px-2 !py-0"
+                      />
+                    }
+                  </div>
 
-            @if (result.attendee) {
-              <!-- Detailed Attendee info with exact padding left alignment -->
-              <div class="text-xs text-text-secondary dark:text-neutral-400 pl-[56px] space-y-1">
-                <p class="truncate">
-                  <i class="pi pi-envelope mr-1 text-[10px]"></i> {{ result.attendee.email }}
-                </p>
-                <p class="truncate">
-                  <i class="pi pi-ticket mr-1 text-[10px]"></i> {{ result.attendee.ticketName }}
-                </p>
-                @if (result.scannedCode) {
-                  <p class="truncate">
-                    <i class="pi pi-qrcode mr-1 text-[10px]"></i> Código:
-                    <span
-                      class="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded"
-                      >{{ result.scannedCode }}</span
+                  @if (result.attendee) {
+                    <h3
+                      class="text-sm font-bold text-text-primary dark:text-neutral-100 mt-1 truncate"
                     >
-                  </p>
-                }
-                @if (result.alreadyScanned || !result.success) {
-                  <p class="text-google-red dark:text-red-400 font-bold mt-1.5 leading-snug">
-                    {{ result.message }}
-                  </p>
-                }
-                <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
-                  Registrado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
-                </p>
-              </div>
-            } @else {
-              <!-- Failure detailed info with exact padding left alignment -->
-              <div class="text-xs text-text-secondary dark:text-neutral-400 pl-[56px] space-y-1">
-                @if (result.scannedCode) {
-                  <p class="truncate">
-                    <i class="pi pi-qrcode mr-1 text-[10px]"></i> Código:
-                    <span
-                      class="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded"
-                      >{{ result.scannedCode }}</span
+                      {{ result.attendee.firstName }} {{ result.attendee.lastName }}
+                    </h3>
+                  } @else {
+                    <h3
+                      class="text-sm font-bold text-text-primary dark:text-neutral-100 mt-1 leading-snug"
                     >
-                  </p>
-                }
-                <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
-                  Escaneado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
-                </p>
+                      {{ result.message }}
+                    </h3>
+                  }
+                </div>
               </div>
-            }
-          </div>
-        }
+
+              @if (result.attendee) {
+                <!-- Detailed Attendee info with exact padding left alignment -->
+                <div class="text-xs text-text-secondary dark:text-neutral-400 pl-[56px] space-y-1">
+                  <p class="truncate">
+                    <i class="pi pi-envelope mr-1 text-[10px]"></i> {{ result.attendee.email }}
+                  </p>
+                  <p class="truncate">
+                    <i class="pi pi-ticket mr-1 text-[10px]"></i> {{ result.attendee.ticketName }}
+                  </p>
+                  @if (result.scannedCode) {
+                    <p class="truncate">
+                      <i class="pi pi-qrcode mr-1 text-[10px]"></i> Código:
+                      <span
+                        class="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded"
+                        >{{ result.scannedCode }}</span
+                      >
+                    </p>
+                  }
+
+                  @if (pendingConfirmCode()) {
+                    <!-- Mensaje de aviso de que está listo para confirmar -->
+                    <p
+                      class="text-google-blue font-bold mt-2 flex items-center gap-1.5 animate-pulse"
+                    >
+                      <i class="pi pi-question-circle"></i>
+                      Verificación completa. ¿Confirmar registro de este participante?
+                    </p>
+                  } @else {
+                    @if (result.alreadyScanned || !result.success) {
+                      <p class="text-google-red dark:text-red-400 font-bold mt-1.5 leading-snug">
+                        {{ result.message }}
+                      </p>
+                    } @else {
+                      <p class="text-google-green font-bold mt-1.5 leading-snug">
+                        {{ result.message }}
+                      </p>
+                    }
+                    <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
+                      Registrado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
+                    </p>
+                  }
+                </div>
+              } @else {
+                <!-- Failure detailed info with exact padding left alignment -->
+                <div class="text-xs text-text-secondary dark:text-neutral-400 pl-[56px] space-y-1">
+                  @if (result.scannedCode) {
+                    <p class="truncate">
+                      <i class="pi pi-qrcode mr-1 text-[10px]"></i> Código:
+                      <span
+                        class="font-mono text-[10px] bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded"
+                        >{{ result.scannedCode }}</span
+                      >
+                    </p>
+                  }
+                  <p class="text-[9px] text-text-muted dark:text-neutral-500 pt-1">
+                    Escaneado el: {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
+                  </p>
+                </div>
+              }
+
+              <!-- Botones de Acción de Confirmación si está pendiente -->
+              @if (pendingConfirmCode()) {
+                <div class="flex items-center gap-3 pl-[56px] pt-2">
+                  <p-button
+                    label="Confirmar Registro"
+                    icon="pi pi-check-circle"
+                    severity="success"
+                    styleClass="!py-2 !px-4 !rounded-xl font-bold transition-all shadow-sm"
+                    (onClick)="confirmCheckin()"
+                  />
+                  <p-button
+                    label="Cancelar"
+                    icon="pi pi-times-circle"
+                    severity="secondary"
+                    [text]="true"
+                    styleClass="!py-2 !px-4 !rounded-xl font-bold transition-all"
+                    (onClick)="cancelCheckin()"
+                  />
+                </div>
+              }
+            </div>
+          }
+        </div>
       </div>
     </div>
   </div>

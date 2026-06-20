@@ -56,6 +56,7 @@ export class CheckinPage implements OnInit, OnDestroy {
 
   // Resultados del escaneo
   readonly scanResult = signal<ScanResult | null>(null);
+  readonly pendingConfirmCode = signal<string | null>(null);
 
   // Modos de escaneo disponibles
   readonly modeOptions = [
@@ -139,6 +140,7 @@ export class CheckinPage implements OnInit, OnDestroy {
     this.sessions.set([]);
     this.selectedSession.set(null);
     this.scanResult.set(null);
+    this.pendingConfirmCode.set(null);
     this.lastScannedCode = null;
 
     if (event && this.selectedMode() === 'session') {
@@ -156,6 +158,7 @@ export class CheckinPage implements OnInit, OnDestroy {
 
   onModeChange(): void {
     this.scanResult.set(null);
+    this.pendingConfirmCode.set(null);
     this.lastScannedCode = null;
 
     const event = this.selectedEvent();
@@ -275,12 +278,12 @@ export class CheckinPage implements OnInit, OnDestroy {
     this.isProcessing.set(true);
 
     try {
-      const result = await this.checkinRepo.registerScan(
+      // En un flujo de dos pasos, primero verificamos la credencial en la base de datos
+      const result = await this.checkinRepo.verifyRegistration(
         decodedText,
         event.id,
         mode,
         mode === 'session' && session ? session.id : null,
-        this.auth.user()?.id || null,
       );
 
       // Enriquecer la etiqueta de tipo de escaneo para incluir el título de la charla
@@ -296,6 +299,68 @@ export class CheckinPage implements OnInit, OnDestroy {
         scannedAt: result.scannedAt || new Date(),
       });
 
+      if (result.success && !result.alreadyScanned) {
+        // Marcamos que hay un check-in listo para confirmación manual
+        this.pendingConfirmCode.set(decodedText);
+      } else {
+        // Si ya fue escaneado o hay un error, limpiamos pendiente y tocamos sonido de aviso/error
+        this.pendingConfirmCode.set(null);
+        if (result.alreadyScanned) {
+          this.playWarningSound();
+        } else {
+          this.playErrorSound();
+        }
+      }
+    } catch (err) {
+      console.error('Error verifying scan:', err);
+      this.playErrorSound();
+      this.pendingConfirmCode.set(null);
+      this.scanResult.set({
+        success: false,
+        message: 'Ocurrió un error inesperado al verificar la asistencia.',
+        scannedCode: decodedText,
+      });
+    } finally {
+      this.isProcessing.set(false);
+    }
+  }
+
+  async confirmCheckin(): Promise<void> {
+    const code = this.pendingConfirmCode();
+    const event = this.selectedEvent();
+    if (!code || !event) return;
+
+    const mode = this.selectedMode();
+    const session = this.selectedSession();
+
+    this.isProcessing.set(true);
+
+    try {
+      // Registrar el check-in confirmado en el backend
+      const result = await this.checkinRepo.registerScan(
+        code,
+        event.id,
+        mode,
+        mode === 'session' && session ? session.id : null,
+        this.auth.user()?.id || null,
+      );
+
+      // Enriquecer la etiqueta
+      let scanTypeLabel = result.scanTypeLabel || '';
+      if (mode === 'session' && session) {
+        scanTypeLabel = `Sesión: ${session.title}`;
+      }
+
+      this.scanResult.set({
+        ...result,
+        scanTypeLabel,
+        scannedCode: code,
+        scannedAt: result.scannedAt || new Date(),
+      });
+
+      this.pendingConfirmCode.set(null);
+
+      // Reproducir sonido final según el resultado de inserción
       if (result.success) {
         this.playSuccessSound();
       } else if (result.alreadyScanned) {
@@ -304,16 +369,22 @@ export class CheckinPage implements OnInit, OnDestroy {
         this.playErrorSound();
       }
     } catch (err) {
-      console.error('Error registering scan:', err);
+      console.error('Error confirming check-in:', err);
       this.playErrorSound();
       this.scanResult.set({
         success: false,
-        message: 'Ocurrió un error inesperado al procesar la asistencia.',
-        scannedCode: decodedText,
+        message: 'Ocurrió un error inesperado al confirmar la asistencia.',
+        scannedCode: code,
       });
     } finally {
       this.isProcessing.set(false);
     }
+  }
+
+  cancelCheckin(): void {
+    this.pendingConfirmCode.set(null);
+    this.scanResult.set(null);
+    this.lastScannedCode = null;
   }
 
   // Efectos de sonido mediante Web Audio API puro

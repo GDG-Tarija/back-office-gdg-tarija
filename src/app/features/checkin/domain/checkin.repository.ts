@@ -16,4 +16,10 @@ export abstract class CheckinRepository {
     sessionId: string | null,
     operatorUserId: string | null,
   ): Promise<ScanResult>;
+  abstract verifyRegistration(
+    registrationId: string,
+    eventId: string,
+    mode: ScanMode,
+    sessionId: string | null,
+  ): Promise<ScanResult>;
 }

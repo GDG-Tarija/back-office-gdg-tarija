@@ -121,12 +121,11 @@ export class CheckinApi implements CheckinRepository {
     }
   }
 
-  async registerScan(
+  async verifyRegistration(
     registrationId: string,
     eventId: string,
     mode: ScanMode,
     sessionId: string | null,
-    operatorUserId: string | null,
   ): Promise<ScanResult> {
     // 1. Validar que la credencial tenga formato UUID válido
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -137,7 +136,7 @@ export class CheckinApi implements CheckinRepository {
       };
     }
 
-    // Se castea a any para permitir la inserción y actualización dinámica en tablas de logs de asistencia
+    // Se castea a any para permitir la inserción y actualización dinámica
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const client = this.supabase as any;
 
@@ -292,9 +291,53 @@ export class CheckinApi implements CheckinRepository {
       }
     }
 
-    // 8. Registrar el escaneo en `scan_logs`
+    return {
+      success: true,
+      message: 'Credencial válida para escanear.',
+      attendee,
+      scanTypeLabel,
+      registrationDbId: rawReg.id,
+      userId: rawReg.user_id,
+    };
+  }
+
+  async registerScan(
+    registrationId: string,
+    eventId: string,
+    mode: ScanMode,
+    sessionId: string | null,
+    operatorUserId: string | null,
+  ): Promise<ScanResult> {
+    // 1. Verificar la registración
+    const verification = await this.verifyRegistration(registrationId, eventId, mode, sessionId);
+
+    // Si la verificación falló o ya fue escaneado, retornamos directamente ese resultado
+    if (!verification.success || verification.alreadyScanned) {
+      return verification;
+    }
+
+    // Se castea a any para permitir la inserción
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = this.supabase as any;
+
+    // Determinar el tipo de escaneo
+    let scanType = '';
+    let scanTypeLabel = '';
+
+    if (mode === 'checkin') {
+      scanType = 'checkin';
+      scanTypeLabel = 'Registro General / Check-in';
+    } else if (mode === 'refrigerio') {
+      scanType = 'refrigerio';
+      scanTypeLabel = 'Entrega de Refrigerio';
+    } else if (mode === 'session') {
+      scanType = `session_entry:${sessionId}`;
+      scanTypeLabel = 'Ingreso a Sesión';
+    }
+
+    // 2. Registrar el escaneo en `scan_logs`
     const { error: insertScanError } = await client.from('scan_logs').insert({
-      registration_id: rawReg.id,
+      registration_id: verification.registrationDbId,
       scan_type: scanType,
       scanned_by: operatorUserId,
       scanned_at: new Date().toISOString(),
@@ -305,31 +348,35 @@ export class CheckinApi implements CheckinRepository {
       return {
         success: false,
         message: 'No se pudo guardar el registro de asistencia en la base de datos.',
-        attendee,
+        attendee: verification.attendee,
       };
     }
 
-    // 9. Si es modo sesión y existe el usuario, actualizar `inscripciones_sessions` para mantener sincronía
-    if (mode === 'session' && sessionId && rawReg.user_id) {
+    // 3. Si es modo sesión y existe el usuario, actualizar `inscripciones_sessions` para mantener sincronía
+    if (mode === 'session' && sessionId && verification.userId) {
       const { error: updateInscripcionError } = await client
         .from('inscripciones_sessions')
         .update({
           asistio: true,
           checked_in_at: new Date().toISOString(),
         })
-        .eq('usuario_id', rawReg.user_id)
+        .eq('usuario_id', verification.userId)
         .eq('session_id', sessionId);
 
       if (updateInscripcionError) {
         console.error('Warning: could not sync inscripciones_sessions:', updateInscripcionError);
-        // No fallamos la operación completa, pues scan_logs es el origen de la verdad y fue guardado exitosamente.
       }
     }
 
     return {
       success: true,
-      message: '¡Asistencia registrada con éxito!',
-      attendee,
+      message:
+        mode === 'checkin'
+          ? '¡Asistencia registrada con éxito!'
+          : mode === 'refrigerio'
+            ? '¡Refrigerio entregado con éxito!'
+            : '¡Ingreso a sesión registrado con éxito!',
+      attendee: verification.attendee,
       scannedAt: new Date(),
       scanTypeLabel,
     };

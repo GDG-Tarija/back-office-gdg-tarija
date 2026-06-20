@@ -26,4 +26,6 @@ export interface ScanResult {
   };
   scanTypeLabel?: string;
   scannedCode?: string;
+  registrationDbId?: string;
+  userId?: string | null;
 }
