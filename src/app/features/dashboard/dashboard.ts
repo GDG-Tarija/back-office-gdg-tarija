@@ -1,7 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { CommonModule, DatePipe, CurrencyPipe, PercentPipe } from '@angular/common';
+import { CommonModule, CurrencyPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -9,7 +8,6 @@ import { SelectModule } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
-import { TableModule } from 'primeng/table';
 
 import { AuthService } from '../../core/auth/services/auth.service';
 import { DashboardRepository } from './domain/dashboard.repository';
@@ -26,15 +24,12 @@ import {
   imports: [
     CommonModule,
     FormsModule,
-    RouterLink,
     ButtonModule,
     CardModule,
     SelectModule,
     DatePickerModule,
     ProgressSpinnerModule,
     TagModule,
-    TableModule,
-    DatePipe,
     CurrencyPipe,
     PercentPipe,
   ],
