@@ -5,4 +5,5 @@ export const AUTH_WHITELIST: string[] = [
   'luisgarciabarja@gmail.com',
   'alvarezcopa591@gmail.com',
   'Yulenisegoviavaldez127@gmail.com',
+  'victorsubelza63@gmail.com',
 ];
