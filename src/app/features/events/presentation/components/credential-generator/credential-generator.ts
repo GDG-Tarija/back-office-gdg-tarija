@@ -311,32 +311,47 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
       if (pos.nameMaxWidth && pos.nameMaxWidth > 0) {
         ctx.save();
+        const startX = pos.nameX - pos.nameMaxWidth / 2;
+        const endX = pos.nameX + pos.nameMaxWidth / 2;
+        const boxHeight = Math.max(pos.fontSize * 1.4, 28);
+        const boxY = pos.nameY - 4;
+
+        // Fondo semi-transparente para resaltar la zona límite de texto
+        ctx.fillStyle = 'rgba(66, 133, 244, 0.12)';
+        ctx.fillRect(startX, boxY, pos.nameMaxWidth, boxHeight);
+
+        // Borde discontinuo llamativo (Google Blue vibrante)
         ctx.strokeStyle = '#4285f4';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
+        ctx.strokeRect(startX, boxY, pos.nameMaxWidth, boxHeight);
 
-        const startX = pos.nameX - pos.nameMaxWidth / 2;
-        const endX = pos.nameX + pos.nameMaxWidth / 2;
-        const lineY = pos.nameY - 8;
-
-        ctx.beginPath();
-        ctx.moveTo(startX, lineY);
-        ctx.lineTo(endX, lineY);
-        ctx.stroke();
-
+        // Marcas de límite izquierda y derecha en rojo fuerte
         ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.moveTo(startX, lineY - 6);
-        ctx.lineTo(startX, lineY + 6);
-        ctx.moveTo(endX, lineY - 6);
-        ctx.lineTo(endX, lineY + 6);
-        ctx.stroke();
+        ctx.fillStyle = '#ea4335';
+        ctx.fillRect(startX - 2, boxY - 2, 4, boxHeight + 4);
+        ctx.fillRect(endX - 2, boxY - 2, 4, boxHeight + 4);
 
-        ctx.font = 'bold 10px sans-serif';
+        // Badge flotante tipo pill con el texto "Ancho máx: XXXpx"
+        const badgeText = `Ancho máx: ${pos.nameMaxWidth}px`;
+        ctx.font = 'bold 12px sans-serif';
+        const badgeWidth = ctx.measureText(badgeText).width + 16;
+        const badgeX = pos.nameX - badgeWidth / 2;
+        const badgeY = boxY - 24;
+
         ctx.fillStyle = '#4285f4';
-        ctx.textBaseline = 'bottom';
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(badgeX, badgeY, badgeWidth, 20, 10);
+        } else {
+          ctx.rect(badgeX, badgeY, badgeWidth, 20);
+        }
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
-        ctx.fillText(`${pos.nameMaxWidth}px`, pos.nameX, lineY - 4);
+        ctx.fillText(badgeText, pos.nameX, badgeY + 10);
 
         ctx.restore();
       }
