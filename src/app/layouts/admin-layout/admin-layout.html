@@ -57,60 +57,58 @@
     </nav>
 
     <!-- Sidebar Footer -->
-    <div class="border-t border-black/5 dark:border-white/5 p-4 flex flex-col gap-4">
-      <!-- Theme Switcher & Logout Row -->
-      <div
-        class="flex items-center justify-between bg-surface-main dark:bg-neutral-950 p-2 rounded-2xl border border-black/5 dark:border-white/5"
-      >
-        <!-- Theme Toggle -->
-        <button
-          type="button"
-          (click)="theme.toggle()"
-          class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-text-secondary dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 transition-all shadow-xs"
-          aria-label="Alternar tema"
-        >
-          <span class="material-symbols-rounded text-base text-google-yellow">
-            {{ theme.isDark() ? 'light_mode' : 'dark_mode' }}
-          </span>
-          <span>{{ theme.isDark() ? 'Claro' : 'Oscuro' }}</span>
-        </button>
-
-        <!-- Logout -->
-        <button
-          type="button"
-          (click)="auth.signOut()"
-          class="flex size-8 items-center justify-center rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-          aria-label="Cerrar sesión"
-          title="Cerrar sesión"
-        >
-          <span class="material-symbols-rounded text-lg">logout</span>
-        </button>
-      </div>
-
-      <!-- User Profile summary -->
+    <div class="border-t border-black/5 dark:border-white/5 p-4 flex flex-col gap-3">
       @if (auth.user(); as user) {
-        <div class="flex items-center gap-3 px-2 py-1">
-          @if (user.avatar_url) {
-            <img
-              class="size-10 rounded-full object-cover ring-2 ring-google-blue/20"
-              [src]="user.avatar_url"
-              alt="Avatar"
-              referrerpolicy="no-referrer"
-            />
-          } @else {
-            <div
-              class="flex size-10 items-center justify-center rounded-full bg-google-blue-light dark:bg-google-blue/20 text-google-blue text-sm font-bold shadow-xs"
-            >
-              {{ user.first_name[0] }}{{ user.last_name[0] }}
+        <div class="flex items-center justify-between gap-2 px-1">
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            @if (user.avatar_url) {
+              <img
+                class="size-9 rounded-full object-cover ring-2 ring-google-blue/20 shrink-0"
+                [src]="user.avatar_url"
+                alt="Avatar"
+                referrerpolicy="no-referrer"
+              />
+            } @else {
+              <div
+                class="flex size-9 items-center justify-center rounded-full bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue text-xs font-bold shrink-0"
+              >
+                {{ user.first_name[0] }}{{ user.last_name[0] }}
+              </div>
+            }
+            <div class="flex flex-col min-w-0">
+              <span class="truncate text-xs font-bold text-text-primary dark:text-neutral-200">
+                {{ user.first_name }} {{ user.last_name }}
+              </span>
+              <span class="truncate text-[11px] text-text-secondary dark:text-neutral-400">
+                {{ user.email }}
+              </span>
             </div>
-          }
-          <div class="flex flex-col min-w-0">
-            <span class="truncate text-sm font-bold text-text-primary dark:text-neutral-200">
-              {{ user.first_name }} {{ user.last_name }}
-            </span>
-            <span class="truncate text-xs text-text-secondary dark:text-neutral-400">
-              {{ user.email }}
-            </span>
+          </div>
+
+          <div class="flex items-center gap-1 shrink-0">
+            <!-- Subtle Theme Toggle -->
+            <button
+              type="button"
+              (click)="theme.toggle()"
+              class="flex size-8 items-center justify-center rounded-full text-text-secondary dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              [title]="theme.isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+              [attr.aria-label]="theme.isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+            >
+              <span class="material-symbols-rounded text-lg">
+                {{ theme.isDark() ? 'light_mode' : 'dark_mode' }}
+              </span>
+            </button>
+
+            <!-- Logout -->
+            <button
+              type="button"
+              (click)="auth.signOut()"
+              class="flex size-8 items-center justify-center rounded-full text-text-secondary hover:text-google-red dark:text-neutral-400 dark:hover:text-google-red hover:bg-google-red-light/40 dark:hover:bg-google-red/20 transition-colors"
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <span class="material-symbols-rounded text-lg">logout</span>
+            </button>
           </div>
         </div>
       }
