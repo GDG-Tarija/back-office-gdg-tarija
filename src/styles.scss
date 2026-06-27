@@ -167,7 +167,7 @@ body {
   }
 
   .gdg-card {
-    @apply rounded-3xl border border-black/5 bg-white shadow-sm;
+    @apply rounded-3xl border border-black/5 bg-white shadow-xs dark:border-white/5 dark:bg-neutral-900;
   }
 
   .gdg-h1 {
@@ -204,8 +204,116 @@ body {
 
   .gdg-spinner::after {
     content: '';
-    @apply absolute inset-1 rounded-full bg-white;
+    @apply absolute inset-1 rounded-full bg-white dark:bg-neutral-900;
   }
+}
+
+/* ============================================================
+   Estilos Globales Minimalistas para Componentes UI
+   ============================================================ */
+
+/* Dropdowns (p-select) */
+.p-select {
+  border-radius: 0.875rem !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.15s ease-in-out !important;
+
+  &:hover {
+    border-color: rgba(66, 133, 244, 0.5) !important;
+  }
+
+  &.p-focus,
+  &:focus-within {
+    border-color: var(--gdg-google-blue) !important;
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15) !important;
+  }
+}
+
+[data-theme='dark'] .p-select {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: #171717 !important;
+}
+
+/* Overlay Popover elegante y compacto */
+.p-select-overlay,
+.p-popover {
+  border-radius: 0.875rem !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+  padding: 0.375rem !important;
+}
+
+[data-theme='dark'] .p-select-overlay,
+[data-theme='dark'] .p-popover {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: #1a1a1a !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Opciones del menú desplegable */
+.p-select-option {
+  border-radius: 0.5rem !important;
+  padding: 0.45rem 0.75rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  transition: background-color 0.12s ease !important;
+
+  &:hover {
+    background-color: rgba(66, 133, 244, 0.06) !important;
+    color: var(--gdg-google-blue) !important;
+  }
+
+  &.p-select-option-selected {
+    background-color: rgba(66, 133, 244, 0.12) !important;
+    color: var(--gdg-google-blue) !important;
+    font-weight: 600 !important;
+  }
+}
+
+[data-theme='dark'] .p-select-option {
+  &:hover {
+    background-color: rgba(66, 133, 244, 0.12) !important;
+  }
+
+  &.p-select-option-selected {
+    background-color: rgba(66, 133, 244, 0.2) !important;
+    color: #90caf9 !important;
+  }
+}
+
+/* Inputs de Texto (pInputText) */
+.p-inputtext {
+  border-radius: 0.875rem !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.15s ease-in-out !important;
+
+  &:hover {
+    border-color: rgba(66, 133, 244, 0.5) !important;
+  }
+
+  &:focus {
+    border-color: var(--gdg-google-blue) !important;
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15) !important;
+  }
+}
+
+[data-theme='dark'] .p-inputtext {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: #171717 !important;
+  color: #e8e8e8 !important;
+}
+
+/* Datepicker Panel */
+.p-datepicker-panel {
+  border-radius: 1rem !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+  padding: 0.75rem !important;
+}
+
+[data-theme='dark'] .p-datepicker-panel {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: #1a1a1a !important;
 }
 
 * {

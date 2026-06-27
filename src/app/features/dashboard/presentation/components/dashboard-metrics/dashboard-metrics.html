@@ -1,0 +1,42 @@
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+  <!-- Card 1: Eventos -->
+  <app-stat-card
+    title="Eventos Filtrados"
+    [value]="totalEventsCount()"
+    icon="calendar_month"
+    badge="Total de eventos"
+    badgeSeverity="neutral"
+    iconSeverity="blue"
+  />
+
+  <!-- Card 2: Inscritos -->
+  <app-stat-card
+    title="Inscritos Totales"
+    [value]="totalRegistrationsCount()"
+    icon="group"
+    [badge]="confirmedAttendeesCount() + ' confirmados'"
+    badgeSeverity="green"
+    iconSeverity="red"
+  />
+
+  <!-- Card 3: Flujo de Caja -->
+  <app-stat-card
+    title="Flujo de Caja"
+    [value]="(totalCashFlow() | currency: 'BOB ' : 'symbol' : '1.0-2') || 'BOB 0'"
+    icon="account_balance_wallet"
+    iconSeverity="green"
+  >
+    <div class="flex gap-2 w-full mt-1">
+      <span
+        class="text-[11px] font-semibold text-google-green bg-google-green-light/60 dark:bg-google-green/20 px-2.5 py-1 rounded-full"
+      >
+        {{ (approvedCashFlow() | currency: 'BOB ' : 'symbol' : '1.0-0') || 'BOB 0' }} conf.
+      </span>
+      <span
+        class="text-[11px] font-semibold text-google-yellow bg-google-yellow-light/60 dark:bg-google-yellow/20 px-2.5 py-1 rounded-full"
+      >
+        {{ (pendingCashFlow() | currency: 'BOB ' : 'symbol' : '1.0-0') || 'BOB 0' }} pend.
+      </span>
+    </div>
+  </app-stat-card>
+</div>

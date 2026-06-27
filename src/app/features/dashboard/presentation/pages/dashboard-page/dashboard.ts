@@ -1,22 +1,21 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { CommonModule, CurrencyPipe, PercentPipe } from '@angular/common';
+import { CommonModule, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { SelectModule } from 'primeng/select';
-import { DatePickerModule } from 'primeng/datepicker';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 
-import { AuthService } from '../../core/auth/services/auth.service';
-import { DashboardRepository } from './domain/dashboard.repository';
-import { DashboardApi } from './data/dashboard.api';
+import { AuthService } from '../../../../../core/auth/services/auth.service';
+import { DashboardRepository } from '../../../domain/dashboard.repository';
+import { DashboardApi } from '../../../data/dashboard.api';
 import {
   DashboardEvent,
   DashboardRegistration,
   RecentRegistration,
-} from './domain/dashboard.model';
+} from '../../../domain/dashboard.model';
+
+import { DashboardFilters } from '../../components/dashboard-filters/dashboard-filters';
+import { DashboardMetrics } from '../../components/dashboard-metrics/dashboard-metrics';
 
 @Component({
   selector: 'app-dashboard',
@@ -25,16 +24,14 @@ import {
     CommonModule,
     FormsModule,
     ButtonModule,
-    CardModule,
-    SelectModule,
-    DatePickerModule,
-    ProgressSpinnerModule,
     TagModule,
-    CurrencyPipe,
     PercentPipe,
+    DashboardFilters,
+    DashboardMetrics,
   ],
   providers: [{ provide: DashboardRepository, useClass: DashboardApi }],
   templateUrl: './dashboard.html',
+  styleUrl: './dashboard.scss',
 })
 export class Dashboard implements OnInit {
   readonly auth = inject(AuthService);
@@ -201,7 +198,7 @@ export class Dashboard implements OnInit {
       (r) => eventIds.has(r.eventId) && r.status !== 'CANCELLED',
     );
 
-    return regs.length / totalCapacity; // Returns decimal (0 to 1) for PercentPipe
+    return regs.length / totalCapacity;
   });
 
   // Distributions
@@ -303,11 +300,10 @@ export class Dashboard implements OnInit {
     ].filter((item) => item.value > 0);
   });
 
-  // Daily trend grouping (Chronological, last 7 active days ending at latest registration)
+  // Daily trend grouping
   readonly dailyTrend = computed(() => {
     const regs = this.filteredRegistrations();
     if (regs.length === 0) {
-      // Fallback to last 7 days ending today
       const list = [];
       const today = new Date();
       for (let i = 6; i >= 0; i--) {
@@ -322,7 +318,6 @@ export class Dashboard implements OnInit {
       return list;
     }
 
-    // Find latest registration date
     let maxDate = new Date(0);
     regs.forEach((r) => {
       if (r.createdAt > maxDate) {
@@ -333,7 +328,6 @@ export class Dashboard implements OnInit {
       maxDate = new Date();
     }
 
-    // Create 7 days ending at maxDate
     const dayMap = new Map<string, { label: string; count: number; timestamp: number }>();
     for (let i = 6; i >= 0; i--) {
       const d = new Date(maxDate);
@@ -343,7 +337,6 @@ export class Dashboard implements OnInit {
       dayMap.set(key, { label: dayLabel, count: 0, timestamp: d.getTime() });
     }
 
-    // Populate counts
     regs.forEach((r) => {
       const d = r.createdAt;
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -362,7 +355,6 @@ export class Dashboard implements OnInit {
     return Math.max(...trend.map((t) => t.count), 10);
   });
 
-  // SVG Bar Chart Coordinates
   readonly barCoords = computed(() => {
     const trend = this.dailyTrend();
     const max = this.maxTrendValue();
@@ -392,7 +384,6 @@ export class Dashboard implements OnInit {
     });
   });
 
-  // Helpers for table roles & statuses
   getRoleSeverity(role: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
     switch (role?.toUpperCase()) {
       case 'ORGANIZER':
@@ -447,7 +438,6 @@ export class Dashboard implements OnInit {
     }
   }
 
-  // Reset all filters
   resetFilters(): void {
     this.filterEventId.set(null);
     this.filterRole.set(null);

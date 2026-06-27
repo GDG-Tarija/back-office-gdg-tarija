@@ -1,0 +1,31 @@
+<div
+  class="flex flex-col gap-2 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-xs hover:shadow-md transition-all h-full justify-between"
+>
+  <div class="flex items-center justify-between">
+    <span
+      class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
+    >
+      {{ title() }}
+    </span>
+    <div
+      class="flex size-11 items-center justify-center rounded-2xl shrink-0 transition-transform hover:scale-105"
+      [ngClass]="getIconClasses()"
+    >
+      <span class="material-symbols-rounded text-2xl">{{ icon() }}</span>
+    </div>
+  </div>
+  <div class="mt-2 flex items-baseline gap-2 flex-wrap">
+    <span class="text-3xl font-extrabold text-text-primary dark:text-neutral-100">
+      {{ value() }}
+    </span>
+    @if (badge()) {
+      <span
+        class="text-xs font-semibold px-2.5 py-1 rounded-full transition-colors"
+        [ngClass]="getBadgeClasses()"
+      >
+        {{ badge() }}
+      </span>
+    }
+  </div>
+  <ng-content />
+</div>
