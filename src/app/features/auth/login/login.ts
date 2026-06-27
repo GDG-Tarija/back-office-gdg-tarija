@@ -1,13 +1,11 @@
 import { Component, inject } from '@angular/core';
 
-import { ButtonModule } from 'primeng/button';
-
 import { LOGOS } from '../../../core/config/logos';
 import { AuthService } from '../../../core/auth/services/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [ButtonModule],
+  imports: [],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
