@@ -57,7 +57,7 @@
             [(ngModel)]="selectedEvent"
             optionLabel="title"
             placeholder="Seleccione un evento"
-            styleClass="w-full !rounded-2xl"
+            styleClass="w-full text-sm !rounded-xl"
             (onChange)="onEventChange()"
             appendTo="body"
           />
@@ -78,7 +78,7 @@
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccione modo"
-            styleClass="w-full !rounded-2xl"
+            styleClass="w-full text-sm !rounded-xl"
             (onChange)="onModeChange()"
             appendTo="body"
           />
@@ -105,7 +105,7 @@
                 [(ngModel)]="selectedSession"
                 optionLabel="title"
                 placeholder="Seleccione una sesión"
-                styleClass="w-full !rounded-2xl"
+                styleClass="w-full text-sm !rounded-xl"
                 appendTo="body"
               />
               @if (sessions().length === 0) {
@@ -132,7 +132,7 @@
             optionLabel="label"
             optionValue="id"
             placeholder="Seleccione dispositivo"
-            styleClass="w-full !rounded-2xl"
+            styleClass="w-full text-sm !rounded-xl"
             [disabled]="cameras().length === 0"
             appendTo="body"
             (onChange)="onCameraChange()"

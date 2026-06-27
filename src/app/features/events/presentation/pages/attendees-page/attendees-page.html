@@ -134,7 +134,7 @@
             type="text"
             pInputText
             placeholder="Buscar asistente por nombre, correo..."
-            class="w-full pl-10 pr-4 py-2 text-sm !rounded-full bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10"
+            class="w-full pl-10 pr-4 text-sm !rounded-xl"
             (input)="dtAttendees.filterGlobal($any($event.target).value, 'contains')"
           />
         </div>

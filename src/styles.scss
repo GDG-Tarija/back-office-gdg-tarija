@@ -212,26 +212,60 @@ body {
    Estilos Globales Minimalistas para Componentes UI
    ============================================================ */
 
-/* Dropdowns (p-select) */
-.p-select {
-  border-radius: 0.875rem !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+/* Dropdowns (p-select) e Inputs de Texto */
+.p-select,
+.p-inputtext,
+.p-datepicker-input {
+  height: 2.5rem !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
   transition: all 0.15s ease-in-out !important;
+  background-color: var(--color-surface-paper) !important;
 
   &:hover {
-    border-color: rgba(66, 133, 244, 0.5) !important;
+    border-color: rgba(66, 133, 244, 0.6) !important;
   }
 
   &.p-focus,
+  &:focus,
   &:focus-within {
     border-color: var(--gdg-google-blue) !important;
-    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15) !important;
+    box-shadow: 0 0 0 2.5px rgba(66, 133, 244, 0.15) !important;
   }
 }
 
-[data-theme='dark'] .p-select {
+.p-select {
+  display: inline-flex !important;
+  align-items: center !important;
+
+  .p-select-label {
+    padding: 0 0.75rem !important;
+    font-size: 0.8125rem !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+  }
+
+  .p-select-dropdown {
+    width: 2.25rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+.p-inputtext {
+  padding: 0 0.75rem !important;
+}
+
+[data-theme='dark'] .p-select,
+[data-theme='dark'] .p-inputtext,
+[data-theme='dark'] .p-datepicker-input {
   border-color: rgba(255, 255, 255, 0.12) !important;
   background-color: #171717 !important;
+  color: #e8e8e8 !important;
 }
 
 /* Overlay Popover elegante y compacto */
@@ -279,28 +313,6 @@ body {
     background-color: rgba(66, 133, 244, 0.2) !important;
     color: #90caf9 !important;
   }
-}
-
-/* Inputs de Texto (pInputText) */
-.p-inputtext {
-  border-radius: 0.875rem !important;
-  border-color: rgba(0, 0, 0, 0.1) !important;
-  transition: all 0.15s ease-in-out !important;
-
-  &:hover {
-    border-color: rgba(66, 133, 244, 0.5) !important;
-  }
-
-  &:focus {
-    border-color: var(--gdg-google-blue) !important;
-    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15) !important;
-  }
-}
-
-[data-theme='dark'] .p-inputtext {
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  background-color: #171717 !important;
-  color: #e8e8e8 !important;
 }
 
 /* Datepicker Panel */
