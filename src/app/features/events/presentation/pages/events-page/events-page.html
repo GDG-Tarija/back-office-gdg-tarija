@@ -15,14 +15,14 @@
     <div
       class="flex items-center gap-3 rounded-2xl bg-google-red-light/30 border border-google-red/20 p-4 text-sm font-medium text-google-red"
     >
-      <i class="pi pi-exclamation-circle text-lg"></i>
+      <span class="material-symbols-rounded text-xl">error</span>
       <span>{{ err }}</span>
     </div>
   }
 
   <!-- Events List Table Card -->
   <div
-    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden shadow-sm"
+    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden shadow-xs"
   >
     <div class="overflow-x-auto w-full">
       <p-table
@@ -38,21 +38,24 @@
       >
         <ng-template pTemplate="caption">
           <div
-            class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 bg-neutral-50/50 dark:bg-neutral-850/50 border-b border-black/5 dark:border-white/5"
+            class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-5 bg-neutral-50/50 dark:bg-neutral-850/50 border-b border-black/5 dark:border-white/5"
           >
             <span class="text-base font-bold text-text-primary dark:text-neutral-200"
               >Eventos Registrados</span
             >
-            <p-iconfield iconPosition="left">
-              <p-inputicon class="pi pi-search"></p-inputicon>
+            <div class="relative w-full sm:w-72">
+              <span
+                class="material-symbols-rounded absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none"
+                >search</span
+              >
               <input
                 type="text"
                 pInputText
                 placeholder="Buscar evento..."
-                class="w-full sm:w-64"
+                class="w-full pl-10 pr-4 py-2 text-sm !rounded-full bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10"
                 (input)="dt.filterGlobal($any($event.target).value, 'contains')"
               />
-            </p-iconfield>
+            </div>
           </div>
         </ng-template>
 
@@ -94,7 +97,7 @@
             </td>
             <td>
               <span
-                class="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-text-secondary dark:text-neutral-300 border border-black/5 dark:border-white/5"
+                class="text-xs font-semibold px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-text-secondary dark:text-neutral-300 border border-black/5 dark:border-white/5"
               >
                 {{ event.eventType }}
               </span>
@@ -114,7 +117,7 @@
               <div
                 class="flex items-center gap-1.5 text-sm text-text-secondary dark:text-neutral-300"
               >
-                <i class="pi pi-map-marker text-google-blue"></i>
+                <span class="material-symbols-rounded text-lg text-google-blue">location_on</span>
                 <span class="truncate max-w-[200px]" [title]="event.locationName">{{
                   event.locationName || 'No especificado'
                 }}</span>
@@ -127,27 +130,26 @@
               />
             </td>
             <td class="text-center">
-              <div class="flex items-center justify-center gap-1">
-                <p-button
-                  icon="pi pi-id-card"
-                  label="Credenciales"
-                  [text]="true"
-                  severity="contrast"
-                  size="small"
-                  (onClick)="openCredentialGenerator(event)"
-                  styleClass="!py-1.5"
-                  pTooltip="Generar credenciales"
-                  tooltipPosition="top"
-                />
-                <p-button
-                  icon="pi pi-users"
-                  label="Asistentes"
-                  [text]="true"
-                  severity="info"
-                  size="small"
-                  (onClick)="viewAttendees(event)"
-                  styleClass="!py-1.5"
-                />
+              <div class="flex items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  (click)="openCredentialGenerator(event)"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-text-primary dark:text-neutral-200 transition-colors"
+                  title="Generar credenciales"
+                >
+                  <span class="material-symbols-rounded text-base">badge</span>
+                  <span>Credenciales</span>
+                </button>
+
+                <button
+                  type="button"
+                  (click)="viewAttendees(event)"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-google-blue-light/60 hover:bg-google-blue-light dark:bg-google-blue/20 dark:hover:bg-google-blue/30 text-google-blue transition-colors"
+                  title="Ver asistentes"
+                >
+                  <span class="material-symbols-rounded text-base">group</span>
+                  <span>Asistentes</span>
+                </button>
               </div>
             </td>
           </tr>
@@ -155,11 +157,16 @@
 
         <ng-template pTemplate="emptymessage">
           <tr>
-            <td colspan="7" class="text-center p-8 text-text-secondary dark:text-neutral-400">
-              <div class="flex flex-col items-center gap-2">
-                <i class="pi pi-calendar-times text-4xl text-neutral-300"></i>
-                <span class="font-medium text-base">No se encontraron eventos</span>
-                <span class="text-xs"
+            <td colspan="7" class="text-center p-12 text-text-secondary dark:text-neutral-400">
+              <div class="flex flex-col items-center gap-3">
+                <span
+                  class="material-symbols-rounded text-5xl text-neutral-300 dark:text-neutral-600"
+                  >calendar_month</span
+                >
+                <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
+                  >No se encontraron eventos</span
+                >
+                <span class="text-xs max-w-sm"
                   >Intenta ajustar tu búsqueda o registra nuevos eventos en la base de datos.</span
                 >
               </div>

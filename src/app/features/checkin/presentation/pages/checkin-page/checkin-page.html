@@ -10,14 +10,23 @@
 
   <!-- Header -->
   <div
-    class="flex items-center bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-5 shadow-sm"
+    class="flex items-center justify-between bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-xs"
   >
-    <h1 class="text-xl sm:text-2xl font-black text-text-primary dark:text-neutral-100">Check-in</h1>
+    <div class="flex items-center gap-3">
+      <div
+        class="flex size-10 items-center justify-center rounded-2xl bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue"
+      >
+        <span class="material-symbols-rounded text-2xl">qr_code_scanner</span>
+      </div>
+      <h1 class="text-xl sm:text-2xl font-extrabold text-text-primary dark:text-neutral-100">
+        Control de Asistencia (Check-in)
+      </h1>
+    </div>
   </div>
 
   <!-- Unified Workspace Card -->
   <div
-    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl shadow-sm overflow-hidden w-full"
+    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl shadow-xs overflow-hidden w-full"
   >
     <div
       class="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-neutral-100 dark:divide-neutral-800"
@@ -27,7 +36,7 @@
         <div
           class="border-b border-neutral-100 dark:border-neutral-800 pb-3 flex items-center gap-2.5"
         >
-          <i class="pi pi-cog text-google-blue text-lg"></i>
+          <span class="material-symbols-rounded text-google-blue text-xl">settings</span>
           <span class="font-bold text-text-primary dark:text-neutral-200"
             >Parámetros del Escaneo</span
           >
@@ -48,7 +57,7 @@
             [(ngModel)]="selectedEvent"
             optionLabel="title"
             placeholder="Seleccione un evento"
-            styleClass="w-full !rounded-xl"
+            styleClass="w-full !rounded-2xl"
             (onChange)="onEventChange()"
             appendTo="body"
           />
@@ -69,7 +78,7 @@
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccione modo"
-            styleClass="w-full !rounded-xl"
+            styleClass="w-full !rounded-2xl"
             (onChange)="onModeChange()"
             appendTo="body"
           />
@@ -86,7 +95,7 @@
             </label>
             @if (loadingSessions()) {
               <div class="flex items-center gap-2 text-xs text-text-secondary py-2">
-                <p-progressspinner styleClass="w-5 h-5" strokeWidth="4" />
+                <div class="gdg-spinner !size-5"></div>
                 <span>Cargando sesiones...</span>
               </div>
             } @else {
@@ -96,7 +105,7 @@
                 [(ngModel)]="selectedSession"
                 optionLabel="title"
                 placeholder="Seleccione una sesión"
-                styleClass="w-full !rounded-xl"
+                styleClass="w-full !rounded-2xl"
                 appendTo="body"
               />
               @if (sessions().length === 0) {
@@ -123,7 +132,7 @@
             optionLabel="label"
             optionValue="id"
             placeholder="Seleccione dispositivo"
-            styleClass="w-full !rounded-xl"
+            styleClass="w-full !rounded-2xl"
             [disabled]="cameras().length === 0"
             appendTo="body"
             (onChange)="onCameraChange()"
@@ -132,14 +141,22 @@
 
         <!-- Toggle Scanning button -->
         <div class="pt-2">
-          <p-button
-            [label]="scanning() ? 'Apagar Cámara' : 'Encender Cámara'"
-            [icon]="scanning() ? 'pi pi-camera-slash' : 'pi pi-camera'"
-            [severity]="scanning() ? 'danger' : 'success'"
-            styleClass="w-full !py-3 !rounded-xl font-bold transition-all shadow-sm"
-            (onClick)="toggleCamera()"
+          <button
+            type="button"
+            (click)="toggleCamera()"
             [disabled]="!selectedEvent() || (selectedMode() === 'session' && !selectedSession())"
-          />
+            [class]="
+              scanning()
+                ? 'bg-google-red text-white hover:bg-red-600'
+                : 'bg-google-green text-white hover:bg-green-600'
+            "
+            class="flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-full font-bold transition-all shadow-xs disabled:opacity-50"
+          >
+            <span class="material-symbols-rounded text-xl">{{
+              scanning() ? 'videocam_off' : 'photo_camera'
+            }}</span>
+            <span>{{ scanning() ? 'Apagar Cámara' : 'Encender Cámara' }}</span>
+          </button>
         </div>
       </div>
 
@@ -150,10 +167,10 @@
         <!-- Overlay if Processing DB -->
         @if (isProcessing()) {
           <div
-            class="absolute inset-0 bg-white/75 dark:bg-neutral-900/75 z-20 flex flex-col items-center justify-center gap-2 backdrop-blur-[1px]"
+            class="absolute inset-0 bg-white/80 dark:bg-neutral-900/80 z-20 flex flex-col items-center justify-center gap-3 backdrop-blur-xs rounded-r-3xl"
           >
-            <p-progressspinner styleClass="w-12 h-12" strokeWidth="4" />
-            <span class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+            <div class="gdg-spinner"></div>
+            <span class="text-sm font-bold text-text-primary dark:text-neutral-200">
               Procesando registro...
             </span>
           </div>
@@ -162,33 +179,33 @@
         <!-- Error messages -->
         @if (qrError()) {
           <div
-            class="p-4 bg-google-red/10 border border-google-red/25 text-google-red rounded-2xl w-full text-center text-xs font-bold flex items-center justify-center gap-2"
+            class="p-4 bg-google-red-light/50 border border-google-red/25 text-google-red rounded-2xl w-full text-center text-xs font-bold flex items-center justify-center gap-2"
           >
-            <i class="pi pi-exclamation-triangle"></i>
-            {{ qrError() }}
+            <span class="material-symbols-rounded text-lg">warning</span>
+            <span>{{ qrError() }}</span>
           </div>
         }
 
-        <!-- Camera box container (clean scanning, no overlays or laser lines) -->
+        <!-- Camera box container -->
         <div
-          class="relative w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-950 flex items-center justify-center shadow-inner"
+          class="relative w-full max-w-[320px] aspect-square rounded-3xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-950 flex items-center justify-center shadow-inner"
         >
           <div id="reader" class="w-full h-full"></div>
 
           @if (!scanning()) {
-            <!-- Beautiful glassmorphic illustration placeholder when off -->
+            <!-- Placeholder illustration when camera is off -->
             <div
-              class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-6 bg-neutral-950/90 backdrop-blur-[1px]"
+              class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-6 bg-neutral-950/90 backdrop-blur-xs"
             >
               <div
-                class="size-20 rounded-3xl bg-neutral-900/95 border border-white/10 flex items-center justify-center text-google-blue shadow-lg animate-pulse"
+                class="size-20 rounded-3xl bg-neutral-900 border border-white/10 flex items-center justify-center text-google-blue shadow-lg animate-pulse"
               >
-                <i class="pi pi-qrcode text-4xl"></i>
+                <span class="material-symbols-rounded text-4xl">qr_code_scanner</span>
               </div>
               <span class="text-sm text-neutral-300 font-bold max-w-xs">
                 Escáner Listo para Iniciar
               </span>
-              <p class="text-xs text-neutral-500 max-w-xs leading-relaxed">
+              <p class="text-xs text-neutral-400 max-w-xs leading-relaxed">
                 Selecciona un evento y propósito a la izquierda y presiona "Encender Cámara" para
                 habilitar la lectura QR.
               </p>

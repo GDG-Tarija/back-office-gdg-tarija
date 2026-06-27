@@ -3,8 +3,8 @@
 >
   <!-- Loading State -->
   @if (loading()) {
-    <div class="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-      <p-progressspinner styleClass="w-12 h-12" strokeWidth="4" />
+    <div class="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+      <div class="gdg-spinner"></div>
       <span class="text-sm font-semibold text-text-secondary dark:text-neutral-400">
         Cargando información de asistentes...
       </span>
@@ -17,34 +17,36 @@
       class="flex flex-col items-center justify-center min-h-[50vh] gap-4 max-w-md mx-auto text-center"
     >
       <div
-        class="flex size-14 items-center justify-center rounded-full bg-google-red/10 text-google-red"
+        class="flex size-16 items-center justify-center rounded-3xl bg-google-red-light/60 text-google-red dark:bg-google-red/20"
       >
-        <i class="pi pi-exclamation-triangle text-2xl"></i>
+        <span class="material-symbols-rounded text-3xl">warning</span>
       </div>
       <span class="text-base font-bold text-text-primary dark:text-neutral-200">
         {{ errorMsg() }}
       </span>
-      <p-button
-        icon="pi pi-arrow-left"
-        label="Volver a Eventos"
-        styleClass="p-button-outlined"
-        (onClick)="goBack()"
-      />
+      <button
+        type="button"
+        (click)="goBack()"
+        class="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+      >
+        <span class="material-symbols-rounded text-lg">arrow_back</span>
+        <span>Volver a Eventos</span>
+      </button>
     </div>
   }
 
   <!-- Content State -->
   @else if (event()) {
     <!-- Breadcrumb & Back Navigation -->
-    <div class="flex items-center gap-2">
-      <p-button
-        icon="pi pi-arrow-left"
-        [text]="true"
-        severity="secondary"
-        styleClass="!w-9 !h-9 !p-0 !min-w-[2.25rem]"
+    <div class="flex items-center gap-3">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="flex size-9 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 border border-black/5 dark:border-white/5 shadow-xs transition-colors"
         aria-label="Volver"
-        (onClick)="goBack()"
-      />
+      >
+        <span class="material-symbols-rounded text-xl">arrow_back</span>
+      </button>
       <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">
         Eventos / Detalle / Asistentes
       </span>
@@ -52,39 +54,44 @@
 
     <!-- Header & Event Summary Card -->
     <div
-      class="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-sm"
+      class="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-xs"
     >
-      <div class="lg:col-span-2 space-y-4">
-        <div class="space-y-1">
-          <p-tag
-            [value]="event()?.isPublished ? 'Publicado' : 'Borrador'"
-            [severity]="event()?.isPublished ? 'success' : 'secondary'"
-            styleClass="!text-[10px] !px-2 !py-0.5"
-          />
-          <h1
-            class="text-2xl sm:text-3xl font-extrabold text-text-primary dark:text-neutral-100 bg-gradient-to-r from-google-blue via-google-red to-google-yellow bg-clip-text text-transparent"
+      <div class="lg:col-span-2 space-y-3">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span
+            class="px-3 py-1 rounded-full text-xs font-bold"
+            [class]="
+              event()?.isPublished
+                ? 'bg-google-green-light/60 text-google-green dark:bg-google-green/20'
+                : 'bg-neutral-100 text-text-secondary dark:bg-neutral-800 dark:text-neutral-400'
+            "
           >
-            {{ event()?.title }}
-          </h1>
+            {{ event()?.isPublished ? 'Publicado' : 'Borrador' }}
+          </span>
         </div>
+        <h1
+          class="text-2xl sm:text-3xl font-extrabold text-text-primary dark:text-neutral-100 bg-gradient-to-r from-google-blue via-google-red to-google-yellow bg-clip-text text-transparent"
+        >
+          {{ event()?.title }}
+        </h1>
         <p class="text-sm text-text-secondary dark:text-neutral-400 line-clamp-2 max-w-2xl">
           {{ event()?.description || 'Sin descripción detallada.' }}
         </p>
       </div>
 
-      <!-- Quick Metrics Grid -->
-      <div class="grid grid-cols-2 gap-4">
+      <!-- Quick Metrics -->
+      <div class="flex flex-col sm:flex-row gap-3">
         <div
-          class="flex items-center gap-3 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5"
+          class="flex items-center gap-3 p-3.5 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5 flex-1"
         >
           <div
-            class="flex size-10 items-center justify-center rounded-xl bg-google-blue-light dark:bg-google-blue/10 text-google-blue"
+            class="flex size-11 items-center justify-center rounded-xl bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue shrink-0"
           >
-            <i class="pi pi-calendar text-lg"></i>
+            <span class="material-symbols-rounded text-2xl">calendar_month</span>
           </div>
-          <div class="flex flex-col">
-            <span class="text-[10px] text-text-secondary dark:text-neutral-400 font-medium"
-              >Inicio</span
+          <div class="flex flex-col min-w-0">
+            <span class="text-[11px] text-text-secondary dark:text-neutral-400 font-medium"
+              >Fecha de inicio</span
             >
             <span class="text-xs font-bold text-text-primary dark:text-neutral-200">
               {{ event()?.dateStart | date: 'dd/MM/yyyy' }}
@@ -93,59 +100,19 @@
         </div>
 
         <div
-          class="flex items-center gap-3 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5"
+          class="flex items-center gap-3 p-3.5 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5 flex-1"
         >
           <div
-            class="flex size-10 items-center justify-center rounded-xl bg-google-green-light dark:bg-google-green/10 text-google-green"
+            class="flex size-11 items-center justify-center rounded-xl bg-google-green-light/60 dark:bg-google-green/20 text-google-green shrink-0"
           >
-            <i class="pi pi-users text-lg"></i>
+            <span class="material-symbols-rounded text-2xl">group</span>
           </div>
-          <div class="flex flex-col">
-            <span class="text-[10px] text-text-secondary dark:text-neutral-400 font-medium"
+          <div class="flex flex-col min-w-0">
+            <span class="text-[11px] text-text-secondary dark:text-neutral-400 font-medium"
               >Inscritos</span
             >
             <span class="text-xs font-bold text-text-primary dark:text-neutral-200">
               {{ attendees().length }} / {{ event()?.capacity }}
-            </span>
-          </div>
-        </div>
-
-        <div
-          class="flex items-center gap-3 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5"
-        >
-          <div
-            class="flex size-10 items-center justify-center rounded-xl bg-google-red-light dark:bg-google-red/10 text-google-red"
-          >
-            <i class="pi pi-map-marker text-lg"></i>
-          </div>
-          <div class="flex flex-col">
-            <span class="text-[10px] text-text-secondary dark:text-neutral-400 font-medium"
-              >Modalidad</span
-            >
-            <span
-              class="text-xs font-bold text-text-primary dark:text-neutral-200 truncate max-w-[100px]"
-            >
-              {{ event()?.locationType === 'PHYSICAL' ? 'Presencial' : 'Virtual' }}
-            </span>
-          </div>
-        </div>
-
-        <div
-          class="flex items-center gap-3 p-3 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5"
-        >
-          <div
-            class="flex size-10 items-center justify-center rounded-xl bg-google-yellow-light dark:bg-google-yellow/10 text-google-yellow"
-          >
-            <i class="pi pi-bookmark text-lg"></i>
-          </div>
-          <div class="flex flex-col">
-            <span class="text-[10px] text-text-secondary dark:text-neutral-400 font-medium"
-              >Categoría</span
-            >
-            <span
-              class="text-xs font-bold text-text-primary dark:text-neutral-200 truncate max-w-[100px]"
-            >
-              {{ event()?.category || 'General' }}
             </span>
           </div>
         </div>
@@ -155,43 +122,50 @@
     <!-- Attendees List Section -->
     <div class="space-y-4">
       <div
-        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm"
+        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-neutral-900 p-4 rounded-3xl border border-black/5 dark:border-white/5 shadow-xs"
       >
         <!-- Buscador alineado a la izquierda -->
-        <p-iconfield iconPosition="left" class="w-full sm:w-auto">
-          <p-inputicon class="pi pi-search"></p-inputicon>
+        <div class="relative w-full sm:w-80">
+          <span
+            class="material-symbols-rounded absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none"
+            >search</span
+          >
           <input
             type="text"
             pInputText
-            placeholder="Buscar asistente..."
-            class="w-full sm:w-72 p-inputtext-sm !rounded-full"
+            placeholder="Buscar asistente por nombre, correo..."
+            class="w-full pl-10 pr-4 py-2 text-sm !rounded-full bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10"
             (input)="dtAttendees.filterGlobal($any($event.target).value, 'contains')"
           />
-        </p-iconfield>
+        </div>
 
-        <!-- Botones de exportación alineados a la derecha -->
+        <!-- Botones de exportación -->
         <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
-          <p-button
-            icon="pi pi-download"
-            label="Exportar CSV"
-            styleClass="p-button-outlined p-button-sm !rounded-full !border-black/10 dark:!border-white/10 hover:!bg-neutral-50 dark:hover:!bg-neutral-800 font-semibold !px-4 !py-1.5 transition-all duration-200"
-            (onClick)="exportToCSV()"
+          <button
+            type="button"
+            (click)="exportToCSV()"
             [disabled]="attendees().length === 0"
-          />
-          <p-button
-            icon="pi pi-file-excel"
-            label="Exportar Excel"
-            severity="success"
-            styleClass="p-button-sm !rounded-full font-semibold !px-4 !py-1.5 hover:opacity-90 transition-all duration-200"
-            (onClick)="exportToExcel()"
+            class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+          >
+            <span class="material-symbols-rounded text-base">download</span>
+            <span>Exportar CSV</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="exportToExcel()"
             [disabled]="attendees().length === 0"
-          />
+            class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-google-green text-white hover:bg-green-600 disabled:opacity-50 transition-colors shadow-xs"
+          >
+            <span class="material-symbols-rounded text-base">table_view</span>
+            <span>Exportar Excel</span>
+          </button>
         </div>
       </div>
 
       <!-- Attendees Table -->
       <div
-        class="border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden bg-white dark:bg-neutral-900 shadow-sm w-full max-w-full"
+        class="border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden bg-white dark:bg-neutral-900 shadow-xs w-full max-w-full"
       >
         <div class="overflow-x-auto w-full max-w-full block">
           <p-table
@@ -237,7 +211,6 @@
                   Registro <p-sortIcon field="registeredAt"></p-sortIcon>
                 </th>
 
-                <!-- Columnas dinámicas para las respuestas de formulario -->
                 @for (key of customResponseKeys(); track key) {
                   <th class="dark:text-neutral-300 font-semibold">
                     {{ formatResponseKey(key) }}
@@ -287,30 +260,28 @@
                   <div class="flex flex-col gap-0.5 text-xs">
                     <a
                       [href]="'mailto:' + attendee.email"
-                      class="flex items-center text-text-primary dark:text-neutral-200 font-medium hover:underline"
+                      class="inline-flex items-center gap-1.5 text-text-primary dark:text-neutral-200 font-medium hover:underline"
                     >
-                      <i
-                        class="pi pi-envelope text-[10px] text-text-secondary dark:text-neutral-400 mr-1.5"
-                      ></i>
+                      <span class="material-symbols-rounded text-sm text-text-secondary">mail</span>
                       {{ attendee.email }}
                     </a>
                     @if (attendee.phone) {
                       <a
                         [href]="'tel:' + attendee.phone"
-                        class="flex items-center text-text-secondary dark:text-neutral-400 hover:underline"
+                        class="inline-flex items-center gap-1.5 text-text-secondary dark:text-neutral-400 hover:underline"
                       >
-                        <i
-                          class="pi pi-phone text-[10px] text-text-secondary dark:text-neutral-400 mr-1.5"
-                        ></i>
+                        <span class="material-symbols-rounded text-sm text-text-secondary"
+                          >call</span
+                        >
                         {{ attendee.phone }}
                       </a>
                     } @else {
                       <span
-                        class="flex items-center text-[10px] text-text-secondary dark:text-neutral-500 italic"
+                        class="inline-flex items-center gap-1.5 text-[10px] text-text-secondary dark:text-neutral-500 italic"
                       >
-                        <i
-                          class="pi pi-phone text-[10px] text-text-secondary dark:text-neutral-500 mr-1.5"
-                        ></i>
+                        <span class="material-symbols-rounded text-xs text-text-secondary"
+                          >call</span
+                        >
                         Sin celular
                       </span>
                     }
@@ -355,21 +326,21 @@
                       <a
                         [href]="attendee.customResponses?.[key]"
                         target="_blank"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-google-blue bg-google-blue-light/20 hover:bg-google-blue-light/35 dark:bg-google-blue/10 dark:hover:bg-google-blue/20 rounded-full font-bold transition-all"
+                        class="inline-flex items-center gap-1 px-3 py-1 text-xs text-google-blue bg-google-blue-light/30 hover:bg-google-blue-light/60 dark:bg-google-blue/15 dark:hover:bg-google-blue/25 rounded-full font-bold transition-all"
                       >
-                        <i class="pi pi-external-link text-[10px]"></i> Ver Enlace
+                        <span class="material-symbols-rounded text-sm">open_in_new</span> Ver Enlace
                       </a>
                     } @else if (isBooleanTrue(attendee.customResponses?.[key])) {
                       <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-google-green-light/30 text-google-green dark:bg-google-green/10 dark:text-google-green"
+                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-google-green-light/40 text-google-green dark:bg-google-green/15 dark:text-google-green"
                       >
-                        <i class="pi pi-check text-[10px]"></i> Sí
+                        <span class="material-symbols-rounded text-sm">check</span> Sí
                       </span>
                     } @else if (isBooleanFalse(attendee.customResponses?.[key])) {
                       <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-text-secondary dark:bg-neutral-800 dark:text-neutral-400"
+                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-text-secondary dark:bg-neutral-800 dark:text-neutral-400"
                       >
-                        <i class="pi pi-times text-[10px]"></i> No
+                        <span class="material-symbols-rounded text-sm">close</span> No
                       </span>
                     } @else {
                       {{ attendee.customResponses?.[key] || '-' }}
@@ -380,24 +351,25 @@
                 <!-- Celda del comprobante de pago -->
                 <td>
                   @if (attendee.paymentProofUrl) {
-                    <p-button
-                      icon="pi pi-image"
-                      [label]="isImageProof(attendee.paymentProofUrl) ? 'Ver Pago' : 'Descargar'"
-                      [text]="true"
-                      size="small"
-                      severity="success"
-                      styleClass="!py-1 !px-2.5 !bg-google-green-light/20 hover:!bg-google-green-light/35 dark:!bg-google-green/10 dark:hover:!bg-google-green/20 !rounded-full !text-xs !font-bold transition-all"
-                      (onClick)="openProof(attendee.paymentProofUrl)"
-                    />
+                    <button
+                      type="button"
+                      (click)="openProof(attendee.paymentProofUrl)"
+                      class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-google-green bg-google-green-light/40 hover:bg-google-green-light/70 dark:bg-google-green/15 dark:hover:bg-google-green/25 rounded-full transition-all"
+                    >
+                      <span class="material-symbols-rounded text-sm">image</span>
+                      <span>{{
+                        isImageProof(attendee.paymentProofUrl) ? 'Ver Pago' : 'Descargar'
+                      }}</span>
+                    </button>
                   } @else if (attendee.ticketPrice > 0) {
                     <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-google-red bg-google-red/10 dark:bg-google-red/20 rounded-full font-bold"
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-google-red bg-google-red-light/40 dark:bg-google-red/20 rounded-full font-bold"
                     >
-                      <i class="pi pi-exclamation-circle text-[10px]"></i> Sin Pago
+                      <span class="material-symbols-rounded text-sm">error</span> Sin Pago
                     </span>
                   } @else {
                     <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-full font-bold"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-full font-bold"
                     >
                       Gratuito
                     </span>
@@ -413,10 +385,15 @@
                   [attr.colspan]="7 + customResponseKeys().length"
                   class="text-center p-12 text-text-secondary dark:text-neutral-400"
                 >
-                  <div class="flex flex-col items-center gap-2">
-                    <i class="pi pi-users text-4xl text-neutral-300"></i>
-                    <span class="font-bold text-base">No hay asistentes inscritos</span>
-                    <span class="text-xs">Nadie se ha registrado a este evento aún.</span>
+                  <div class="flex flex-col items-center gap-3">
+                    <span
+                      class="material-symbols-rounded text-5xl text-neutral-300 dark:text-neutral-600"
+                      >group</span
+                    >
+                    <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
+                      >No hay asistentes inscritos</span
+                    >
+                    <span class="text-xs max-w-sm">Nadie se ha registrado a este evento aún.</span>
                   </div>
                 </td>
               </tr>
