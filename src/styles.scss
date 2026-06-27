@@ -328,6 +328,118 @@ body {
   background-color: #1a1a1a !important;
 }
 
+/* ============================================================
+   Estilos Globales de Tablas (p-datatable) y Paginación
+   ============================================================ */
+
+.p-datatable {
+  border-radius: 1.5rem !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  background-color: var(--color-surface-paper) !important;
+
+  .p-datatable-table-container {
+    overflow-x: auto !important; // Scroll horizontal garantizado por defecto
+    scrollbar-width: thin;
+  }
+
+  .p-datatable-thead > tr > th {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 0.875rem 1rem !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+    white-space: nowrap !important;
+  }
+
+  .p-datatable-tbody > tr {
+    transition: background-color 0.15s ease !important;
+
+    &:hover {
+      background-color: rgba(66, 133, 244, 0.03) !important;
+    }
+
+    > td {
+      padding: 0.875rem 1rem !important;
+      font-size: 0.875rem !important;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+      color: var(--color-text-primary) !important;
+    }
+  }
+}
+
+[data-theme='dark'] .p-datatable {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  background-color: #171717 !important;
+
+  .p-datatable-thead > tr > th {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    color: #a3a3a3 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .p-datatable-tbody > tr {
+    &:hover {
+      background-color: rgba(66, 133, 244, 0.08) !important;
+    }
+
+    > td {
+      border-bottom-color: rgba(255, 255, 255, 0.04) !important;
+      color: #e5e5e5 !important;
+    }
+  }
+}
+
+/* Paginador Sobrio */
+.p-paginator {
+  background-color: transparent !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  padding: 0.75rem 1rem !important;
+  gap: 0.25rem !important;
+
+  .p-paginator-page,
+  .p-paginator-first,
+  .p-paginator-prev,
+  .p-paginator-next,
+  .p-paginator-last {
+    border-radius: 9999px !important;
+    min-width: 2.25rem !important;
+    height: 2.25rem !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    transition: all 0.15s ease !important;
+
+    &:hover {
+      background-color: rgba(66, 133, 244, 0.08) !important;
+      color: var(--gdg-google-blue) !important;
+    }
+
+    &.p-paginator-page-selected {
+      background-color: var(--gdg-google-blue) !important;
+      color: #ffffff !important;
+    }
+  }
+}
+
+[data-theme='dark'] .p-paginator {
+  border-top-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Botones Globale Estandarizados (p-button) */
+.p-button {
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease-in-out !important;
+
+  &.p-button-sm {
+    padding: 0.4rem 1rem !important;
+    font-size: 0.8125rem !important;
+  }
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-scrollbar-thumb) transparent;
