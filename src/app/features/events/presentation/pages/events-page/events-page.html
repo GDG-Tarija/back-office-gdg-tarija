@@ -32,9 +32,9 @@
         [paginator]="true"
         [rows]="10"
         [rowsPerPageOptions]="[10, 20, 50]"
-        [globalFilterFields]="['title', 'category', 'locationName', 'eventType']"
+        [globalFilterFields]="['id', 'title', 'category', 'locationName', 'eventType']"
         styleClass="p-datatable-striped"
-        [tableStyle]="{ 'min-width': '60rem' }"
+        [tableStyle]="{ 'min-width': '64rem' }"
       >
         <ng-template pTemplate="caption">
           <div
@@ -51,8 +51,8 @@
               <input
                 type="text"
                 pInputText
-                placeholder="Buscar evento..."
-                class="w-full pl-10 pr-4 text-sm !rounded-xl"
+                placeholder="Buscar por ID, nombre..."
+                class="w-full !pl-10 pr-4 text-sm !rounded-xl"
                 (input)="dt.filterGlobal($any($event.target).value, 'contains')"
               />
             </div>
@@ -61,7 +61,10 @@
 
         <ng-template pTemplate="header">
           <tr>
-            <th pSortableColumn="title" class="dark:text-neutral-300">
+            <th pSortableColumn="id" class="dark:text-neutral-300 w-36">
+              ID <p-sortIcon field="id"></p-sortIcon>
+            </th>
+            <th pSortableColumn="title" class="dark:text-neutral-300 min-w-[280px]">
               Evento <p-sortIcon field="title"></p-sortIcon>
             </th>
             <th pSortableColumn="eventType" class="dark:text-neutral-300">
@@ -86,14 +89,30 @@
         <ng-template pTemplate="body" let-event>
           <tr class="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
             <td>
-              <div class="flex flex-col">
-                <span class="font-bold text-text-primary dark:text-neutral-200">{{
-                  event.title
-                }}</span>
-                <span class="text-xs text-text-secondary dark:text-neutral-400 mt-0.5">{{
-                  event.category || 'Sin categoría'
-                }}</span>
+              <div class="flex items-center gap-1.5 font-mono text-xs">
+                <span
+                  class="bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg text-text-secondary dark:text-neutral-300 font-bold truncate max-w-[80px]"
+                  [title]="event.id"
+                >
+                  {{ event.id.substring(0, 8) }}...
+                </span>
+                <button
+                  type="button"
+                  (click)="copyToClipboard(event.id)"
+                  class="flex size-6 items-center justify-center rounded-full text-text-secondary hover:text-google-blue hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 transition-colors"
+                  [title]="copiedId() === event.id ? '¡Copiado!' : 'Copiar ID completo'"
+                  [attr.aria-label]="copiedId() === event.id ? '¡Copiado!' : 'Copiar ID completo'"
+                >
+                  <span class="material-symbols-rounded text-sm">
+                    {{ copiedId() === event.id ? 'check' : 'content_copy' }}
+                  </span>
+                </button>
               </div>
+            </td>
+            <td>
+              <span class="font-bold text-text-primary dark:text-neutral-200">{{
+                event.title
+              }}</span>
             </td>
             <td>
               <span
@@ -157,7 +176,7 @@
 
         <ng-template pTemplate="emptymessage">
           <tr>
-            <td colspan="7" class="text-center p-12 text-text-secondary dark:text-neutral-400">
+            <td colspan="8" class="text-center p-12 text-text-secondary dark:text-neutral-400">
               <div class="flex flex-col items-center gap-3">
                 <span
                   class="material-symbols-rounded text-5xl text-neutral-300 dark:text-neutral-600"

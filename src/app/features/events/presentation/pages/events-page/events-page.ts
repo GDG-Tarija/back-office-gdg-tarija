@@ -44,6 +44,7 @@ export class EventsPage implements OnInit {
   readonly events = signal<Event[]>([]);
   readonly loadingEvents = signal<boolean>(false);
   readonly errorMsg = signal<string | null>(null);
+  readonly copiedId = signal<string | null>(null);
 
   // Global search filters
   readonly globalFilter = signal<string>('');
@@ -63,6 +64,19 @@ export class EventsPage implements OnInit {
       this.errorMsg.set('No se pudieron cargar los eventos. Por favor intente más tarde.');
     } finally {
       this.loadingEvents.set(false);
+    }
+  }
+
+  copyToClipboard(id: string): void {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(id).then(() => {
+        this.copiedId.set(id);
+        setTimeout(() => {
+          if (this.copiedId() === id) {
+            this.copiedId.set(null);
+          }
+        }, 2000);
+      });
     }
   }
 

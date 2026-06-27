@@ -257,7 +257,8 @@ body {
 }
 
 .p-inputtext {
-  padding: 0 0.75rem !important;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
 
 [data-theme='dark'] .p-select,
