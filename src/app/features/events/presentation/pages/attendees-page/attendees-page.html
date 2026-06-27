@@ -312,7 +312,7 @@
                   </div>
                 </td>
                 <td>
-                  <div class="flex flex-col gap-0.5 text-xs">
+                  <div class="flex flex-col gap-0.5 text-xs sm:text-sm">
                     <a
                       [href]="'mailto:' + attendee.email"
                       class="inline-flex items-center gap-1.5 text-text-primary dark:text-neutral-200 font-medium hover:underline"
@@ -332,7 +332,7 @@
                       </a>
                     } @else {
                       <span
-                        class="inline-flex items-center gap-1.5 text-[10px] text-text-secondary dark:text-neutral-500 italic"
+                        class="inline-flex items-center gap-1.5 text-xs text-text-secondary dark:text-neutral-500 italic"
                       >
                         <span class="material-symbols-rounded text-xs text-text-secondary"
                           >call</span
@@ -344,10 +344,10 @@
                 </td>
                 <td>
                   <div class="flex flex-col">
-                    <span class="font-semibold text-text-primary dark:text-neutral-200 text-xs">
+                    <span class="font-semibold text-text-primary dark:text-neutral-200 text-sm">
                       {{ attendee.ticketName }}
                     </span>
-                    <span class="text-[10px] text-text-secondary dark:text-neutral-400 mt-0.5">
+                    <span class="text-xs text-text-secondary dark:text-neutral-400 mt-0.5">
                       {{
                         attendee.ticketPrice === 0
                           ? 'Gratuito'
@@ -360,14 +360,14 @@
                   <p-tag
                     [value]="translateRole(attendee.role)"
                     [severity]="getRoleSeverity(attendee.role)"
-                    styleClass="!text-[10px] !px-2 !py-0.5"
+                    styleClass="!text-xs !px-2.5 !py-0.5"
                   />
                 </td>
                 <td>
                   <p-tag
                     [value]="translateStatus(attendee.status)"
                     [severity]="getStatusSeverity(attendee.status)"
-                    styleClass="!text-[10px] !px-2 !py-0.5"
+                    styleClass="!text-xs !px-2.5 !py-0.5"
                   />
                 </td>
 
@@ -399,7 +399,7 @@
                   }
                 </td>
 
-                <td class="text-xs text-text-primary dark:text-neutral-200">
+                <td class="text-sm text-text-primary dark:text-neutral-200">
                   {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
                 </td>
 

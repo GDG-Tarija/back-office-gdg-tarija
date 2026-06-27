@@ -263,6 +263,16 @@ body {
 
 /* Iconos de tabla estandarizados a un solo tamaño equilibrado (16px) */
 .p-datatable {
+  .p-datatable-tbody > tr > td {
+    padding: 0.45rem 0.75rem !important;
+    font-size: 0.8125rem !important; /* 13px */
+  }
+
+  .p-datatable-thead > tr > th {
+    padding: 0.55rem 0.75rem !important;
+    font-size: 0.75rem !important; /* 12px uppercase */
+  }
+
   .material-symbols-rounded,
   button .material-symbols-rounded,
   .font-mono .material-symbols-rounded,
