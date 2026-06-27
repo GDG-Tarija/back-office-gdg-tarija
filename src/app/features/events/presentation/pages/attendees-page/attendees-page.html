@@ -133,8 +133,8 @@
           <input
             type="text"
             pInputText
-            placeholder="Buscar asistente por nombre, correo..."
-            class="w-full pl-10 pr-4 text-sm !rounded-xl"
+            placeholder="Buscar por ID, nombre, correo..."
+            class="w-full !pl-10 pr-4 text-sm !rounded-xl"
             (input)="dtAttendees.filterGlobal($any($event.target).value, 'contains')"
           />
         </div>
@@ -179,6 +179,8 @@
             [rows]="25"
             [rowsPerPageOptions]="[25, 50, 100]"
             [globalFilterFields]="[
+              'id',
+              'userId',
               'firstName',
               'lastName',
               'email',
@@ -188,11 +190,14 @@
               'ticketName',
             ]"
             styleClass="p-datatable-striped"
-            [tableStyle]="{ 'min-width': '90rem' }"
+            [tableStyle]="{ 'min-width': '95rem' }"
           >
             <ng-template pTemplate="header">
               <tr>
-                <th pSortableColumn="firstName" class="dark:text-neutral-300">
+                <th pSortableColumn="id" class="dark:text-neutral-300 w-44">
+                  ID de Registro <p-sortIcon field="id"></p-sortIcon>
+                </th>
+                <th pSortableColumn="firstName" class="dark:text-neutral-300 min-w-[240px]">
                   Asistente <p-sortIcon field="firstName"></p-sortIcon>
                 </th>
                 <th pSortableColumn="email" class="dark:text-neutral-300">
@@ -207,6 +212,7 @@
                 <th pSortableColumn="status" class="dark:text-neutral-300">
                   Estado <p-sortIcon field="status"></p-sortIcon>
                 </th>
+                <th class="dark:text-neutral-300 font-semibold">Comprobante</th>
                 <th pSortableColumn="registeredAt" class="dark:text-neutral-300">
                   Registro <p-sortIcon field="registeredAt"></p-sortIcon>
                 </th>
@@ -216,13 +222,34 @@
                     {{ formatResponseKey(key) }}
                   </th>
                 }
-
-                <th class="dark:text-neutral-300 font-semibold">Comprobante</th>
               </tr>
             </ng-template>
 
             <ng-template pTemplate="body" let-attendee>
               <tr class="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                <td>
+                  <div class="flex items-center gap-1.5 font-mono text-xs">
+                    <span
+                      class="bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg text-text-secondary dark:text-neutral-300 font-bold truncate max-w-[80px]"
+                      [title]="attendee.id"
+                    >
+                      {{ attendee.id.substring(0, 8) }}...
+                    </span>
+                    <button
+                      type="button"
+                      (click)="copyToClipboard(attendee.id)"
+                      class="flex size-6 items-center justify-center rounded-full text-text-secondary hover:text-google-blue hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 transition-colors"
+                      [title]="copiedId() === attendee.id ? '¡Copiado!' : 'Copiar ID completo'"
+                      [attr.aria-label]="
+                        copiedId() === attendee.id ? '¡Copiado!' : 'Copiar ID completo'
+                      "
+                    >
+                      <span class="material-symbols-rounded text-sm">
+                        {{ copiedId() === attendee.id ? 'check' : 'content_copy' }}
+                      </span>
+                    </button>
+                  </div>
+                </td>
                 <td>
                   <div class="flex items-center gap-3">
                     @if (attendee.avatarUrl) {
@@ -249,11 +276,39 @@
                         {{ attendee.firstName[0] }}{{ attendee.lastName[0] }}
                       </div>
                     }
-                    <span
-                      class="font-bold text-text-primary dark:text-neutral-200 text-xs sm:text-sm"
-                    >
-                      {{ attendee.firstName }} {{ attendee.lastName }}
-                    </span>
+                    <div class="flex flex-col min-w-0">
+                      <span
+                        class="font-bold text-text-primary dark:text-neutral-200 text-xs sm:text-sm"
+                      >
+                        {{ attendee.firstName }} {{ attendee.lastName }}
+                      </span>
+                      @if (attendee.userId) {
+                        <div class="flex items-center gap-1.5 mt-0.5 font-mono text-[11px]">
+                          <span class="text-text-secondary dark:text-neutral-400">ID:</span>
+                          <span
+                            class="bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded-md text-text-secondary dark:text-neutral-300 font-bold truncate max-w-[70px]"
+                            [title]="attendee.userId"
+                          >
+                            {{ attendee.userId.substring(0, 8) }}...
+                          </span>
+                          <button
+                            type="button"
+                            (click)="copyToClipboard(attendee.userId)"
+                            class="flex size-5 items-center justify-center rounded-full text-text-secondary hover:text-google-blue hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 transition-colors"
+                            [title]="
+                              copiedId() === attendee.userId ? '¡Copiado!' : 'Copiar User ID'
+                            "
+                            [attr.aria-label]="
+                              copiedId() === attendee.userId ? '¡Copiado!' : 'Copiar User ID'
+                            "
+                          >
+                            <span class="material-symbols-rounded text-xs">
+                              {{ copiedId() === attendee.userId ? 'check' : 'content_copy' }}
+                            </span>
+                          </button>
+                        </div>
+                      }
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -315,6 +370,35 @@
                     styleClass="!text-[10px] !px-2 !py-0.5"
                   />
                 </td>
+
+                <!-- Celda del comprobante de pago -->
+                <td>
+                  @if (attendee.paymentProofUrl) {
+                    <button
+                      type="button"
+                      (click)="openProof(attendee.paymentProofUrl)"
+                      class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-google-green bg-google-green-light/40 hover:bg-google-green-light/70 dark:bg-google-green/15 dark:hover:bg-google-green/25 rounded-full transition-all"
+                    >
+                      <span class="material-symbols-rounded text-xs">image</span>
+                      <span>{{
+                        isImageProof(attendee.paymentProofUrl) ? 'Ver Pago' : 'Descargar'
+                      }}</span>
+                    </button>
+                  } @else if (attendee.ticketPrice > 0) {
+                    <span
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-google-red bg-google-red-light/40 dark:bg-google-red/20 rounded-full font-bold"
+                    >
+                      <span class="material-symbols-rounded text-xs">error</span> Sin Pago
+                    </span>
+                  } @else {
+                    <span
+                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-full font-bold"
+                    >
+                      Gratuito
+                    </span>
+                  }
+                </td>
+
                 <td class="text-xs text-text-primary dark:text-neutral-200">
                   {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
                 </td>
@@ -328,53 +412,25 @@
                         target="_blank"
                         class="inline-flex items-center gap-1 px-3 py-1 text-xs text-google-blue bg-google-blue-light/30 hover:bg-google-blue-light/60 dark:bg-google-blue/15 dark:hover:bg-google-blue/25 rounded-full font-bold transition-all"
                       >
-                        <span class="material-symbols-rounded text-sm">open_in_new</span> Ver Enlace
+                        <span class="material-symbols-rounded text-xs">open_in_new</span> Ver Enlace
                       </a>
                     } @else if (isBooleanTrue(attendee.customResponses?.[key])) {
                       <span
                         class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-google-green-light/40 text-google-green dark:bg-google-green/15 dark:text-google-green"
                       >
-                        <span class="material-symbols-rounded text-sm">check</span> Sí
+                        <span class="material-symbols-rounded text-xs">check</span> Sí
                       </span>
                     } @else if (isBooleanFalse(attendee.customResponses?.[key])) {
                       <span
                         class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-text-secondary dark:bg-neutral-800 dark:text-neutral-400"
                       >
-                        <span class="material-symbols-rounded text-sm">close</span> No
+                        <span class="material-symbols-rounded text-xs">close</span> No
                       </span>
                     } @else {
                       {{ attendee.customResponses?.[key] || '-' }}
                     }
                   </td>
                 }
-
-                <!-- Celda del comprobante de pago -->
-                <td>
-                  @if (attendee.paymentProofUrl) {
-                    <button
-                      type="button"
-                      (click)="openProof(attendee.paymentProofUrl)"
-                      class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-google-green bg-google-green-light/40 hover:bg-google-green-light/70 dark:bg-google-green/15 dark:hover:bg-google-green/25 rounded-full transition-all"
-                    >
-                      <span class="material-symbols-rounded text-sm">image</span>
-                      <span>{{
-                        isImageProof(attendee.paymentProofUrl) ? 'Ver Pago' : 'Descargar'
-                      }}</span>
-                    </button>
-                  } @else if (attendee.ticketPrice > 0) {
-                    <span
-                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-google-red bg-google-red-light/40 dark:bg-google-red/20 rounded-full font-bold"
-                    >
-                      <span class="material-symbols-rounded text-sm">error</span> Sin Pago
-                    </span>
-                  } @else {
-                    <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-full font-bold"
-                    >
-                      Gratuito
-                    </span>
-                  }
-                </td>
               </tr>
             </ng-template>
 
@@ -382,7 +438,7 @@
             <ng-template pTemplate="emptymessage">
               <tr>
                 <td
-                  [attr.colspan]="7 + customResponseKeys().length"
+                  [attr.colspan]="8 + customResponseKeys().length"
                   class="text-center p-12 text-text-secondary dark:text-neutral-400"
                 >
                   <div class="flex flex-col items-center gap-3">

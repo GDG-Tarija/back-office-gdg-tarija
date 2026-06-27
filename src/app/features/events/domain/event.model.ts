@@ -34,6 +34,7 @@ export interface Event {
 
 export interface Attendee {
   id: string;
+  userId: string | null;
   email: string;
   firstName: string;
   lastName: string;

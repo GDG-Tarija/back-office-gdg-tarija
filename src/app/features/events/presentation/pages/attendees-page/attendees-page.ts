@@ -42,9 +42,23 @@ export class AttendeesPage implements OnInit {
   readonly attendees = signal<Attendee[]>([]);
   readonly loading = signal<boolean>(false);
   readonly errorMsg = signal<string | null>(null);
+  readonly copiedId = signal<string | null>(null);
 
   // Global table search filter
   readonly globalFilter = signal<string>('');
+
+  copyToClipboard(id: string): void {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(id).then(() => {
+        this.copiedId.set(id);
+        setTimeout(() => {
+          if (this.copiedId() === id) {
+            this.copiedId.set(null);
+          }
+        }, 2000);
+      });
+    }
+  }
 
   // Métricas computadas para las tarjetas del header
   readonly totalConfirmed = computed(

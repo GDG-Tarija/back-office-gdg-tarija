@@ -261,6 +261,29 @@ body {
   padding-right: 0.75rem;
 }
 
+/* Iconos de tabla estandarizados a un solo tamaño equilibrado (16px) */
+.p-datatable {
+  .material-symbols-rounded,
+  button .material-symbols-rounded,
+  .font-mono .material-symbols-rounded,
+  .inline-flex .material-symbols-rounded {
+    font-size: 1rem !important; /* 16px */
+    font-variation-settings:
+      'FILL' 1,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 20 !important;
+  }
+
+  .p-sortable-column-icon,
+  .p-sortable-column-icon svg,
+  .p-icon {
+    width: 0.8125rem !important;
+    height: 0.8125rem !important;
+    font-size: 0.8125rem !important;
+  }
+}
+
 [data-theme='dark'] .p-select,
 [data-theme='dark'] .p-inputtext,
 [data-theme='dark'] .p-datepicker-input {

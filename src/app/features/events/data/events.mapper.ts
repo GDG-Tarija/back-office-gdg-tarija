@@ -31,6 +31,7 @@ export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
 
   return {
     id: row.id,
+    userId: row.user_id || user?.id || null,
     email: user?.email || '',
     firstName: user?.first_name || '',
     lastName: user?.last_name || '',
