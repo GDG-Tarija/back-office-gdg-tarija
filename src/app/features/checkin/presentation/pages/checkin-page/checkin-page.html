@@ -235,30 +235,30 @@
           @if (pendingConfirmCode()) {
             <!-- Confirmación Pendiente -->
             <div
-              class="size-16 rounded-full bg-google-blue/10 dark:bg-google-blue/20 text-google-blue flex items-center justify-center text-2xl shadow-sm"
+              class="size-16 rounded-full bg-google-blue/10 dark:bg-google-blue/20 text-google-blue flex items-center justify-center shadow-sm"
             >
-              <i class="pi pi-user"></i>
+              <span class="material-symbols-rounded text-3xl">person</span>
             </div>
           } @else if (result.success && !result.alreadyScanned) {
             <!-- Registro Exitoso -->
             <div
-              class="size-16 rounded-full bg-google-green/10 dark:bg-google-green/20 text-google-green flex items-center justify-center text-2xl shadow-sm animate-scale-up"
+              class="size-16 rounded-full bg-google-green/10 dark:bg-google-green/20 text-google-green flex items-center justify-center shadow-sm animate-scale-up"
             >
-              <i class="pi pi-check"></i>
+              <span class="material-symbols-rounded text-3xl">check</span>
             </div>
           } @else if (result.alreadyScanned) {
             <!-- Ya Registrado -->
             <div
-              class="size-16 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center text-2xl shadow-sm"
+              class="size-16 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center shadow-sm"
             >
-              <i class="pi pi-exclamation-triangle"></i>
+              <span class="material-symbols-rounded text-3xl">warning</span>
             </div>
           } @else {
             <!-- Error / No Registrado -->
             <div
-              class="size-16 rounded-full bg-google-red/10 dark:bg-google-red/20 text-google-red flex items-center justify-center text-2xl shadow-sm"
+              class="size-16 rounded-full bg-google-red/10 dark:bg-google-red/20 text-google-red flex items-center justify-center shadow-sm"
             >
-              <i class="pi pi-times"></i>
+              <span class="material-symbols-rounded text-3xl">close</span>
             </div>
           }
         </div>
@@ -311,7 +311,7 @@
           <!-- Evento -->
           @if (selectedEvent(); as event) {
             <div class="flex items-start gap-2.5">
-              <i class="pi pi-bookmark text-neutral-400 mt-0.5"></i>
+              <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5">bookmark</span>
               <div class="min-w-0 flex-1">
                 <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
                   >Evento</span
@@ -328,7 +328,9 @@
           <div
             class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
           >
-            <i class="pi pi-calendar text-neutral-400 mt-0.5"></i>
+            <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5"
+              >calendar_month</span
+            >
             <div class="min-w-0 flex-1">
               <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
                 >Control / Propósito</span
@@ -344,7 +346,7 @@
             <div
               class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
             >
-              <i class="pi pi-envelope text-neutral-400 mt-0.5"></i>
+              <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5">mail</span>
               <div class="min-w-0 flex-1">
                 <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
                   >Correo</span
@@ -361,7 +363,7 @@
             <div
               class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
             >
-              <i class="pi pi-qrcode text-neutral-400 mt-0.5"></i>
+              <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5">qr_code</span>
               <div class="min-w-0 flex-1">
                 <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
                   >Código</span
@@ -379,7 +381,9 @@
             <div
               class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
             >
-              <i class="pi pi-clock text-neutral-400 mt-0.5"></i>
+              <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5 font-normal"
+                >schedule</span
+              >
               <div class="min-w-0 flex-1">
                 <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
                   {{ pendingConfirmCode() ? 'Hora de Escaneo' : 'Hora de Registro' }}
@@ -397,7 +401,9 @@
           <div
             class="mt-4 p-3 bg-google-blue/5 border border-google-blue/15 rounded-xl w-full flex items-start gap-2 text-left"
           >
-            <i class="pi pi-question-circle text-google-blue mt-0.5 shrink-0"></i>
+            <span class="material-symbols-rounded text-sm text-google-blue mt-0.5 shrink-0"
+              >help_outline</span
+            >
             <p class="text-xs text-google-blue font-semibold leading-relaxed">
               Verificación exitosa. Confirma a continuación para realizar el registro en la base de
               datos.
@@ -407,7 +413,9 @@
           <div
             class="mt-4 p-3 bg-google-red/5 border border-google-red/15 rounded-xl w-full flex items-start gap-2 text-left"
           >
-            <i class="pi pi-info-circle text-google-red mt-0.5 shrink-0"></i>
+            <span class="material-symbols-rounded text-sm text-google-red mt-0.5 shrink-0"
+              >info</span
+            >
             <p class="text-xs text-google-red dark:text-red-400 font-semibold leading-relaxed">
               {{ result.message }}
             </p>
@@ -416,7 +424,9 @@
           <div
             class="mt-4 p-3 bg-google-green/5 border border-google-green/15 rounded-xl w-full flex items-start gap-2 text-left"
           >
-            <i class="pi pi-check-circle text-google-green mt-0.5 shrink-0"></i>
+            <span class="material-symbols-rounded text-sm text-google-green mt-0.5 shrink-0"
+              >check_circle</span
+            >
             <p class="text-xs text-google-green font-semibold leading-relaxed font-medium">
               El check-in se ha registrado físicamente con éxito.
             </p>
@@ -428,27 +438,37 @@
           class="flex items-center gap-3 w-full pt-6 border-t border-neutral-100 dark:border-neutral-800/80 mt-6"
         >
           @if (pendingConfirmCode()) {
-            <p-button
-              label="Cancelar"
-              icon="pi pi-times-circle"
-              styleClass="flex-1 !bg-neutral-100 dark:!bg-neutral-800 !text-neutral-700 dark:!text-neutral-300 !py-3.5 !rounded-xl font-bold transition-all border-none hover:!bg-neutral-200 dark:hover:!bg-neutral-700"
-              (onClick)="cancelCheckin()"
+            <button
+              type="button"
+              (click)="cancelCheckin()"
               [disabled]="isProcessing()"
-            />
-            <p-button
-              label="Confirmar Registro"
-              icon="pi pi-check-circle"
-              styleClass="flex-1 !bg-google-green !text-white !py-3.5 !rounded-xl font-bold transition-all shadow-md border-none hover:!bg-google-green/90"
-              (onClick)="confirmCheckin()"
-              [loading]="isProcessing()"
-            />
+              class="flex-1 flex items-center justify-center gap-1.5 px-5 py-3 rounded-full font-bold text-sm bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50"
+            >
+              <span class="material-symbols-rounded text-lg">cancel</span>
+              <span>Cancelar</span>
+            </button>
+            <button
+              type="button"
+              (click)="confirmCheckin()"
+              [disabled]="isProcessing()"
+              class="flex-1 flex items-center justify-center gap-1.5 px-5 py-3 rounded-full font-bold text-sm bg-google-green text-white hover:bg-green-600 transition-colors shadow-md disabled:opacity-50"
+            >
+              @if (isProcessing()) {
+                <div class="gdg-spinner !size-4 !border-white !border-t-transparent"></div>
+              } @else {
+                <span class="material-symbols-rounded text-lg">check_circle</span>
+              }
+              <span>Confirmar Registro</span>
+            </button>
           } @else {
-            <p-button
-              label="Cerrar"
-              icon="pi pi-times"
-              styleClass="w-full !bg-neutral-100 dark:!bg-neutral-800 !text-neutral-700 dark:!text-neutral-300 !py-3.5 !rounded-xl font-bold transition-all border-none hover:!bg-neutral-200 dark:hover:!bg-neutral-700"
-              (onClick)="cancelCheckin()"
-            />
+            <button
+              type="button"
+              (click)="cancelCheckin()"
+              class="w-full flex items-center justify-center gap-1.5 px-5 py-3 rounded-full font-bold text-sm bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+            >
+              <span class="material-symbols-rounded text-lg">close</span>
+              <span>Cerrar</span>
+            </button>
           }
         </div>
       </div>
