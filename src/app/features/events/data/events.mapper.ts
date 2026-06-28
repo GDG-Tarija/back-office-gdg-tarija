@@ -28,6 +28,8 @@ export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
   const user = row.users;
   const ticket = row.ticket_types;
   const scanLogs = row.scan_logs;
+  const checkinLog = scanLogs?.find((log) => log.scan_type === 'checkin');
+  const refrigerioLog = scanLogs?.find((log) => log.scan_type === 'refrigerio');
 
   return {
     id: row.id,
@@ -44,6 +46,9 @@ export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
     registeredAt: row.created_at ? new Date(row.created_at) : null,
     customResponses: row.custom_responses,
     paymentProofUrl: row.payment_proof_url || null,
-    checkedIn: !!(scanLogs && scanLogs.some((log) => log.scan_type === 'checkin')),
+    checkedIn: !!checkinLog,
+    checkedInAt: checkinLog?.scanned_at ? new Date(checkinLog.scanned_at) : null,
+    refrigerioDelivered: !!refrigerioLog,
+    refrigerioDeliveredAt: refrigerioLog?.scanned_at ? new Date(refrigerioLog.scanned_at) : null,
   };
 }

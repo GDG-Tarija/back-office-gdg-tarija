@@ -148,4 +148,161 @@ export class EventsApi implements EventsRepository {
 
     return rows.map(toDomainAttendee);
   }
+
+  async getAttendeeSessions(
+    eventId: string,
+    registrationId: string,
+    userId: string | null,
+  ): Promise<import('../domain/event.model').AttendeeSessionItem[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = this.supabase as any;
+
+    // 1. Obtener todas las sesiones del evento
+    const { data: eventSessions, error: sessionsError } = await client
+      .from('sessions')
+      .select('id, title, speaker, start_time, end_time')
+      .eq('event_id', eventId)
+      .order('title', { ascending: true });
+
+    if (sessionsError) {
+      console.error('Error fetching event sessions:', sessionsError);
+      return [];
+    }
+
+    if (!eventSessions || eventSessions.length === 0) {
+      return [];
+    }
+
+    // 2. Obtener inscripciones de sesiones si se cuenta con userId
+    const userSessionMap = new Map<string, { asistio: boolean; checkedInAt: Date | null }>();
+
+    if (userId) {
+      const { data: userInscripciones } = await client
+        .from('inscripciones_sessions')
+        .select('session_id, asistio, checked_in_at')
+        .eq('usuario_id', userId);
+
+      if (userInscripciones) {
+        userInscripciones.forEach(
+          (item: { session_id: string; asistio: boolean; checked_in_at: string | null }) => {
+            userSessionMap.set(item.session_id, {
+              asistio: !!item.asistio,
+              checkedInAt: item.checked_in_at ? new Date(item.checked_in_at) : null,
+            });
+          },
+        );
+      }
+    }
+
+    // 3. Obtener scan_logs de sesiones para esta registración específica
+    const { data: scanLogs } = await client
+      .from('scan_logs')
+      .select('scan_type, scanned_at')
+      .eq('registration_id', registrationId);
+
+    const scanLogMap = new Map<string, Date>();
+    if (scanLogs) {
+      scanLogs.forEach((log: { scan_type: string; scanned_at: string | null }) => {
+        if (log.scan_type.startsWith('session_entry:')) {
+          const sIdPrefix = log.scan_type.replace('session_entry:', '');
+          scanLogMap.set(sIdPrefix, log.scanned_at ? new Date(log.scanned_at) : new Date());
+        }
+      });
+    }
+
+    // 4. Mapear la información combinada
+    return eventSessions.map(
+      (s: {
+        id: string;
+        title: string;
+        speaker: string | null;
+        start_time: string | null;
+        end_time: string | null;
+      }) => {
+        const userInsc = userSessionMap.get(s.id);
+        const scanTime =
+          scanLogMap.get(s.id) || scanLogMap.get(s.id.substring(0, 16)) || userInsc?.checkedInAt;
+        const isAttended = !!(userInsc?.asistio || scanTime);
+
+        return {
+          sessionId: s.id,
+          sessionTitle: s.title,
+          speaker: s.speaker,
+          startTime: s.start_time ? s.start_time.substring(0, 5) : null,
+          endTime: s.end_time ? s.end_time.substring(0, 5) : null,
+          asistio: isAttended,
+          checkedInAt: scanTime || null,
+        };
+      },
+    );
+  }
+
+  async registerManualCheckin(registrationId: string): Promise<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = this.supabase as any;
+    const { error } = await client.from('scan_logs').insert({
+      registration_id: registrationId,
+      scan_type: 'checkin',
+      scanned_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error('Error registering manual check-in:', error);
+      return false;
+    }
+    return true;
+  }
+
+  async registerManualRefrigerio(registrationId: string): Promise<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = this.supabase as any;
+    const { error } = await client.from('scan_logs').insert({
+      registration_id: registrationId,
+      scan_type: 'refrigerio',
+      scanned_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error('Error registering manual refrigerio:', error);
+      return false;
+    }
+    return true;
+  }
+
+  async registerManualSessionCheckin(
+    registrationId: string,
+    sessionId: string,
+    userId: string | null,
+  ): Promise<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = this.supabase as any;
+    const nowIso = new Date().toISOString();
+
+    const { error: scanError } = await client.from('scan_logs').insert({
+      registration_id: registrationId,
+      scan_type: `session_entry:${sessionId.substring(0, 16)}`,
+      scanned_at: nowIso,
+    });
+
+    if (scanError) {
+      console.error('Error registering manual session scan_log:', scanError);
+    }
+
+    if (userId) {
+      const { error: inscError } = await client
+        .from('inscripciones_sessions')
+        .update({
+          asistio: true,
+          checked_in_at: nowIso,
+        })
+        .eq('usuario_id', userId)
+        .eq('session_id', sessionId);
+
+      if (inscError) {
+        console.error('Error updating inscripciones_sessions:', inscError);
+      }
+    }
+
+    return true;
+  }
 }

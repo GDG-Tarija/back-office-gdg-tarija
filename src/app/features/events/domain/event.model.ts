@@ -32,6 +32,16 @@ export interface Event {
   extraInfo: Record<string, unknown> | null;
 }
 
+export interface AttendeeSessionItem {
+  sessionId: string;
+  sessionTitle: string;
+  speaker: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  asistio: boolean;
+  checkedInAt: Date | null;
+}
+
 export interface Attendee {
   id: string;
   userId: string | null;
@@ -48,4 +58,7 @@ export interface Attendee {
   customResponses: Record<string, unknown> | null;
   paymentProofUrl: string | null;
   checkedIn: boolean;
+  checkedInAt?: Date | null;
+  refrigerioDelivered?: boolean;
+  refrigerioDeliveredAt?: Date | null;
 }

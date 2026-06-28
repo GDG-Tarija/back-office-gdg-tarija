@@ -212,10 +212,14 @@
                 <th pSortableColumn="status" class="dark:text-neutral-300">
                   Estado <p-sortIcon field="status"></p-sortIcon>
                 </th>
+                <th pSortableColumn="checkedIn" class="dark:text-neutral-300">
+                  Check-in <p-sortIcon field="checkedIn"></p-sortIcon>
+                </th>
                 <th class="dark:text-neutral-300 font-semibold">Comprobante</th>
                 <th pSortableColumn="registeredAt" class="dark:text-neutral-300">
                   Registro <p-sortIcon field="registeredAt"></p-sortIcon>
                 </th>
+                <th class="dark:text-neutral-300 font-semibold text-center">Acciones</th>
 
                 @for (key of customResponseKeys(); track key) {
                   <th class="dark:text-neutral-300 font-semibold">
@@ -371,6 +375,23 @@
                   />
                 </td>
 
+                <!-- Celda del indicador de Check-in -->
+                <td>
+                  @if (attendee.checkedIn) {
+                    <span
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-google-green bg-google-green-light/40 dark:bg-google-green/20 rounded-full font-bold"
+                    >
+                      <span class="material-symbols-rounded text-xs">check_circle</span> Asistió
+                    </span>
+                  } @else {
+                    <span
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-full font-bold"
+                    >
+                      <span class="material-symbols-rounded text-xs">schedule</span> Pendiente
+                    </span>
+                  }
+                </td>
+
                 <!-- Celda del comprobante de pago -->
                 <td>
                   @if (attendee.paymentProofUrl) {
@@ -401,6 +422,18 @@
 
                 <td class="text-sm text-text-primary dark:text-neutral-200">
                   {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
+                </td>
+
+                <!-- Celda de botón de detalle/acciones -->
+                <td class="text-center">
+                  <button
+                    type="button"
+                    (click)="openAttendeeDetail(attendee)"
+                    class="inline-flex items-center justify-center size-8 rounded-full text-google-blue bg-google-blue-light/40 hover:bg-google-blue-light/70 dark:bg-google-blue/20 dark:hover:bg-google-blue/30 transition-all shadow-xs cursor-pointer"
+                    title="Ver historial, sesiones y asistencia"
+                  >
+                    <span class="material-symbols-rounded text-base">history</span>
+                  </button>
                 </td>
 
                 <!-- Celdas dinámicas de respuestas de formulario -->
@@ -438,7 +471,7 @@
             <ng-template pTemplate="emptymessage">
               <tr>
                 <td
-                  [attr.colspan]="8 + customResponseKeys().length"
+                  [attr.colspan]="10 + customResponseKeys().length"
                   class="text-center p-12 text-text-secondary dark:text-neutral-400"
                 >
                   <div class="flex flex-col items-center gap-3">
@@ -459,4 +492,236 @@
       </div>
     </div>
   }
+
+  <!-- Modal de Historial, Sesiones y Registro Manual -->
+  <p-dialog
+    header="Detalle de Asistencia y Sesiones"
+    [visible]="showDetailModal()"
+    (visibleChange)="showDetailModal.set($event)"
+    [modal]="true"
+    [style]="{ width: '90vw', 'max-width': '650px' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    @if (selectedAttendee(); as attendee) {
+      <div class="space-y-6 py-2">
+        <!-- Banner Resumen de Asistente -->
+        <div
+          class="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-850 border border-black/5 dark:border-white/5"
+        >
+          @if (attendee.avatarUrl) {
+            <img
+              [src]="attendee.avatarUrl"
+              alt="Avatar"
+              class="size-12 rounded-full object-cover shrink-0"
+              referrerpolicy="no-referrer"
+            />
+          } @else {
+            <div
+              class="flex size-12 items-center justify-center rounded-full text-base font-bold bg-google-blue-light text-google-blue dark:bg-google-blue/20 shrink-0"
+            >
+              {{ attendee.firstName[0] }}{{ attendee.lastName[0] }}
+            </div>
+          }
+          <div class="flex flex-col min-w-0 flex-1">
+            <span class="text-base font-extrabold text-text-primary dark:text-neutral-100 truncate">
+              {{ attendee.firstName }} {{ attendee.lastName }}
+            </span>
+            <span class="text-xs text-text-secondary dark:text-neutral-400 truncate">
+              {{ attendee.email }}
+            </span>
+            <div class="flex items-center gap-2 mt-1 flex-wrap">
+              <p-tag
+                [value]="translateRole(attendee.role)"
+                [severity]="getRoleSeverity(attendee.role)"
+                styleClass="!text-[10px] !px-2 !py-0.5"
+              />
+              <span
+                class="text-[11px] font-semibold text-text-secondary dark:text-neutral-400 bg-white dark:bg-neutral-800 px-2 py-0.5 rounded-md border border-black/5 dark:border-white/5"
+              >
+                {{ attendee.ticketName }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección 1: Asistencia General y Beneficios -->
+        <div class="space-y-3">
+          <h3
+            class="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-neutral-400 flex items-center gap-1.5"
+          >
+            <span class="material-symbols-rounded text-base text-google-blue">verified</span>
+            Asistencia General y Beneficios
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Registro General -->
+            <div
+              class="p-3.5 rounded-2xl border border-black/5 dark:border-white/5 flex items-center justify-between gap-3"
+              [class]="
+                attendee.checkedIn
+                  ? 'bg-google-green-light/20 dark:bg-google-green/10'
+                  : 'bg-neutral-50 dark:bg-neutral-900'
+              "
+            >
+              <div class="flex flex-col min-w-0">
+                <span class="text-xs font-bold text-text-primary dark:text-neutral-200"
+                  >Check-in Evento</span
+                >
+                @if (attendee.checkedIn) {
+                  <span
+                    class="text-[11px] text-google-green font-semibold flex items-center gap-1 mt-0.5"
+                  >
+                    <span class="material-symbols-rounded text-xs">check_circle</span>
+                    {{
+                      attendee.checkedInAt
+                        ? (attendee.checkedInAt | date: 'HH:mm dd/MM')
+                        : 'Registrado'
+                    }}
+                  </span>
+                } @else {
+                  <span class="text-[11px] text-text-secondary dark:text-neutral-400 mt-0.5"
+                    >Sin registrar</span
+                  >
+                }
+              </div>
+              @if (!attendee.checkedIn) {
+                <button
+                  type="button"
+                  (click)="doManualCheckin()"
+                  [disabled]="actionLoading()"
+                  class="px-3 py-1.5 text-xs font-semibold bg-google-green text-white hover:bg-green-600 rounded-full shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+                >
+                  Marcar Check-in
+                </button>
+              }
+            </div>
+
+            <!-- Entrega de Refrigerio -->
+            <div
+              class="p-3.5 rounded-2xl border border-black/5 dark:border-white/5 flex items-center justify-between gap-3"
+              [class]="
+                attendee.refrigerioDelivered
+                  ? 'bg-google-yellow-light/20 dark:bg-google-yellow/10'
+                  : 'bg-neutral-50 dark:bg-neutral-900'
+              "
+            >
+              <div class="flex flex-col min-w-0">
+                <span class="text-xs font-bold text-text-primary dark:text-neutral-200"
+                  >Entrega Refrigerio</span
+                >
+                @if (attendee.refrigerioDelivered) {
+                  <span
+                    class="text-[11px] text-google-yellow font-semibold flex items-center gap-1 mt-0.5"
+                  >
+                    <span class="material-symbols-rounded text-xs">restaurant</span>
+                    {{
+                      attendee.refrigerioDeliveredAt
+                        ? (attendee.refrigerioDeliveredAt | date: 'HH:mm dd/MM')
+                        : 'Entregado'
+                    }}
+                  </span>
+                } @else {
+                  <span class="text-[11px] text-text-secondary dark:text-neutral-400 mt-0.5"
+                    >No entregado</span
+                  >
+                }
+              </div>
+              @if (!attendee.refrigerioDelivered) {
+                <button
+                  type="button"
+                  (click)="doManualRefrigerio()"
+                  [disabled]="actionLoading()"
+                  class="px-3 py-1.5 text-xs font-semibold bg-google-yellow text-neutral-900 hover:bg-yellow-500 rounded-full shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+                >
+                  Entregar
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección 2: Inscripciones a Sesiones -->
+        <div class="space-y-3">
+          <h3
+            class="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-neutral-400 flex items-center gap-1.5"
+          >
+            <span class="material-symbols-rounded text-base text-google-blue">view_agenda</span>
+            Sesiones Inscritas (`inscripciones_sessions`)
+          </h3>
+
+          @if (loadingSessions()) {
+            <div class="flex items-center justify-center p-6 gap-2 text-xs text-text-secondary">
+              <div class="gdg-spinner !size-4"></div>
+              <span>Cargando sesiones del asistente...</span>
+            </div>
+          } @else if (attendeeSessions().length === 0) {
+            <div
+              class="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-900 text-center text-xs text-text-secondary"
+            >
+              No hay registros de sesiones asociadas a este participante en el evento.
+            </div>
+          } @else {
+            <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+              @for (session of attendeeSessions(); track session.sessionId) {
+                <div
+                  class="p-3 rounded-2xl border border-black/5 dark:border-white/5 flex items-center justify-between gap-3 bg-white dark:bg-neutral-900"
+                >
+                  <div class="flex flex-col min-w-0">
+                    <span
+                      class="text-xs font-bold text-text-primary dark:text-neutral-200 truncate"
+                    >
+                      {{ session.sessionTitle }}
+                    </span>
+                    <div
+                      class="flex items-center gap-2 text-[11px] text-text-secondary dark:text-neutral-400 mt-0.5 flex-wrap"
+                    >
+                      @if (session.speaker) {
+                        <span>Exp: {{ session.speaker }}</span>
+                      }
+                      @if (session.startTime) {
+                        <span>• {{ session.startTime }} hrs</span>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2 shrink-0">
+                    @if (session.asistio) {
+                      <span
+                        class="px-2.5 py-1 text-[11px] font-bold text-google-blue bg-google-blue-light/40 dark:bg-google-blue/20 rounded-full flex items-center gap-1"
+                      >
+                        <span class="material-symbols-rounded text-xs">check_circle</span>
+                        {{
+                          session.checkedInAt ? (session.checkedInAt | date: 'HH:mm') : 'Asistió'
+                        }}
+                      </span>
+                    } @else {
+                      <button
+                        type="button"
+                        (click)="doManualSessionCheckin(session)"
+                        [disabled]="actionLoading()"
+                        class="px-3 py-1 text-xs font-semibold text-google-blue border border-google-blue/30 hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 rounded-full transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        Marcar Ingreso
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <ng-template pTemplate="footer">
+      <button
+        type="button"
+        (click)="showDetailModal.set(false)"
+        class="px-5 py-2 text-xs font-bold text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full transition-colors cursor-pointer"
+      >
+        Cerrar
+      </button>
+    </ng-template>
+  </p-dialog>
 </div>

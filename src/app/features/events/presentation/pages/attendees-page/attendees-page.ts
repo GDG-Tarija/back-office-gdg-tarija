@@ -9,10 +9,11 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
+import { DialogModule } from 'primeng/dialog';
 
 import { EventsRepository } from '../../../domain/events.repository';
 import { EventsApi } from '../../../data/events.api';
-import { Event, Attendee } from '../../../domain/event.model';
+import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.model';
 
 @Component({
   selector: 'app-attendees-page',
@@ -26,6 +27,7 @@ import { Event, Attendee } from '../../../domain/event.model';
     InputIconModule,
     ProgressSpinnerModule,
     TagModule,
+    DialogModule,
     DatePipe,
     CurrencyPipe,
   ],
@@ -43,6 +45,13 @@ export class AttendeesPage implements OnInit {
   readonly loading = signal<boolean>(false);
   readonly errorMsg = signal<string | null>(null);
   readonly copiedId = signal<string | null>(null);
+
+  // Modal de detalle y asistencias
+  readonly selectedAttendee = signal<Attendee | null>(null);
+  readonly showDetailModal = signal<boolean>(false);
+  readonly attendeeSessions = signal<AttendeeSessionItem[]>([]);
+  readonly loadingSessions = signal<boolean>(false);
+  readonly actionLoading = signal<boolean>(false);
 
   // Global table search filter
   readonly globalFilter = signal<string>('');
@@ -495,6 +504,109 @@ export class AttendeesPage implements OnInit {
       XLSX.writeFile(workbook, `asistentes_${eventSlug}.xlsx`);
     } catch (err) {
       console.error('Error al exportar a Excel:', err);
+    }
+  }
+
+  async openAttendeeDetail(attendee: Attendee): Promise<void> {
+    this.selectedAttendee.set(attendee);
+    this.showDetailModal.set(true);
+    this.loadingSessions.set(true);
+
+    const eventId = this.event()?.id;
+    if (eventId) {
+      try {
+        const sessions = await this.eventsRepo.getAttendeeSessions(
+          eventId,
+          attendee.id,
+          attendee.userId,
+        );
+        this.attendeeSessions.set(sessions);
+      } catch (err) {
+        console.error('Error loading attendee sessions:', err);
+        this.attendeeSessions.set([]);
+      } finally {
+        this.loadingSessions.set(false);
+      }
+    }
+  }
+
+  async doManualCheckin(): Promise<void> {
+    const attendee = this.selectedAttendee();
+    if (!attendee) return;
+
+    this.actionLoading.set(true);
+    try {
+      const success = await this.eventsRepo.registerManualCheckin(attendee.id);
+      if (success) {
+        const updatedAttendee: Attendee = {
+          ...attendee,
+          checkedIn: true,
+          checkedInAt: new Date(),
+        };
+        this.selectedAttendee.set(updatedAttendee);
+
+        // Actualizar en la lista general
+        this.attendees.update((list) =>
+          list.map((a) => (a.id === attendee.id ? updatedAttendee : a)),
+        );
+      }
+    } catch (err) {
+      console.error('Error in manual checkin:', err);
+    } finally {
+      this.actionLoading.set(false);
+    }
+  }
+
+  async doManualRefrigerio(): Promise<void> {
+    const attendee = this.selectedAttendee();
+    if (!attendee) return;
+
+    this.actionLoading.set(true);
+    try {
+      const success = await this.eventsRepo.registerManualRefrigerio(attendee.id);
+      if (success) {
+        const updatedAttendee: Attendee = {
+          ...attendee,
+          refrigerioDelivered: true,
+          refrigerioDeliveredAt: new Date(),
+        };
+        this.selectedAttendee.set(updatedAttendee);
+
+        this.attendees.update((list) =>
+          list.map((a) => (a.id === attendee.id ? updatedAttendee : a)),
+        );
+      }
+    } catch (err) {
+      console.error('Error in manual refrigerio:', err);
+    } finally {
+      this.actionLoading.set(false);
+    }
+  }
+
+  async doManualSessionCheckin(session: AttendeeSessionItem): Promise<void> {
+    const attendee = this.selectedAttendee();
+    if (!attendee) return;
+
+    this.actionLoading.set(true);
+    try {
+      const success = await this.eventsRepo.registerManualSessionCheckin(
+        attendee.id,
+        session.sessionId,
+        attendee.userId,
+      );
+
+      if (success) {
+        const now = new Date();
+        this.attendeeSessions.update((list) =>
+          list.map((s) =>
+            s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
+          ),
+        );
+      }
+    } catch (err) {
+      console.error('Error in manual session checkin:', err);
+    } finally {
+      this.actionLoading.set(false);
     }
   }
 }
