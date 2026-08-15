@@ -204,3 +204,15 @@ Todas las columnas de las tablas de Supabase se generan de forma tipada. No modi
 2. **Crear migración SQL**: Escribir la migración en `supabase/migrations/` definiendo PKs, FKs con `on delete` explícito y habilitando RLS.
 3. **Generar tipos**: Correr `supabase gen types typescript --local > src/app/core/models/database.types.ts` para sincronizar tipos con TypeScript.
 4. **Actualizar el componente de navegación**: Ajustar el menú de navegación correspondiente en `src/app/` para que coincida con la ruta y los módulos definidos en este skill.
+
+---
+
+## 4. Seguridad (RLS)
+
+Todas las tablas de `public` tienen RLS habilitado desde `017`–`020_*.sql` (aplicadas 2026-08-15 en `eventos-gdg-tarija`, el repo dueño del schema). Antes de eso, `events`, `ticket_types`, `staff_whitelist`, `registrations` y `users` no tenían RLS y eran de escritura pública total.
+
+**Este repo (back-office) autoriza operadores vía `AUTH_WHITELIST`** (`src/app/core/config/auth-whitelist.ts`), un array hardcodeado de emails — completamente separado de `users.is_staff`. Las policies RLS del backend usan `public.is_staff()`, que reconoce staff por `users.is_staff = true` O por presencia en `staff_whitelist`.
+
+**Regla crítica**: cualquier email agregado a `AUTH_WHITELIST` en este repo DEBE estar también en `staff_whitelist` (tabla en Supabase), o ese operador podrá loguearse pero se le bloquearán todas las escrituras (`events`, `ticket_types`, `scan_logs`, etc.) y verá solo eventos publicados. Ya pasó una vez (`020_seed_staff_whitelist_backoffice.sql` en `eventos-gdg-tarija`) — al agregar un nuevo operador acá, sincronizar también `staff_whitelist` vía migración en ese repo.
+
+Antes de tocar cualquier query/policy relacionada con permisos, correr `get_advisors(type: "security")` (MCP Supabase) contra el proyecto real, no asumir por el código local.
