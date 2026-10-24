@@ -11,7 +11,9 @@
 --
 -- Para entrar al back-office local con tu cuenta de Google, después de tu primer
 -- login corre en el Studio local (http://127.0.0.1:54323 → SQL Editor):
---   insert into public.staff_whitelist (email, role) values ('tu-correo@gmail.com', 'SUPERADMIN');
+--   insert into public.staff_whitelist (email, role) values ('tu-correo@gmail.com', 'SUPERADMIN')
+--   on conflict (email) do update set role = excluded.role;
+-- Detalle en docs/entornos-supabase.md → "Darte acceso al back-office (local)".
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------

@@ -48,11 +48,51 @@ En `eventos-gdg-tarija`: `cp src/environments/environment.eg.ts src/environments
 Google falla. Los usuarios del seed (`*@gdg-tarija.test`, `*@ejemplo.test`) son solo datos: no pueden
 iniciar sesión.
 
-**Volverte SUPERADMIN en local:** entra una vez con tu Google y luego, en el Studio → SQL Editor:
+### Darte acceso al back-office (local)
+
+El back-office solo deja entrar a los correos que están en la tabla `staff_whitelist`. Tu base local
+es nueva, así que la primera vez vas a ver **"Tu correo no está autorizado para acceder a este
+panel"**. Es lo esperado:
+
+1. Entra una vez a http://localhost:4300 con **"Continuar con Google"**. Eso crea tu usuario en tu
+   base local, aunque te diga que no estás autorizado.
+2. Date el rol. Elige una opción:
+   - **Studio:** abre http://127.0.0.1:54323 → **SQL Editor**, pega esto con tu correo y dale *Run*:
+     ```sql
+     insert into public.staff_whitelist (email, role)
+     values ('tu-correo@gmail.com', 'SUPERADMIN')
+     on conflict (email) do update set role = excluded.role;
+     ```
+   - **Terminal:**
+     ```bash
+     docker exec supabase_db_gdg-tarija psql -U postgres -c \
+       "insert into public.staff_whitelist (email, role) values ('tu-correo@gmail.com', 'SUPERADMIN') on conflict (email) do update set role = excluded.role;"
+     ```
+3. Vuelve a entrar con Google. Ya ves el back-office completo con los datos de prueba.
+
+Roles disponibles:
+
+| Rol | Qué puede hacer |
+|---|---|
+| `SUPERADMIN` | Todo: crear y editar eventos, cupones, staff, check-in |
+| `STAFF` | Ver y hacer check-in solo en los eventos que tenga asignados |
+
+Para probar como `STAFF`, usa `'STAFF'` en el paso 2 y asígnate un evento del seed (por ejemplo, el
+DevFest de prueba):
 
 ```sql
-insert into public.staff_whitelist (email, role) values ('tu-correo@gmail.com', 'SUPERADMIN');
+insert into public.event_staff_assignments (event_id, staff_email)
+values ('00000000-0000-4000-8000-0000000000e2', 'tu-correo@gmail.com');
 ```
+
+Ten en cuenta:
+
+- Esto solo cambia **tu base local**. En producción los accesos los gestiona un organizador; nunca
+  corras estos `insert` contra prod.
+- `npm run db:reset` borra tu base local, y con ella tu acceso: vuelve a entrar con Google y repite el
+  paso 2.
+- Después del aviso de "no autorizado" verás en la consola varios `POST …/logout 403`. Es normal: la
+  app cierra la sesión más de una vez y las siguientes llamadas fallan porque ya estaba cerrada.
 
 **Apágalo cuando no lo uses:** `npm run db:stop` libera la memoria. Los datos locales se conservan
 hasta el próximo `db:reset`.

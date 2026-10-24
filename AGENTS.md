@@ -35,7 +35,7 @@ npm start                                     # http://localhost:4200
 ```
 
 - Studio local: http://127.0.0.1:54323. API: http://127.0.0.1:54321.
-- Primer login con Google → en el Studio: `insert into public.staff_whitelist (email, role) values ('tu-correo@gmail.com', 'SUPERADMIN');`
+- Acceso al back-office: la primera vez dirá "Tu correo no está autorizado". Entra una vez con Google y luego, en el Studio → SQL Editor: `insert into public.staff_whitelist (email, role) values ('tu-correo@gmail.com', 'SUPERADMIN') on conflict (email) do update set role = excluded.role;`. Detalle, roles (`SUPERADMIN` / `STAFF`) y opción por terminal en `docs/entornos-supabase.md` → "Darte acceso al back-office (local)".
 - Al terminar: `npm run db:stop`.
 - Detalle completo (flujo de migraciones, releases, backups): `docs/entornos-supabase.md`.
 

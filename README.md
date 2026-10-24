@@ -23,9 +23,12 @@ cp src/environments/environment.eg.ts src/environments/environment.ts
 npm start                                       # http://localhost:4300
 ```
 
-Studio local: http://127.0.0.1:54323. Para volverte SUPERADMIN, ver
-[docs/entornos-supabase.md](docs/entornos-supabase.md), que explica también el flujo de migraciones
-a producción y los backups.
+Studio local: http://127.0.0.1:54323.
+
+**Acceso al back-office:** la primera vez vas a ver "Tu correo no está autorizado". Entra una vez con
+Google y date el rol `SUPERADMIN` en tu base local siguiendo
+[docs/entornos-supabase.md → Darte acceso al back-office](docs/entornos-supabase.md#darte-acceso-al-back-office-local).
+Esa guía explica también el flujo de migraciones a producción y los backups.
 
 `scripts/set-env.js` (lo ejecutan `npm start`, `npm run build` y `npm run vercel-build`) sobrescribe
 `environment.ts` y `environment.prod.ts` si existen las variables de entorno `SUPABASE_URL` y
