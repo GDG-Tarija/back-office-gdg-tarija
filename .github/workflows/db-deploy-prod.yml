@@ -1,0 +1,36 @@
+name: DB deploy (prod)
+
+# Aplica las migraciones nuevas a PRODUCCIÓN al mergear a main.
+# El environment "db-production" exige aprobación manual de un organizador antes
+# de que este job arranque: así se decide cuándo sale cada migración (por ejemplo,
+# después de desplegar el frontend que la necesita).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+  workflow_dispatch:
+
+concurrency:
+  group: db-deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: db-production
+    env:
+      # Connection string del session pooler de prod (secret del environment "db-production").
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+
+      - name: Migraciones pendientes
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+
+      - name: Aplicar migraciones
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
