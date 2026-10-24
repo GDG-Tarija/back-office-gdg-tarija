@@ -6,6 +6,41 @@ Este es el proyecto **Back Office GDG Tarija**, una aplicación administrativa t
 
 ---
 
+## Ramas (obligatorio)
+
+- **`main` no se toca.** Nunca hagas commit, push, merge ni rebase directo a `main`. `main` es producción: solo recibe PRs de release `dev → main`, que mergea un organizador.
+- Todo trabajo va en una rama creada desde `dev` (`feat/…`, `fix/…`, `chore/…`) y entra por PR **contra `dev`**.
+- Antes de empezar: `git checkout dev && git pull`, y luego `npm run db:migrate` para tener la base local al día.
+
+---
+
+## Levantar el proyecto en local
+
+Requisitos: Docker corriendo (≥ 4 GB de RAM), Node 22, y `back-office-gdg-tarija` y `eventos-gdg-tarija` clonados en la misma carpeta, en la rama `dev`.
+
+```bash
+# 1. Base de datos local (desde este repo)
+npm install                                   # incluye el CLI de Supabase (versión fijada)
+cp supabase/.env.example supabase/.env        # client ID + secret de Google: pedirlos a un organizador
+npm run db:start                              # Supabase local: migraciones + seed ficticio
+
+# 2. Back-office
+cp src/environments/environment.eg.ts src/environments/environment.ts
+npm start                                     # http://localhost:4300
+
+# 3. Eventos (en ../eventos-gdg-tarija)
+npm install
+cp src/environments/environment.eg.ts src/environments/environment.ts
+npm start                                     # http://localhost:4200
+```
+
+- Studio local: http://127.0.0.1:54323. API: http://127.0.0.1:54321.
+- Primer login con Google → en el Studio: `insert into public.staff_whitelist (email, role) values ('tu-correo@gmail.com', 'SUPERADMIN');`
+- Al terminar: `npm run db:stop`.
+- Detalle completo (flujo de migraciones, releases, backups): `docs/entornos-supabase.md`.
+
+---
+
 ## Comandos del proyecto
 
 ```bash
@@ -20,7 +55,18 @@ npm run lint:fix             # ESLint con autofix
 npm run format               # Prettier sobre src/
 npm run format:check         # valida formato
 npm test                     # Vitest / Angular unit tests
+
+# Supabase local (requiere Docker)
+npm run db:start             # levanta Supabase local con migraciones + seed
+npm run db:stop              # lo apaga
+npm run db:status            # URLs y keys locales
+npm run db:reset             # recrea la base local desde cero (migraciones + seed)
+npm run db:migrate           # aplica solo las migraciones nuevas, conserva los datos locales
+npm run db:new -- <nombre>   # nueva migración en supabase/migrations/
+npx supabase gen types typescript --local   # tipos para src/app/core/supabase/supabase.client.ts
 ```
+
+> `npm start` y `npm run build` ejecutan `scripts/set-env.js` antes de `ng`. Para compilar sin tocar `environment*.ts` usar `npx ng build`.
 
 > Si agregas un comando nuevo en `package.json`, documentalo aquí.
 
@@ -71,6 +117,21 @@ npm test                     # Vitest / Angular unit tests
 19. **Agregar tests para lógica nueva no trivial.** Especialmente mappers, casos de uso y servicios.
 20. **Para CRUDs, cubrir al menos happy-path de data/domain cuando exista lógica propia.**
 21. **Antes de cerrar una tarea, correr la verificación más cercana:** `npm run lint`, `npm test` o `npm run build` según impacto.
+
+---
+
+## Base de datos y migraciones
+
+- Este repo es **dueño de `supabase/`** (eventos-gdg-tarija ya no guarda copia). Toda migración nueva se crea con `npm run db:new -- <nombre>` y se prueba con `npm run db:reset`.
+- **Entornos** (ver `docs/entornos-supabase.md`): solo local (Docker, datos ficticios de `supabase/seed.sql`) y prod (se actualiza con el release `dev → main`, con aprobación manual). La rama `dev` no tiene base en la nube. `src/environments/environment.ts` apunta a local, **nunca a prod**.
+- **La base va primero:** al mergear el release `dev → main`, Vercel publica el código y la migración espera aprobación. En el release, back-office va primero (y se aprueba la base enseguida) y eventos después. Si un cambio quita o restringe algo (borrar columna, policy más estricta), va en dos releases: primero el código que deja de usarlo, luego la migración.
+- **Nunca** cambiar el schema de prod a mano: nada de SQL Editor, `apply_migration`/`execute_sql` del MCP ni `supabase db push` desde una máquina local. Solo vía los workflows `db-deploy-*`.
+- Fuente de verdad del schema: `supabase/migrations/20261024032707_baseline.sql` + posteriores. Si alguien mergeó a `dev` una migración más nueva que la tuya, renombra la tuya con un timestamp nuevo antes del PR.
+- Si agregas una tabla, agrega datos ficticios en `supabase/seed.sql`.
+- Esquema, RLS y funciones documentados en `.claude/skills/database/SKILL.md` (gemelo en `.opencode/skills/`): leerlo antes de usar una tabla o columna y actualizarlo con cada migración.
+- Rol del operador: `get_my_role()` vía `staff_whitelist` (SUPERADMIN escribe; STAFF lee y hace check-in en eventos asignados). Ya no existe `AUTH_WHITELIST` ni `is_staff()` en el back-office.
+- `20261024155150_close_coupon_read_leak.sql` solo se aprueba en prod tras desplegar el checkout público con `rpc validate_coupon`.
+- Guía de usuario del módulo de eventos: `docs/gestion-de-eventos.md`.
 
 ---
 

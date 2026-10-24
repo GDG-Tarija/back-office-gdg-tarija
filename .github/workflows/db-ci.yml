@@ -1,0 +1,32 @@
+name: DB CI
+
+# Re-aplica todas las migraciones + seed sobre un Postgres vacío para detectar
+# migraciones rotas antes de que lleguen a producción. No usa secrets.
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+  workflow_dispatch:
+
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    env:
+      # config.toml los lee con env(); en CI basta con valores de relleno.
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET: ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+
+      - name: Levantar Postgres local
+        run: supabase db start
+
+      - name: Aplicar migraciones y seed desde cero
+        run: supabase db reset --local
+
+      - name: Lint del schema
+        run: supabase db lint --local --level error --fail-on error
