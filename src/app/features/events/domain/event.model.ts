@@ -1,3 +1,5 @@
+import { FormField } from './form-field.model';
+
 export interface CredentialPosition {
   nameX: number;
   nameY: number;
@@ -30,6 +32,32 @@ export interface Event {
   addressLink: string | null;
   category: string | null;
   extraInfo: Record<string, unknown> | null;
+  /** Formulario de registro (extra_info.form_fields). */
+  formFields: FormField[];
+}
+
+export type LocationType = 'PHYSICAL' | 'VIRTUAL' | 'HYBRID';
+export type EventType = 'MEETUP' | 'CONFERENCE' | 'HACKATHON' | 'WORKSHOP';
+
+export const EVENT_TYPES: readonly EventType[] = ['MEETUP', 'CONFERENCE', 'HACKATHON', 'WORKSHOP'];
+export const LOCATION_TYPES: readonly LocationType[] = ['PHYSICAL', 'VIRTUAL', 'HYBRID'];
+
+/** Datos editables de un evento (crear/actualizar). */
+export interface EventInput {
+  title: string;
+  slug: string;
+  eventType: string;
+  category: string | null;
+  locationType: string | null;
+  locationName: string | null;
+  addressLink: string | null;
+  dateStart: Date | null;
+  dateEnd: Date | null;
+  capacity: number | null;
+  description: string | null;
+  imageUrl: string | null;
+  bannerUrl: string | null;
+  formFields: FormField[];
 }
 
 export interface AttendeeSessionItem {
