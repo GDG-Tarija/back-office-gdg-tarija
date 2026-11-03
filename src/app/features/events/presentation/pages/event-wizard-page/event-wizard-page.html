@@ -1,0 +1,158 @@
+<div class="gdg-page p-6 sm:p-8 space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-3xl font-extrabold tracking-tight text-text-primary dark:text-neutral-100">
+        Nuevo evento
+      </h1>
+      <p class="mt-1 text-sm text-text-secondary dark:text-neutral-400">
+        El evento se guarda como borrador; puedes retomarlo desde la lista de eventos.
+      </p>
+    </div>
+    <a
+      routerLink="/events"
+      class="inline-flex items-center gap-1.5 self-start rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+    >
+      <span class="material-symbols-rounded text-base" aria-hidden="true">arrow_back</span>
+      Volver a eventos
+    </a>
+  </div>
+
+  <!-- Stepper -->
+  <nav aria-label="Pasos para crear el evento">
+    <ol class="flex gap-2 overflow-x-auto pb-1">
+      @for (label of steps; track label; let i = $index) {
+        <li class="shrink-0">
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            [class]="
+              step() === i
+                ? 'border-google-blue bg-google-blue-light/60 text-google-blue dark:bg-google-blue/20'
+                : 'border-black/5 bg-white text-text-secondary hover:bg-neutral-100 dark:border-white/5 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+            "
+            [disabled]="!canVisit(i)"
+            [attr.aria-current]="step() === i ? 'step' : null"
+            (click)="goTo(i)"
+          >
+            <span
+              class="flex size-6 items-center justify-center rounded-full bg-black/5 text-xs dark:bg-white/10"
+              >{{ i + 1 }}</span
+            >
+            <span>{{ label }}</span>
+          </button>
+        </li>
+      }
+    </ol>
+  </nav>
+
+  @if (error(); as err) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-red-light/30 border border-google-red/20 p-4 text-sm font-medium text-google-red"
+      role="alert"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">error</span>
+      <span>{{ err }}</span>
+    </div>
+  }
+
+  <div
+    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-xs"
+  >
+    @switch (step()) {
+      @case (0) {
+        <app-event-basics-form
+          [event]="draft()"
+          [saving]="saving()"
+          [submitLabel]="draft() ? 'Guardar y continuar' : 'Crear borrador y continuar'"
+          (save)="saveBasics($event)"
+        />
+      }
+      @case (1) {
+        @if (draft(); as d) {
+          <app-form-fields-builder [event]="d" (fieldsChange)="onFormFields($event)" />
+        }
+      }
+      @case (2) {
+        @if (draft(); as d) {
+          <app-ticket-types-editor
+            [eventId]="d.id"
+            [eventCapacity]="d.capacity"
+            (ticketsChange)="tickets.set($event)"
+          />
+        }
+      }
+      @case (3) {
+        @if (draft(); as d) {
+          <app-tracks-sessions-editor
+            [eventId]="d.id"
+            [event]="d"
+            (sessionsChange)="sessions.set($event)"
+          />
+        }
+      }
+      @case (4) {
+        @if (draft(); as d) {
+          <div class="flex flex-col gap-8">
+            <app-coupons-editor [eventId]="d.id" />
+            <app-staff-assignment-editor [eventId]="d.id" />
+          </div>
+        }
+      }
+      @case (5) {
+        @if (draft(); as d) {
+          <div class="flex flex-col gap-5">
+            <div>
+              <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">
+                {{ d.title }}
+              </h2>
+              <p class="text-sm text-text-secondary dark:text-neutral-400">
+                /e/{{ d.slug }} · {{ d.capacity }} personas · Borrador
+              </p>
+            </div>
+            @if (publishResult(); as result) {
+              <app-publish-checklist [result]="result" />
+              <div class="flex justify-end">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-full bg-google-green px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="result.errors.length > 0 || saving()"
+                  (click)="publish()"
+                >
+                  <span class="material-symbols-rounded text-base" aria-hidden="true">publish</span>
+                  Publicar evento
+                </button>
+              </div>
+            }
+          </div>
+        }
+      }
+    }
+
+    @if (step() > 0) {
+      <div class="mt-6 flex justify-between border-t border-black/5 pt-4 dark:border-white/5">
+        <button
+          type="button"
+          class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+          (click)="prev()"
+        >
+          Anterior
+        </button>
+        @if (step() < 5) {
+          <button
+            type="button"
+            class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            (click)="next()"
+          >
+            Siguiente
+          </button>
+        } @else if (draft(); as d) {
+          <a
+            [routerLink]="['/events', d.id, 'edit']"
+            class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            >Ir a gestionar el evento</a
+          >
+        }
+      </div>
+    }
+  </div>
+</div>
