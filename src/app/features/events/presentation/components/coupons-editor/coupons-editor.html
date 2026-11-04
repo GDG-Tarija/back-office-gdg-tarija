@@ -1,0 +1,274 @@
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">Cupones</h2>
+      <p class="text-sm text-text-secondary dark:text-neutral-400">
+        Códigos que dan acceso con un rol especial (speaker, sponsor, staff) a la inscripción.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="inline-flex items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+      (click)="openCreate()"
+    >
+      <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+      Nuevo cupón
+    </button>
+  </div>
+
+  <div
+    class="flex items-center gap-3 rounded-2xl bg-google-yellow-light/40 p-3 text-sm font-medium text-text-primary dark:text-neutral-200"
+    role="note"
+  >
+    <span class="material-symbols-rounded text-xl text-google-yellow" aria-hidden="true">lock</span>
+    <span
+      >Los códigos son sensibles: quien los conozca puede inscribirse con ese rol. Compártelos solo
+      con las personas indicadas.</span
+    >
+  </div>
+
+  @if (notice(); as msg) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
+      role="status"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
+      <span>{{ msg }}</span>
+    </div>
+  }
+
+  @if (actionError(); as err) {
+    <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center p-8" role="status" aria-label="Cargando cupones">
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+        >progress_activity</span
+      >
+    </div>
+  } @else if (loadError(); as err) {
+    <div
+      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-google-red"
+      role="alert"
+    >
+      <span>{{ err }}</span>
+      <button type="button" class="underline" (click)="load()">Reintentar</button>
+    </div>
+  } @else if (coupons().length === 0) {
+    <div
+      class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 p-10 text-center dark:border-white/10"
+    >
+      <span
+        class="material-symbols-rounded text-4xl text-neutral-300 dark:text-neutral-600"
+        aria-hidden="true"
+        >sell</span
+      >
+      <p class="text-base font-bold text-text-primary dark:text-neutral-200">Aún no hay cupones</p>
+      <p class="text-sm text-text-secondary dark:text-neutral-400">
+        Los cupones son opcionales. Crea uno para dar acceso especial a speakers, sponsors o staff.
+      </p>
+    </div>
+  } @else {
+    <ul class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      @for (c of coupons(); track c.id) {
+        <li
+          class="flex items-start gap-3 rounded-2xl border border-black/5 p-4 dark:border-white/5"
+        >
+          <div class="min-w-0 flex-1">
+            <p
+              class="truncate font-mono text-base font-bold tracking-wider text-text-primary dark:text-neutral-100"
+            >
+              {{ c.code }}
+            </p>
+            <p class="text-sm text-text-secondary dark:text-neutral-400">
+              {{ roleLabels[c.role] }} · {{ c.usedCount }} de {{ c.maxUses }} usos ·
+              @if (remaining(c) === 0) {
+                <span class="font-semibold text-google-red">agotado</span>
+              } @else {
+                {{ remaining(c) }} restante(s)
+              }
+            </p>
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              class="flex size-9 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              [attr.aria-label]="'Copiar código ' + c.code"
+              (click)="copy(c)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">content_copy</span>
+            </button>
+            <button
+              type="button"
+              class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+              [attr.aria-label]="'Editar cupón ' + c.code"
+              (click)="openEdit(c)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">edit</span>
+            </button>
+            <span [pTooltip]="deleteBlockReason(c) ?? ''" [tooltipDisabled]="!deleteBlockReason(c)">
+              <button
+                type="button"
+                class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                [attr.aria-label]="
+                  deleteBlockReason(c)
+                    ? 'Eliminar cupón ' + c.code + ' (no disponible: ya fue usado)'
+                    : 'Eliminar cupón ' + c.code
+                "
+                [disabled]="!!deleteBlockReason(c)"
+                (click)="askDelete(c)"
+              >
+                <span class="material-symbols-rounded text-xl" aria-hidden="true">delete</span>
+              </button>
+            </span>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+@if (dialogOpen()) {
+  <app-dialog-frame
+    [title]="editing() ? 'Editar cupón' : 'Nuevo cupón'"
+    icon="sell"
+    initialSize="md"
+    (closeDialog)="closeDialog()"
+  >
+    <form class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
+      <div class="flex flex-col gap-1.5">
+        <label for="cp-code" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+          >Código *</label
+        >
+        <div class="flex gap-2">
+          <input
+            id="cp-code"
+            type="text"
+            pInputText
+            class="w-full !rounded-xl font-mono uppercase"
+            autocomplete="off"
+            [formField]="f.code"
+            [attr.aria-invalid]="!!fieldError('code')"
+            (blur)="normalizeCode()"
+          />
+          <button
+            type="button"
+            class="shrink-0 rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+            (click)="generateCode()"
+          >
+            Generar
+          </button>
+        </div>
+        <small class="text-text-secondary dark:text-neutral-400"
+          >3 a 50 caracteres, sin espacios. Se guarda en MAYÚSCULAS.</small
+        >
+        @if (fieldError('code'); as err) {
+          <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+        }
+      </div>
+
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div class="flex flex-col gap-1.5">
+          <label for="cp-role" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Rol *</label
+          >
+          <select
+            id="cp-role"
+            class="w-full rounded-xl border border-black/20 bg-transparent px-3 py-2 text-sm dark:border-white/20"
+            [formField]="f.role"
+          >
+            @for (r of roles; track r) {
+              <option [value]="r">{{ roleLabels[r] }}</option>
+            }
+          </select>
+          @if (fieldError('role'); as err) {
+            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+          }
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label for="cp-uses" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Usos máximos *</label
+          >
+          <input
+            id="cp-uses"
+            type="text"
+            inputmode="numeric"
+            pInputText
+            class="w-full !rounded-xl"
+            [formField]="f.maxUses"
+            [attr.aria-invalid]="!!fieldError('maxUses')"
+          />
+          @if (editing(); as e) {
+            @if (e.usedCount > 0) {
+              <small class="text-text-secondary dark:text-neutral-400"
+                >Mínimo {{ e.usedCount }} (usos actuales).</small
+              >
+            }
+          }
+          @if (fieldError('maxUses'); as err) {
+            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+          }
+        </div>
+      </div>
+
+      @if (dialogError(); as err) {
+        <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+      }
+    </form>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+        (click)="closeDialog()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="saving() || (submitted() && !canSave())"
+        (click)="save()"
+      >
+        {{ saving() ? 'Guardando...' : 'Guardar cupón' }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}
+
+@if (toDelete(); as c) {
+  <app-dialog-frame
+    title="Eliminar cupón"
+    icon="delete"
+    initialSize="sm"
+    (closeDialog)="cancelDelete()"
+  >
+    <div class="flex flex-col gap-3 text-sm text-text-primary dark:text-neutral-200">
+      <p>
+        ¿Eliminar el cupón <strong class="font-mono">{{ c.code }}</strong
+        >? Esta acción es permanente y el código dejará de funcionar.
+      </p>
+      @if (deleteError(); as err) {
+        <p class="font-medium text-google-red" role="alert">{{ err }}</p>
+      }
+    </div>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+        (click)="cancelDelete()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="rounded-full bg-google-red px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="deleting()"
+        (click)="confirmDelete()"
+      >
+        {{ deleting() ? 'Eliminando...' : 'Eliminar' }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}

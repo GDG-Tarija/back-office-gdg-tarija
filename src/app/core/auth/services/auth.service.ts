@@ -2,8 +2,8 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PostgrestError } from '@supabase/supabase-js';
 
-import { AUTH_WHITELIST } from '../../config/auth-whitelist';
 import { Profile } from '../../models/profile.model';
+import { BackofficeRole } from '../../models/role.model';
 import { SUPABASE } from '../../supabase/supabase.client';
 
 type AuthSession = {
@@ -21,6 +21,7 @@ interface UpsertUserProfileArgs {
 interface AuthRpc {
   (fn: 'get_my_profile'): RpcResult<Profile[]>;
   (fn: 'upsert_user_profile', args: UpsertUserProfileArgs): RpcResult<Profile[]>;
+  (fn: 'get_my_role'): RpcResult<BackofficeRole | null>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -33,12 +34,13 @@ export class AuthService {
   private lastSyncAt = 0;
 
   readonly user = signal<Profile | null>(null);
+  readonly role = signal<BackofficeRole | null>(null);
   readonly loading = signal(true);
   readonly authError = signal<string | null>(null);
 
-  isWhitelisted(email?: string): boolean {
-    if (!email) return false;
-    return AUTH_WHITELIST.map((e) => e.toLowerCase()).includes(email.toLowerCase());
+  async resolveRole(): Promise<BackofficeRole | null> {
+    const { data } = await this.rpc('get_my_role');
+    return data ?? null;
   }
 
   async signOutWithError(message: string): Promise<void> {
@@ -60,6 +62,7 @@ export class AuthService {
 
       if (event === 'SIGNED_OUT') {
         this.user.set(null);
+        this.role.set(null);
         this.loading.set(false);
       }
     });
@@ -134,10 +137,12 @@ export class AuthService {
       return;
     }
 
-    if (!this.isWhitelisted(partial.email)) {
+    const role = await this.resolveRole();
+    if (!role) {
       await this.signOutWithError('Tu correo no está autorizado para acceder a este panel.');
       return;
     }
+    this.role.set(role);
 
     try {
       const { data, error } = await this.rpc('get_my_profile');
@@ -162,10 +167,12 @@ export class AuthService {
       return;
     }
 
-    if (!this.isWhitelisted(partial.email)) {
+    const role = await this.resolveRole();
+    if (!role) {
       await this.signOutWithError('Tu correo no está autorizado para acceder a este panel.');
       return;
     }
+    this.role.set(role);
 
     this.loading.set(true);
 

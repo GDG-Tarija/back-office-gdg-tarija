@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { ButtonModule } from 'primeng/button';
@@ -19,6 +19,13 @@ export class AdminLayout {
 
   readonly logo = LOGOS.horizontal;
   readonly isSidebarOpen = signal(false);
+
+  readonly roleLabel = computed(() => {
+    const role = this.auth.role();
+    if (role === 'SUPERADMIN') return 'Super Admin';
+    if (role === 'STAFF') return 'Staff';
+    return null;
+  });
 
   toggleSidebar(): void {
     this.isSidebarOpen.set(!this.isSidebarOpen());

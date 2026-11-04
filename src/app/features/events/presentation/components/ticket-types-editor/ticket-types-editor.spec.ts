@@ -1,0 +1,132 @@
+import { TestBed } from '@angular/core/testing';
+
+import { DomainError } from '../../../domain/domain-error';
+import { AssetsRepository } from '../../../domain/assets.repository';
+import { TicketType } from '../../../domain/ticket-type.model';
+import { TicketTypesRepository } from '../../../domain/ticket-types.repository';
+import { TicketTypesEditor } from './ticket-types-editor';
+
+const base: TicketType = {
+  id: 't1',
+  eventId: 'e1',
+  name: 'General',
+  description: null,
+  price: 25,
+  ticketCapacity: 10,
+  imageUrl: null,
+  paymentQrUrl: 'qr-old',
+};
+
+describe('TicketTypesEditor', () => {
+  const repo = {
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    getRegistrationCounts: vi.fn(),
+  };
+  const remove = vi.fn();
+
+  beforeEach(() => {
+    Object.values(repo).forEach((m) => m.mockReset());
+    remove.mockReset().mockResolvedValue(undefined);
+    repo.list.mockResolvedValue([base]);
+    repo.getRegistrationCounts.mockResolvedValue({ t1: 5 });
+    TestBed.configureTestingModule({
+      imports: [TicketTypesEditor],
+      providers: [
+        { provide: TicketTypesRepository, useValue: repo },
+        { provide: AssetsRepository, useValue: { upload: vi.fn(), remove } },
+      ],
+    });
+  });
+
+  async function create() {
+    const fixture = TestBed.createComponent(TicketTypesEditor);
+    fixture.componentRef.setInput('eventId', 'e1');
+    fixture.componentRef.setInput('eventCapacity', 8);
+    fixture.detectChanges();
+    await fixture.componentInstance.load();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('carga paquetes e inscritos, emite la lista y advierte por cupos', async () => {
+    const fixture = await create();
+    const cmp = fixture.componentInstance;
+    const emitted: TicketType[][] = [];
+    cmp.ticketsChange.subscribe((v) => emitted.push(v));
+    await cmp.load();
+    expect(cmp.registered(base)).toBe(5);
+    expect(emitted[0]).toEqual([base]);
+    expect(cmp.capacityWarnings()).toHaveLength(1);
+  });
+
+  it('deshabilita el borrado con inscritos', async () => {
+    const fixture = await create();
+    const cmp = fixture.componentInstance;
+    expect(cmp.deleteBlockReason(base)).toContain('5');
+    cmp.askDelete(base);
+    expect(cmp.toDelete()).toBeNull();
+    const del = fixture.nativeElement.querySelector('button[aria-label^="Eliminar paquete"]');
+    expect(del.disabled).toBe(true);
+  });
+
+  it('muestra el DomainError si el servidor rechaza el borrado (RESTRICT)', async () => {
+    repo.getRegistrationCounts.mockResolvedValue({});
+    const fixture = await create();
+    const cmp = fixture.componentInstance;
+    repo.delete.mockRejectedValue(
+      new DomainError('No se puede eliminar un paquete con inscritos.', 'HAS_REGISTRATIONS'),
+    );
+    cmp.askDelete(base);
+    await cmp.confirmDelete();
+    expect(cmp.deleteError()).toBe('No se puede eliminar un paquete con inscritos.');
+    expect(cmp.tickets()).toHaveLength(1);
+  });
+
+  it('bloquea guardar con cupo menor a los inscritos', async () => {
+    const fixture = await create();
+    const cmp = fixture.componentInstance;
+    cmp.openEdit(base);
+    cmp.model.update((v) => ({ ...v, ticketCapacity: '3' }));
+    await cmp.save();
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(cmp.fieldError('ticketCapacity')).toContain('5');
+  });
+
+  it('avisa al cambiar el precio con inscritos y guarda', async () => {
+    const fixture = await create();
+    const cmp = fixture.componentInstance;
+    cmp.openEdit(base);
+    cmp.model.update((v) => ({ ...v, price: '30' }));
+    expect(cmp.fieldWarning('price')).toBeTruthy();
+    repo.update.mockResolvedValue({ ...base, price: 30 });
+    await cmp.save();
+    expect(repo.update).toHaveBeenCalledWith('t1', expect.objectContaining({ price: 30 }));
+    expect(cmp.dialogOpen()).toBe(false);
+  });
+
+  it('precio 0 limpia el QR y lo borra solo tras guardar', async () => {
+    const fixture = await create();
+    const cmp = fixture.componentInstance;
+    cmp.openEdit(base);
+    cmp.model.update((v) => ({ ...v, price: '0' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(cmp.model().paymentQrUrl).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+    repo.update.mockResolvedValue({ ...base, price: 0, paymentQrUrl: null });
+    await cmp.save();
+    expect(remove).toHaveBeenCalledWith('qr-old');
+  });
+
+  it('cancelar el diálogo borra lo subido sin guardar', async () => {
+    const fixture = await create();
+    const cmp = fixture.componentInstance;
+    cmp.openCreate();
+    cmp.onImageUploaded('new-img');
+    await cmp.closeDialog();
+    expect(remove).toHaveBeenCalledWith('new-img');
+  });
+});

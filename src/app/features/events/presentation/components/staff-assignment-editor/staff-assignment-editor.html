@@ -1,0 +1,116 @@
+<div class="flex flex-col gap-5">
+  <div>
+    <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">Staff asignado</h2>
+    <p class="text-sm text-text-secondary dark:text-neutral-400">
+      Personas del staff que pueden gestionar asistentes y check-in de este evento.
+    </p>
+  </div>
+
+  <div
+    class="flex items-center gap-3 rounded-2xl bg-google-yellow-light/40 p-3 text-sm font-medium text-text-primary dark:text-neutral-200"
+    role="note"
+  >
+    <span class="material-symbols-rounded text-xl text-google-yellow" aria-hidden="true">info</span>
+    <span
+      >El correo debe estar autorizado como STAFF en el sistema para poder entrar al panel.
+      Asignarlo aquí no le da acceso por sí solo.</span
+    >
+  </div>
+
+  <form class="flex flex-col gap-1.5" (submit)="$event.preventDefault(); add()">
+    <label for="staff-email" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+      >Correo del staff</label
+    >
+    <div class="flex gap-2">
+      <input
+        id="staff-email"
+        type="email"
+        pInputText
+        class="w-full !rounded-xl"
+        placeholder="persona@correo.com"
+        autocomplete="off"
+        [formField]="f.email"
+        [attr.aria-invalid]="!!emailError()"
+        [attr.aria-describedby]="emailError() ? 'staff-email-error' : null"
+      />
+      <button
+        type="submit"
+        class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="adding()"
+      >
+        <span class="material-symbols-rounded text-base" aria-hidden="true">person_add</span>
+        {{ adding() ? 'Asignando...' : 'Asignar' }}
+      </button>
+    </div>
+    @if (emailError(); as err) {
+      <small id="staff-email-error" class="font-medium text-google-red" role="alert">{{
+        err
+      }}</small>
+    }
+  </form>
+
+  @if (notice(); as msg) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
+      role="status"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
+      <span>{{ msg }}</span>
+    </div>
+  }
+  @if (actionError(); as err) {
+    <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center p-8" role="status" aria-label="Cargando staff asignado">
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+        >progress_activity</span
+      >
+    </div>
+  } @else if (loadError(); as err) {
+    <div
+      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-google-red"
+      role="alert"
+    >
+      <span>{{ err }}</span>
+      <button type="button" class="underline" (click)="load()">Reintentar</button>
+    </div>
+  } @else if (assignments().length === 0) {
+    <div
+      class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 p-10 text-center dark:border-white/10"
+    >
+      <span
+        class="material-symbols-rounded text-4xl text-neutral-300 dark:text-neutral-600"
+        aria-hidden="true"
+        >badge</span
+      >
+      <p class="text-base font-bold text-text-primary dark:text-neutral-200">Sin staff asignado</p>
+      <p class="text-sm text-text-secondary dark:text-neutral-400">
+        Agrega el correo de quien hará el check-in en este evento.
+      </p>
+    </div>
+  } @else {
+    <ul class="flex flex-col gap-2">
+      @for (a of assignments(); track a.id) {
+        <li
+          class="flex items-center justify-between gap-3 rounded-2xl border border-black/5 p-3 dark:border-white/5"
+        >
+          <span
+            class="min-w-0 truncate text-sm font-medium text-text-primary dark:text-neutral-100"
+            >{{ a.staffEmail }}</span
+          >
+          <button
+            type="button"
+            class="flex size-9 shrink-0 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40"
+            [attr.aria-label]="'Quitar a ' + a.staffEmail + ' del evento'"
+            [disabled]="removingId() !== null"
+            (click)="remove(a)"
+          >
+            <span class="material-symbols-rounded text-xl" aria-hidden="true">person_remove</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</div>

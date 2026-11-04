@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 
-import { toDomainEvent, toDomainAttendee } from './events.mapper';
+import {
+  toDomainEvent,
+  toDomainAttendee,
+  toEventRow,
+  parseFormFields,
+  serializeFormFields,
+} from './events.mapper';
 import { EventRow, RegistrationWithDetailsRow } from './events.dto';
 
 describe('Events Mapper', () => {
@@ -65,7 +71,7 @@ describe('Events Mapper', () => {
         name: 'Pase Expositor',
         price: 0,
       },
-      scan_logs: [{ id: 'scan-1', scan_type: 'checkin' }],
+      scan_logs: [{ id: 'scan-1', scan_type: 'checkin', scanned_at: '2026-01-01T00:00:00Z' }],
     };
 
     const domainAttendee = toDomainAttendee(rawRow);
@@ -86,5 +92,65 @@ describe('Events Mapper', () => {
     expect(domainAttendee.customResponses).toEqual({ t_shirt_size: 'L' });
     expect(domainAttendee.paymentProofUrl).toBe('https://example.com/proof.png');
     expect(domainAttendee.checkedIn).toBe(true);
+  });
+});
+
+describe('Events Mapper - form fields y escritura', () => {
+  it('parsea form_fields tolerando datos inválidos', () => {
+    const fields = parseFormFields({
+      form_fields: [
+        { key: 'a', label: 'A', type: 'select', required: true, options: ['x', 'y', 3] },
+        { key: 'b', type: 'raro' },
+        { label: 'sin key' },
+        'basura',
+      ],
+    });
+    expect(fields).toEqual([
+      { key: 'a', label: 'A', type: 'select', required: true, options: ['x', 'y'] },
+      { key: 'b', label: 'b', type: 'text', required: false },
+    ]);
+    expect(parseFormFields(null)).toEqual([]);
+    expect(parseFormFields({ form_fields: 'x' })).toEqual([]);
+  });
+
+  it('serializa opciones solo para select y omite placeholder vacío', () => {
+    expect(
+      serializeFormFields([
+        { key: 'a', label: ' A ', type: 'text', required: false, placeholder: ' ', options: ['x'] },
+        { key: 'b', label: 'B', type: 'select', required: true, options: [' x ', ''] },
+      ]),
+    ).toEqual([
+      { key: 'a', label: 'A', type: 'text', required: false },
+      { key: 'b', label: 'B', type: 'select', required: true, options: ['x'] },
+    ]);
+  });
+
+  it('toEventRow conserva otras claves de extra_info', () => {
+    const row = toEventRow(
+      {
+        title: ' T ',
+        slug: 't',
+        eventType: 'MEETUP',
+        category: '',
+        locationType: 'PHYSICAL',
+        locationName: null,
+        addressLink: null,
+        dateStart: new Date('2026-10-15T13:00:00Z'),
+        dateEnd: null,
+        capacity: 10,
+        description: null,
+        imageUrl: null,
+        bannerUrl: null,
+        formFields: [{ key: 'a', label: 'A', type: 'text', required: false }],
+      },
+      { otra: 1, form_fields: [] },
+    );
+    expect(row.title).toBe('T');
+    expect(row.category).toBeNull();
+    expect(row.date_start).toBe('2026-10-15T13:00:00.000Z');
+    expect(row.extra_info).toEqual({
+      otra: 1,
+      form_fields: [{ key: 'a', label: 'A', type: 'text', required: false }],
+    });
   });
 });

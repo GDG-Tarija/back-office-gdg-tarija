@@ -1,0 +1,276 @@
+<form class="flex flex-col gap-6" (submit)="$event.preventDefault(); submit()">
+  <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+    <!-- Título -->
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label for="ev-title" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Título *</label
+      >
+      <input
+        id="ev-title"
+        type="text"
+        pInputText
+        class="w-full !rounded-xl"
+        [formField]="f.title"
+        [attr.aria-invalid]="!!fieldError('title', f.title().touched())"
+      />
+      @if (fieldError('title', f.title().touched()); as err) {
+        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      }
+    </div>
+
+    <!-- Slug -->
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label for="ev-slug" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Slug (URL pública) *</label
+      >
+      <input
+        id="ev-slug"
+        type="text"
+        pInputText
+        class="w-full !rounded-xl font-mono"
+        autocomplete="off"
+        [formField]="f.slug"
+        (input)="onSlugInput()"
+        [attr.aria-invalid]="!!fieldError('slug', true)"
+      />
+      @if (slugLocked()) {
+        <small class="text-text-secondary dark:text-neutral-400"
+          >El slug no se puede cambiar porque el evento está publicado o tiene inscritos.</small
+        >
+      } @else if (slugChecking()) {
+        <small class="text-text-secondary dark:text-neutral-400"
+          >Comprobando disponibilidad...</small
+        >
+      } @else if (model().slug && !fieldError('slug', true)) {
+        <small class="text-google-green">Disponible: /e/{{ model().slug }}</small>
+      }
+      @if (fieldError('slug', f.slug().touched() || !!model().slug); as err) {
+        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      }
+    </div>
+
+    <!-- Tipo -->
+    <div class="flex flex-col gap-1.5">
+      <label for="ev-type" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Tipo *</label
+      >
+      <select id="ev-type" pInputText class="w-full !rounded-xl" [formField]="f.eventType">
+        @for (t of eventTypes; track t.value) {
+          <option [value]="t.value">{{ t.label }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Categoría -->
+    <div class="flex flex-col gap-1.5">
+      <label for="ev-category" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Categoría</label
+      >
+      <input
+        id="ev-category"
+        type="text"
+        pInputText
+        class="w-full !rounded-xl"
+        list="ev-category-list"
+        placeholder="Ej. Inteligencia Artificial"
+        [formField]="f.category"
+      />
+      <datalist id="ev-category-list">
+        @for (c of categories(); track c) {
+          <option [value]="c"></option>
+        }
+      </datalist>
+    </div>
+
+    <!-- Modalidad -->
+    <div class="flex flex-col gap-1.5">
+      <label for="ev-mode" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Modalidad</label
+      >
+      <select id="ev-mode" pInputText class="w-full !rounded-xl" [formField]="f.locationType">
+        @for (t of locationTypes; track t.value) {
+          <option [value]="t.value">{{ t.label }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Capacidad -->
+    <div class="flex flex-col gap-1.5">
+      <label for="ev-capacity" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Capacidad *</label
+      >
+      <input
+        id="ev-capacity"
+        type="text"
+        inputmode="numeric"
+        pInputText
+        class="w-full !rounded-xl"
+        [formField]="f.capacity"
+        [attr.aria-invalid]="!!fieldError('capacity', f.capacity().touched())"
+      />
+      @if (fieldError('capacity', f.capacity().touched()); as err) {
+        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      }
+    </div>
+
+    <!-- Lugar -->
+    <div class="flex flex-col gap-1.5">
+      <label for="ev-place" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Lugar</label
+      >
+      <input
+        id="ev-place"
+        type="text"
+        pInputText
+        class="w-full !rounded-xl"
+        placeholder="Ej. Auditorio UAJMS"
+        [formField]="f.locationName"
+      />
+    </div>
+
+    <!-- Link -->
+    <div class="flex flex-col gap-1.5">
+      <label for="ev-link" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Enlace de mapa o reunión</label
+      >
+      <input
+        id="ev-link"
+        type="url"
+        pInputText
+        class="w-full !rounded-xl"
+        placeholder="https://..."
+        [formField]="f.addressLink"
+        [attr.aria-invalid]="!!fieldError('addressLink', f.addressLink().touched())"
+      />
+      @if (fieldError('addressLink', f.addressLink().touched()); as err) {
+        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      }
+    </div>
+
+    <!-- Fechas -->
+    <fieldset class="flex flex-col gap-1.5">
+      <legend class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+        Inicio * <span class="font-normal text-text-secondary">(hora de La Paz)</span>
+      </legend>
+      <div class="flex gap-2">
+        <input
+          type="date"
+          pInputText
+          class="w-full !rounded-xl"
+          aria-label="Fecha de inicio"
+          [formField]="f.startDate"
+        />
+        <input
+          type="time"
+          pInputText
+          class="w-32 !rounded-xl"
+          aria-label="Hora de inicio"
+          [formField]="f.startTime"
+        />
+      </div>
+      @if (fieldError('dateStart', f.startDate().touched()); as err) {
+        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      }
+    </fieldset>
+
+    <fieldset class="flex flex-col gap-1.5">
+      <legend class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+        Fin <span class="font-normal text-text-secondary">(hora de La Paz)</span>
+      </legend>
+      <div class="flex gap-2">
+        <input
+          type="date"
+          pInputText
+          class="w-full !rounded-xl"
+          aria-label="Fecha de fin"
+          [formField]="f.endDate"
+        />
+        <input
+          type="time"
+          pInputText
+          class="w-32 !rounded-xl"
+          aria-label="Hora de fin"
+          [formField]="f.endTime"
+        />
+      </div>
+      @if (fieldError('dateEnd', f.endDate().touched()); as err) {
+        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      }
+    </fieldset>
+
+    <!-- Descripción -->
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label for="ev-desc" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Descripción</label
+      >
+      <textarea
+        id="ev-desc"
+        pInputText
+        rows="5"
+        class="w-full !rounded-xl"
+        [formField]="f.description"
+      ></textarea>
+    </div>
+
+    <!-- Imágenes -->
+    <app-image-uploader
+      kind="cover"
+      label="Portada"
+      hint="JPG, PNG o WebP, máximo 2 MB."
+      [eventId]="assetFolderId()"
+      [value]="model().imageUrl"
+      (valueChange)="setImage('imageUrl', $event)"
+      (uploaded)="onImageUploaded($event)"
+      (discarded)="onImageDiscarded($event)"
+    />
+    <app-image-uploader
+      kind="banner"
+      label="Banner"
+      hint="JPG, PNG o WebP, máximo 2 MB."
+      [eventId]="assetFolderId()"
+      [value]="model().bannerUrl"
+      (valueChange)="setImage('bannerUrl', $event)"
+      (uploaded)="onImageUploaded($event)"
+      (discarded)="onImageDiscarded($event)"
+    />
+  </div>
+
+  @for (w of validation().warnings; track $index) {
+    <div
+      class="flex items-start gap-2 rounded-2xl bg-google-yellow-light/40 p-3 text-sm text-text-primary dark:text-neutral-200"
+      role="status"
+    >
+      <span class="material-symbols-rounded text-lg text-google-yellow" aria-hidden="true"
+        >warning</span
+      >
+      <span>{{ w.message }}</span>
+    </div>
+  }
+
+  @if (registrationCount() > 0) {
+    <p class="text-xs text-text-secondary dark:text-neutral-400">
+      Este evento tiene {{ registrationCount() }} inscrito(s): el slug está bloqueado y los cambios
+      de fechas o capacidad les afectan.
+    </p>
+  }
+
+  <div class="flex items-center justify-end gap-3">
+    @if (validation().errors.length) {
+      <span class="text-xs text-text-secondary dark:text-neutral-400"
+        >{{ validation().errors.length }} campo(s) por corregir</span
+      >
+    }
+    <button
+      type="submit"
+      class="inline-flex items-center gap-2 rounded-full bg-google-blue px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      [disabled]="!canSave()"
+    >
+      @if (saving()) {
+        <span class="material-symbols-rounded animate-gdg-spin text-base" aria-hidden="true"
+          >progress_activity</span
+        >
+      }
+      <span>{{ submitLabel() }}</span>
+    </button>
+  </div>
+</form>

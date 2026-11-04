@@ -13,10 +13,12 @@ export const authGuard: CanActivateFn = async () => {
     return false;
   }
 
-  if (!auth.isWhitelisted(session.user?.email)) {
+  const role = await auth.resolveRole();
+  if (!role) {
     await auth.signOutWithError('No está autorizado para acceder a este panel.');
     return false;
   }
+  auth.role.set(role);
 
   return true;
 };

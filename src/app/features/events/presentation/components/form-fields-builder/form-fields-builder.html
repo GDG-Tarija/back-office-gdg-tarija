@@ -1,0 +1,532 @@
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">
+        Formulario de registro
+      </h2>
+      <p class="text-sm text-text-secondary dark:text-neutral-400">
+        Preguntas adicionales que verá cada asistente al inscribirse.
+      </p>
+    </div>
+    @if (!readonly()) {
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+          (click)="openTemplates()"
+        >
+          <span class="material-symbols-rounded text-base" aria-hidden="true">content_copy</span>
+          Plantillas
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          (click)="add()"
+        >
+          <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+          Agregar campo
+        </button>
+      </div>
+    }
+  </div>
+
+  <p class="sr-only" role="status" aria-live="polite">{{ announcement() }}</p>
+
+  @if (countLoading()) {
+    <p class="text-sm text-text-secondary" role="status">Comprobando inscritos...</p>
+  } @else if (countError(); as err) {
+    <div
+      class="flex items-center justify-between gap-3 rounded-2xl bg-google-yellow-light/40 p-3 text-sm font-medium text-text-primary dark:text-neutral-200"
+      role="alert"
+    >
+      <span
+        >{{ err }} Por seguridad no se podrán eliminar campos ni cambiar claves existentes.</span
+      >
+      <button type="button" class="underline" (click)="loadCount()">Reintentar</button>
+    </div>
+  } @else if ((registrations() ?? 0) > 0) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-yellow-light/40 p-3 text-sm font-medium text-text-primary dark:text-neutral-200"
+      role="status"
+    >
+      <span class="material-symbols-rounded text-xl text-google-yellow" aria-hidden="true"
+        >warning</span
+      >
+      <span>
+        Este evento tiene {{ registrations() }} inscrito(s): no se pueden eliminar campos ni cambiar
+        las claves de los existentes, porque hay respuestas guardadas. Sí puedes agregar campos
+        nuevos y editar etiquetas, opciones y orden.
+      </span>
+    </div>
+  }
+
+  @if (notice(); as msg) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
+      role="status"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
+      <span>{{ msg }}</span>
+    </div>
+  }
+
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+    <section aria-label="Campos del formulario" class="flex flex-col gap-3">
+      @if (fields().length === 0) {
+        <div
+          class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 p-10 text-center dark:border-white/10"
+        >
+          <span
+            class="material-symbols-rounded text-4xl text-neutral-300 dark:text-neutral-600"
+            aria-hidden="true"
+            >list_alt</span
+          >
+          <p class="text-base font-bold text-text-primary dark:text-neutral-200">
+            Sin preguntas adicionales
+          </p>
+          <p class="text-sm text-text-secondary dark:text-neutral-400">
+            Solo se pedirán los datos básicos. Agrega un campo o usa una plantilla.
+          </p>
+        </div>
+      }
+      <ol class="flex flex-col gap-3">
+        @for (f of fields(); track f.uid; let i = $index; let first = $first; let last = $last) {
+          <li class="rounded-2xl border border-black/5 p-4 dark:border-white/5">
+            <div class="mb-3 flex items-center justify-between gap-2">
+              <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
+                {{ i + 1 }}. {{ fieldTitle(f, i) }}
+              </h3>
+              @if (!readonly()) {
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                    [attr.aria-label]="'Subir ' + fieldTitle(f, i)"
+                    [attr.aria-disabled]="first"
+                    (click)="move(i, -1)"
+                  >
+                    <span class="material-symbols-rounded text-lg" aria-hidden="true"
+                      >arrow_upward</span
+                    >
+                  </button>
+                  <button
+                    type="button"
+                    class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                    [attr.aria-label]="'Bajar ' + fieldTitle(f, i)"
+                    [attr.aria-disabled]="last"
+                    (click)="move(i, 1)"
+                  >
+                    <span class="material-symbols-rounded text-lg" aria-hidden="true"
+                      >arrow_downward</span
+                    >
+                  </button>
+                  <button
+                    type="button"
+                    class="flex size-8 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
+                    [attr.aria-label]="'Eliminar ' + fieldTitle(f, i)"
+                    [disabled]="!canRemove(f)"
+                    [title]="
+                      canRemove(f)
+                        ? 'Eliminar campo'
+                        : 'Hay inscritos: no se pueden eliminar campos guardados'
+                    "
+                    (click)="remove(i)"
+                  >
+                    <span class="material-symbols-rounded text-lg" aria-hidden="true">delete</span>
+                  </button>
+                </div>
+              }
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <label
+                  [for]="'ff-label-' + f.uid"
+                  class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+                  >Etiqueta *</label
+                >
+                <input
+                  [id]="'ff-label-' + f.uid"
+                  type="text"
+                  class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
+                  [value]="f.label"
+                  [disabled]="readonly()"
+                  [attr.aria-invalid]="fieldErrors(i, 'label').length > 0"
+                  [attr.aria-describedby]="'ff-label-err-' + f.uid"
+                  (input)="setLabel(i, $any($event.target).value)"
+                />
+                <div [id]="'ff-label-err-' + f.uid">
+                  @for (m of fieldErrors(i, 'label'); track m) {
+                    <small class="font-medium text-google-red" role="alert">{{ m }}</small>
+                  }
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label
+                  [for]="'ff-type-' + f.uid"
+                  class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+                  >Tipo</label
+                >
+                <select
+                  [id]="'ff-type-' + f.uid"
+                  class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
+                  [disabled]="readonly()"
+                  (change)="setType(i, $any($event.target).value)"
+                >
+                  @for (t of types; track t) {
+                    <option [value]="t" [selected]="t === f.type">{{ typeLabels[t] }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label
+                  [for]="'ff-key-' + f.uid"
+                  class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+                  >Clave</label
+                >
+                <input
+                  [id]="'ff-key-' + f.uid"
+                  type="text"
+                  class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 font-mono text-sm disabled:opacity-60 dark:border-white/10"
+                  [value]="f.key"
+                  [disabled]="!keyEditable(f)"
+                  [attr.aria-invalid]="fieldErrors(i, 'key').length > 0"
+                  [attr.aria-describedby]="'ff-key-hint-' + f.uid"
+                  (input)="setKey(i, $any($event.target).value)"
+                />
+                <small
+                  [id]="'ff-key-hint-' + f.uid"
+                  class="text-text-secondary dark:text-neutral-400"
+                >
+                  @if (f.isNew) {
+                    Se genera desde la etiqueta; editable hasta guardar.
+                  } @else {
+                    La clave no cambia una vez guardado el campo.
+                  }
+                </small>
+                @for (m of fieldErrors(i, 'key'); track m) {
+                  <small class="font-medium text-google-red" role="alert">{{ m }}</small>
+                }
+              </div>
+
+              @if (f.type !== 'checkbox') {
+                <div class="flex flex-col gap-1.5">
+                  <label
+                    [for]="'ff-ph-' + f.uid"
+                    class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+                    >Texto de ayuda (placeholder)</label
+                  >
+                  <input
+                    [id]="'ff-ph-' + f.uid"
+                    type="text"
+                    class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
+                    [value]="f.placeholder"
+                    [disabled]="readonly()"
+                    (input)="setPlaceholder(i, $any($event.target).value)"
+                  />
+                </div>
+              }
+
+              <label class="flex items-center gap-2 text-sm font-semibold md:col-span-2">
+                <input
+                  type="checkbox"
+                  [checked]="f.required"
+                  [disabled]="readonly()"
+                  (change)="setRequired(i, $any($event.target).checked)"
+                />
+                Obligatorio
+              </label>
+            </div>
+
+            @if (f.type === 'select') {
+              <fieldset class="mt-4 flex flex-col gap-2">
+                <legend class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+                  Opciones (mínimo 2)
+                </legend>
+                @for (
+                  o of f.options;
+                  track $index;
+                  let j = $index;
+                  let oFirst = $first;
+                  let oLast = $last
+                ) {
+                  <div class="flex items-center gap-1">
+                    <input
+                      type="text"
+                      class="min-w-0 flex-1 rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
+                      [value]="o"
+                      [disabled]="readonly()"
+                      [attr.aria-label]="'Opción ' + (j + 1) + ' de ' + fieldTitle(f, i)"
+                      (input)="setOption(i, j, $any($event.target).value)"
+                    />
+                    @if (!readonly()) {
+                      <button
+                        type="button"
+                        class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                        [attr.aria-label]="'Subir opción ' + (j + 1)"
+                        [attr.aria-disabled]="oFirst"
+                        (click)="moveOption(i, j, -1)"
+                      >
+                        <span class="material-symbols-rounded text-lg" aria-hidden="true"
+                          >arrow_upward</span
+                        >
+                      </button>
+                      <button
+                        type="button"
+                        class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                        [attr.aria-label]="'Bajar opción ' + (j + 1)"
+                        [attr.aria-disabled]="oLast"
+                        (click)="moveOption(i, j, 1)"
+                      >
+                        <span class="material-symbols-rounded text-lg" aria-hidden="true"
+                          >arrow_downward</span
+                        >
+                      </button>
+                      <button
+                        type="button"
+                        class="flex size-8 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
+                        [attr.aria-label]="'Quitar opción ' + (j + 1)"
+                        [disabled]="f.options.length <= 2"
+                        (click)="removeOption(i, j)"
+                      >
+                        <span class="material-symbols-rounded text-lg" aria-hidden="true"
+                          >close</span
+                        >
+                      </button>
+                    }
+                  </div>
+                }
+                @for (m of fieldErrors(i, 'options'); track m) {
+                  <small class="font-medium text-google-red" role="alert">{{ m }}</small>
+                }
+                @if (!readonly()) {
+                  <button
+                    type="button"
+                    class="self-start text-sm font-semibold text-google-blue hover:underline"
+                    (click)="addOption(i)"
+                  >
+                    + Agregar opción
+                  </button>
+                }
+              </fieldset>
+            }
+          </li>
+        }
+      </ol>
+    </section>
+
+    <section aria-label="Vista previa" class="flex flex-col gap-3">
+      <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
+        Vista previa para el asistente
+      </h3>
+      <div
+        class="flex flex-col gap-4 rounded-2xl border border-black/5 p-4 dark:border-white/5"
+        aria-label="Vista previa del formulario"
+      >
+        @if (preview().length === 0) {
+          <p class="text-sm text-text-secondary dark:text-neutral-400">
+            No hay preguntas adicionales.
+          </p>
+        }
+        @for (p of preview(); track $index; let i = $index) {
+          @switch (p.type) {
+            @case ('checkbox') {
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" disabled />
+                <span
+                  >{{ p.label || 'Sin etiqueta' }}
+                  @if (p.required) {
+                    <span aria-hidden="true"> *</span>
+                  }
+                </span>
+              </label>
+            }
+            @default {
+              <div class="flex flex-col gap-1.5">
+                <label [for]="'pv-' + i" class="text-sm font-semibold">
+                  {{ p.label || 'Sin etiqueta' }}
+                  @if (p.required) {
+                    <span aria-hidden="true"> *</span>
+                  }
+                </label>
+                @if (p.type === 'select') {
+                  <select
+                    [id]="'pv-' + i"
+                    disabled
+                    class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
+                  >
+                    <option>{{ p.placeholder || 'Selecciona una opción' }}</option>
+                    @for (o of p.options; track $index) {
+                      <option>{{ o }}</option>
+                    }
+                  </select>
+                } @else {
+                  <input
+                    [id]="'pv-' + i"
+                    [type]="p.type"
+                    disabled
+                    [placeholder]="p.placeholder ?? ''"
+                    class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
+                  />
+                }
+              </div>
+            }
+          }
+        }
+      </div>
+    </section>
+  </div>
+
+  @if (issues().length > 0 && !readonly()) {
+    <p class="text-sm font-medium text-google-red" role="status">
+      Corrige {{ issues().length }} error(es) para poder guardar.
+    </p>
+  }
+  @if (saveError(); as err) {
+    <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+  }
+
+  @if (!readonly()) {
+    <div class="flex flex-wrap items-center justify-end gap-3">
+      @if (dirty()) {
+        <span class="text-sm font-medium text-text-secondary dark:text-neutral-400" role="status"
+          >Cambios sin guardar</span
+        >
+        <button
+          type="button"
+          class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+          [disabled]="saving()"
+          (click)="discard()"
+        >
+          Descartar
+        </button>
+      }
+      <button
+        type="button"
+        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="!canSave()"
+        (click)="save()"
+      >
+        {{ saving() ? 'Guardando...' : 'Guardar formulario' }}
+      </button>
+    </div>
+  }
+</div>
+
+@if (templatesOpen()) {
+  <app-dialog-frame
+    title="Plantillas de formulario"
+    icon="content_copy"
+    initialSize="md"
+    (closeDialog)="templatesOpen.set(false)"
+  >
+    <div class="flex flex-col gap-5">
+      <section class="flex flex-col gap-2">
+        <h3 class="text-sm font-bold">Plantillas por defecto</h3>
+        <ul class="flex flex-col gap-2">
+          @for (t of defaultTemplates; track t.id) {
+            <li
+              class="flex items-center justify-between gap-3 rounded-xl border border-black/5 p-3 dark:border-white/5"
+            >
+              <div>
+                <p class="text-sm font-semibold">{{ t.name }}</p>
+                <p class="text-xs text-text-secondary dark:text-neutral-400">
+                  {{ t.description }} ({{ t.fields.length }} campo(s))
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full bg-neutral-100 px-3 py-1.5 text-sm font-semibold hover:bg-neutral-200 dark:bg-neutral-800"
+                (click)="chooseTemplate(t.name, t.fields)"
+              >
+                Usar
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="flex flex-col gap-2">
+        <h3 class="text-sm font-bold">Copiar de otro evento</h3>
+        @if (otherEventsLoading()) {
+          <p class="text-sm" role="status">Cargando eventos...</p>
+        } @else if (otherEventsError(); as err) {
+          <p class="text-sm font-medium text-google-red" role="alert">
+            {{ err }}
+            <button type="button" class="underline" (click)="loadOtherEvents()">Reintentar</button>
+          </p>
+        } @else if (otherEvents().length === 0) {
+          <p class="text-sm text-text-secondary dark:text-neutral-400">
+            Ningún otro evento tiene formulario configurado.
+          </p>
+        } @else {
+          <label for="ff-copy-from" class="text-sm font-semibold">Evento</label>
+          <select
+            id="ff-copy-from"
+            class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
+            (change)="chooseEvent($any($event.target).value)"
+          >
+            <option value="">Selecciona un evento...</option>
+            @for (e of otherEvents(); track e.id) {
+              <option [value]="e.id">{{ e.title }} ({{ e.formFields.length }} campo(s))</option>
+            }
+          </select>
+        }
+      </section>
+    </div>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold hover:bg-neutral-200 dark:bg-neutral-800"
+        (click)="templatesOpen.set(false)"
+      >
+        Cerrar
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}
+
+@if (pending(); as p) {
+  <app-dialog-frame
+    title="Confirmar plantilla"
+    icon="warning"
+    initialSize="sm"
+    (closeDialog)="cancelPending()"
+  >
+    <div class="flex flex-col gap-2 text-sm text-text-primary dark:text-neutral-200">
+      @if (pendingMode() === 'replace') {
+        <p>
+          Se reemplazarán los {{ fields().length }} campo(s) actuales por {{ p.name }}. Los cambios
+          no se guardan hasta pulsar Guardar.
+        </p>
+      } @else {
+        <p>
+          Hay inscritos, así que se conservarán los campos actuales y se agregarán los de
+          {{ p.name }}
+          @if (pendingSkipped() > 0) {
+            (se omiten {{ pendingSkipped() }} con clave repetida)
+          }
+          .
+        </p>
+      }
+    </div>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold hover:bg-neutral-200 dark:bg-neutral-800"
+        (click)="cancelPending()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+        (click)="confirmPending()"
+      >
+        {{ pendingMode() === 'replace' ? 'Reemplazar' : 'Agregar' }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}
