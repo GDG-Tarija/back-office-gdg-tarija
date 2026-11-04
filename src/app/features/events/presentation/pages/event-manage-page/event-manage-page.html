@@ -1,0 +1,213 @@
+<div class="gdg-page p-6 sm:p-8 space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="min-w-0">
+      <h1
+        class="truncate text-3xl font-extrabold tracking-tight text-text-primary dark:text-neutral-100"
+      >
+        {{ event()?.title ?? 'Gestionar evento' }}
+      </h1>
+      @if (event(); as e) {
+        <div class="mt-1 flex items-center gap-2 text-sm text-text-secondary dark:text-neutral-400">
+          <p-tag
+            [value]="e.isPublished ? 'Publicado' : 'Borrador'"
+            [severity]="e.isPublished ? 'success' : 'secondary'"
+          />
+          <span>/e/{{ e.slug }}</span>
+        </div>
+      }
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      @if (event(); as e) {
+        <a
+          [routerLink]="['/events', e.id, 'attendees']"
+          class="inline-flex items-center gap-1.5 rounded-full bg-google-blue-light/60 px-4 py-2 text-sm font-semibold text-google-blue transition-colors hover:bg-google-blue-light dark:bg-google-blue/20"
+        >
+          <span class="material-symbols-rounded text-base" aria-hidden="true">group</span>
+          Asistentes
+        </a>
+        @if (canDelete()) {
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-full bg-google-red-light/40 px-4 py-2 text-sm font-semibold text-google-red transition-colors hover:bg-google-red-light/70"
+            (click)="openDelete()"
+          >
+            <span class="material-symbols-rounded text-base" aria-hidden="true">delete</span>
+            Eliminar
+          </button>
+        }
+      }
+      <a
+        routerLink="/events"
+        class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+      >
+        <span class="material-symbols-rounded text-base" aria-hidden="true">arrow_back</span>
+        Volver
+      </a>
+    </div>
+  </div>
+
+  @if (error(); as err) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-red-light/30 border border-google-red/20 p-4 text-sm font-medium text-google-red"
+      role="alert"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">error</span>
+      <span>{{ err }}</span>
+    </div>
+  }
+  @if (notice(); as msg) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-4 text-sm font-medium text-google-green"
+      role="status"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
+      <span>{{ msg }}</span>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center p-12" role="status" aria-label="Cargando evento">
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+        >progress_activity</span
+      >
+    </div>
+  } @else if (event(); as e) {
+    <div role="tablist" aria-label="Secciones del evento" class="flex gap-2 overflow-x-auto pb-1">
+      @for (t of tabs; track t.id) {
+        <button
+          type="button"
+          role="tab"
+          [id]="'tab-' + t.id"
+          [attr.aria-selected]="tab() === t.id"
+          [attr.aria-controls]="'panel-' + t.id"
+          [attr.tabindex]="tab() === t.id ? 0 : -1"
+          class="shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
+          [class]="
+            tab() === t.id
+              ? 'border-google-blue bg-google-blue-light/60 text-google-blue dark:bg-google-blue/20'
+              : 'border-black/5 bg-white text-text-secondary hover:bg-neutral-100 dark:border-white/5 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+          "
+          (click)="selectTab(t.id)"
+        >
+          {{ t.label }}
+        </button>
+      }
+    </div>
+
+    <div
+      role="tabpanel"
+      [id]="'panel-' + tab()"
+      [attr.aria-labelledby]="'tab-' + tab()"
+      class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-xs"
+    >
+      @switch (tab()) {
+        @case ('basics') {
+          <app-event-basics-form
+            [event]="e"
+            [registrationCount]="registrationCount()"
+            [saving]="saving()"
+            submitLabel="Guardar cambios"
+            (save)="saveBasics($event)"
+          />
+        }
+        @case ('form') {
+          <app-form-fields-builder [event]="e" (fieldsChange)="onFormFields($event)" />
+        }
+        @case ('tickets') {
+          <app-ticket-types-editor
+            [eventId]="e.id"
+            [eventCapacity]="e.capacity"
+            (ticketsChange)="tickets.set($event)"
+          />
+        }
+        @case ('sessions') {
+          <app-tracks-sessions-editor
+            [eventId]="e.id"
+            [event]="e"
+            (sessionsChange)="sessions.set($event)"
+          />
+        }
+        @case ('extras') {
+          <div class="flex flex-col gap-8">
+            <app-coupons-editor [eventId]="e.id" />
+            <app-staff-assignment-editor [eventId]="e.id" />
+          </div>
+        }
+        @case ('publish') {
+          <div class="flex flex-col gap-5">
+            @if (publishResult(); as result) {
+              <app-publish-checklist [result]="result" />
+            }
+            <div class="flex justify-end">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                [class]="e.isPublished ? 'bg-google-red' : 'bg-google-green'"
+                [disabled]="
+                  saving() || (!e.isPublished && (publishResult()?.errors?.length ?? 1) > 0)
+                "
+                (click)="togglePublished()"
+              >
+                <span class="material-symbols-rounded text-base" aria-hidden="true">{{
+                  e.isPublished ? 'unpublished' : 'publish'
+                }}</span>
+                {{ e.isPublished ? 'Despublicar evento' : 'Publicar evento' }}
+              </button>
+            </div>
+            @if (!canDelete()) {
+              <p class="text-xs text-text-secondary dark:text-neutral-400">
+                Este evento tiene {{ registrationCount() }} inscrito(s) y no se puede eliminar;
+                despublícalo para ocultarlo.
+              </p>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+</div>
+
+@if (deleteOpen() && event(); as e) {
+  <app-dialog-frame
+    title="Eliminar evento"
+    icon="delete"
+    initialSize="sm"
+    (closeDialog)="closeDelete()"
+  >
+    <div class="flex flex-col gap-3 text-sm text-text-primary dark:text-neutral-200">
+      <p>
+        Esta acción es permanente. Para confirmar escribe el slug
+        <strong class="font-mono">{{ e.slug }}</strong
+        >.
+      </p>
+      <input
+        type="text"
+        class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 font-mono dark:border-white/10"
+        aria-label="Escribe el slug para confirmar"
+        autocomplete="off"
+        [value]="deleteConfirm()"
+        (input)="deleteConfirm.set($any($event.target).value)"
+      />
+      @if (deleteError(); as err) {
+        <p class="font-medium text-google-red" role="alert">{{ err }}</p>
+      }
+    </div>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+        (click)="closeDelete()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="rounded-full bg-google-red px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="!deleteConfirmed() || deleting()"
+        (click)="confirmDelete()"
+      >
+        {{ deleting() ? 'Eliminando...' : 'Eliminar definitivamente' }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}

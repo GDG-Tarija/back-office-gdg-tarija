@@ -169,3 +169,45 @@ Para reportes:
 8. Agregar confirmación de eliminación.
 9. Agregar tests para mapper/lógica.
 10. Ejecutar lint/test/build relevante.
+
+---
+
+## Módulo De Gestión De Eventos (`src/app/features/events/`)
+
+Estructura `data` / `domain` / `presentation`. Guía de usuario: `docs/gestion-de-eventos.md`.
+
+### Rutas (`events.routes.ts`)
+
+- `/events` listado (todos los roles).
+- `/events/new` wizard (solo SUPERADMIN, `superadminGuard`).
+- `/events/:id/edit` gestión por pestañas (solo SUPERADMIN).
+- `/events/:id/attendees` asistentes.
+
+### Wizard (`event-wizard-page`)
+
+Pasos: Datos, Formulario de registro, Paquetes, Tracks y sesiones, Cupones y staff, Revisar y publicar. El paso 1 crea un borrador (`is_published = false`) que habilita el resto; el último paso muestra el checklist de publicación.
+
+### Gestión (`event-manage-page`)
+
+Pestañas: Datos, Formulario, Paquetes, Tracks y sesiones, Cupones y staff, Publicación. Permite publicar/despublicar y eliminar (solo si no hay inscritos; la BD lo refuerza con trigger).
+
+### Componentes (`presentation/components/`)
+
+`event-basics-form`, `form-fields-builder`, `ticket-types-editor`, `tracks-sessions-editor`, `coupons-editor`, `staff-assignment-editor`, `image-uploader`, `publish-checklist`, `credential-generator`, `phase-placeholder`.
+
+### Dominio y validadores (`domain/`)
+
+- `event-validators.ts`: `validateEvent`, `validateTicketType`, `validateTicketCapacities`, `validateTrack`, `validateSession`, `findSessionOverlaps`, `validateCoupon`, `validateStaffEmail`, `validateFormFields`, `validateImageFile`, `validatePublish`. Devuelven `{errors, warnings}`: los errores bloquean, los avisos no.
+- Zona horaria fija America/La_Paz (UTC-4): `toLaPazIso`, `fromLaPaz`.
+- Otros: `event-form`, `ticket-type-form`, `session-form`, `coupon-form`, `form-fields-builder.logic`, `asset-path`, `asset-cleanup`, `domain-error`, y `postgres-error.mapper` (data) para traducir errores de Postgres (CHECK, UNIQUE, triggers de borrado).
+- Repositorios (contratos) en `domain/*.repository.ts`, implementaciones `*.api.ts` en `data/` (Supabase).
+
+### Roles
+
+- SUPERADMIN: crea, edita, publica y elimina; sube imágenes.
+- STAFF: ve eventos asignados, asistentes y hace check-in; sin acceso a `/events/new` ni `/events/:id/edit`.
+- El rol sale de `AuthService.role()` / `resolveRole()` (RPC `get_my_role`). La seguridad real es RLS.
+
+### Tests
+
+Los validadores y mappers tienen specs (`*.spec.ts`) junto al código; correr `npm test`.

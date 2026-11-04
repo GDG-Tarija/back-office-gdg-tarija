@@ -1,6 +1,7 @@
 import { Database } from '../../../core/supabase/supabase.client';
 
 export type EventRow = Database['public']['Tables']['events']['Row'];
+export type EventInsert = Database['public']['Tables']['events']['Insert'];
 export type RegistrationRow = Database['public']['Tables']['registrations']['Row'];
 
 export interface RawRegistrationRow {

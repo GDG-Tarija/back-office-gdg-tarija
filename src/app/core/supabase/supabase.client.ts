@@ -2,261 +2,679 @@ import { InjectionToken, Provider } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 import { environment } from '../../../environments/environment';
-import { Profile } from '../models/profile.model';
+
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
+  __InternalSupabase: {
+    PostgrestVersion: '14.15';
+  };
   public: {
     Tables: {
-      users: {
-        Row: Profile;
-        Insert: {
+      event_coupons: {
+        Row: {
+          code: string;
+          created_at: string | null;
+          event_id: string;
           id: string;
-          email: string;
-          first_name: string;
-          last_name: string;
-          avatar_url?: string | null;
-          phone?: string | null;
-          extra_info?: Record<string, unknown> | null;
-          is_staff?: boolean | null;
+          max_uses: number;
+          role: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          code: string;
+          created_at?: string | null;
+          event_id: string;
+          id?: string;
+          max_uses?: number;
+          role?: string;
+          updated_at?: string | null;
         };
         Update: {
+          code?: string;
+          created_at?: string | null;
+          event_id?: string;
           id?: string;
-          email?: string;
-          first_name?: string;
-          last_name?: string;
-          avatar_url?: string | null;
-          phone?: string | null;
-          extra_info?: Record<string, unknown> | null;
-          is_staff?: boolean | null;
+          max_uses?: number;
+          role?: string;
+          updated_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'event_coupons_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      event_staff_assignments: {
+        Row: {
+          assigned_at: string;
+          event_id: string;
+          id: string;
+          staff_email: string;
+        };
+        Insert: {
+          assigned_at?: string;
+          event_id: string;
+          id?: string;
+          staff_email: string;
+        };
+        Update: {
+          assigned_at?: string;
+          event_id?: string;
+          id?: string;
+          staff_email?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_staff_assignments_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       events: {
         Row: {
-          id: string;
-          title: string;
-          slug: string;
-          event_type: string;
-          capacity: number;
-          date_start: string;
-          date_end: string | null;
-          is_published: boolean | null;
-          created_at: string | null;
-          updated_at: string | null;
-          description: string | null;
-          image_url: string | null;
-          banner_url: string | null;
-          location_type: string | null;
-          location_name: string | null;
           address_link: string | null;
+          banner_url: string | null;
+          capacity: number;
           category: string | null;
-          extra_info: Record<string, unknown> | null;
-        };
-        Insert: Omit<
-          Database['public']['Tables']['events']['Row'],
-          'id' | 'created_at' | 'updated_at'
-        > & {
-          id?: string;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: Partial<Database['public']['Tables']['events']['Row']>;
-        Relationships: [];
-      };
-      registrations: {
-        Row: {
-          id: string;
-          event_id: string;
-          user_id: string | null;
-          ticket_type_id: string;
-          event_role: string;
-          status: string;
           created_at: string | null;
-          updated_at: string | null;
-          custom_responses: Record<string, unknown> | null;
-          payment_proof_url: string | null;
-        };
-        Insert: Omit<
-          Database['public']['Tables']['registrations']['Row'],
-          'id' | 'created_at' | 'updated_at'
-        > & {
-          id?: string;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: Partial<Database['public']['Tables']['registrations']['Row']>;
-        Relationships: [];
-      };
-      ticket_types: {
-        Row: {
-          id: string;
-          event_id: string;
-          name: string;
-          price: number;
-          ticket_capacity: number | null;
-          created_at: string | null;
-          updated_at: string | null;
-          payment_qr_url: string | null;
+          date_end: string | null;
+          date_start: string;
           description: string | null;
+          event_type: string;
+          extra_info: Json | null;
+          id: string;
           image_url: string | null;
+          is_published: boolean | null;
+          location_name: string | null;
+          location_type: string | null;
+          slug: string;
+          title: string;
+          updated_at: string | null;
         };
-        Insert: Omit<
-          Database['public']['Tables']['ticket_types']['Row'],
-          'id' | 'created_at' | 'updated_at'
-        > & {
-          id?: string;
+        Insert: {
+          address_link?: string | null;
+          banner_url?: string | null;
+          capacity: number;
+          category?: string | null;
           created_at?: string | null;
+          date_end?: string | null;
+          date_start: string;
+          description?: string | null;
+          event_type: string;
+          extra_info?: Json | null;
+          id?: string;
+          image_url?: string | null;
+          is_published?: boolean | null;
+          location_name?: string | null;
+          location_type?: string | null;
+          slug: string;
+          title: string;
           updated_at?: string | null;
         };
-        Update: Partial<Database['public']['Tables']['ticket_types']['Row']>;
-        Relationships: [];
-      };
-      sponsors: {
-        Row: {
-          id: string;
-          name: string | null;
-          description: string | null;
-          score: string | null;
-          state: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: Omit<
-          Database['public']['Tables']['sponsors']['Row'],
-          'id' | 'created_at' | 'updated_at'
-        > & {
+        Update: {
+          address_link?: string | null;
+          banner_url?: string | null;
+          capacity?: number;
+          category?: string | null;
+          created_at?: string | null;
+          date_end?: string | null;
+          date_start?: string;
+          description?: string | null;
+          event_type?: string;
+          extra_info?: Json | null;
           id?: string;
-          created_at?: string;
-          updated_at?: string;
+          image_url?: string | null;
+          is_published?: boolean | null;
+          location_name?: string | null;
+          location_type?: string | null;
+          slug?: string;
+          title?: string;
+          updated_at?: string | null;
         };
-        Update: Partial<Database['public']['Tables']['sponsors']['Row']>;
         Relationships: [];
       };
       inscripciones_sessions: {
         Row: {
-          id: string;
-          usuario_id: string;
-          session_id: string;
-          inscrito_en: string;
           asistio: boolean;
           checked_in_at: string | null;
+          id: string;
+          inscrito_en: string;
+          session_id: string;
+          usuario_id: string;
         };
-        Insert: Omit<
-          Database['public']['Tables']['inscripciones_sessions']['Row'],
-          'id' | 'inscrito_en' | 'asistio' | 'checked_in_at'
-        > & {
-          id?: string;
-          inscrito_en?: string;
+        Insert: {
           asistio?: boolean;
           checked_in_at?: string | null;
+          id?: string;
+          inscrito_en?: string;
+          session_id: string;
+          usuario_id: string;
         };
-        Update: Partial<Database['public']['Tables']['inscripciones_sessions']['Row']>;
-        Relationships: [];
+        Update: {
+          asistio?: boolean;
+          checked_in_at?: string | null;
+          id?: string;
+          inscrito_en?: string;
+          session_id?: string;
+          usuario_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'inscripciones_sessions_session_id_fkey';
+            columns: ['session_id'];
+            isOneToOne: false;
+            referencedRelation: 'sessions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      registrations: {
+        Row: {
+          coupon_id: string | null;
+          created_at: string | null;
+          custom_responses: Json | null;
+          event_id: string;
+          event_role: string;
+          id: string;
+          payment_proof_url: string | null;
+          status: string;
+          ticket_type_id: string;
+          updated_at: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          coupon_id?: string | null;
+          created_at?: string | null;
+          custom_responses?: Json | null;
+          event_id: string;
+          event_role?: string;
+          id?: string;
+          payment_proof_url?: string | null;
+          status?: string;
+          ticket_type_id: string;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          coupon_id?: string | null;
+          created_at?: string | null;
+          custom_responses?: Json | null;
+          event_id?: string;
+          event_role?: string;
+          id?: string;
+          payment_proof_url?: string | null;
+          status?: string;
+          ticket_type_id?: string;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'registrations_coupon_id_fkey';
+            columns: ['coupon_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_coupons';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'registrations_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'registrations_ticket_type_id_fkey';
+            columns: ['ticket_type_id'];
+            isOneToOne: false;
+            referencedRelation: 'ticket_types';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'registrations_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       scan_logs: {
         Row: {
+          created_at: string | null;
           id: string;
           registration_id: string;
-          scanned_by: string | null;
           scan_type: string;
           scanned_at: string | null;
-          created_at: string | null;
+          scanned_by: string | null;
           updated_at: string | null;
         };
-        Insert: Omit<
-          Database['public']['Tables']['scan_logs']['Row'],
-          'id' | 'created_at' | 'updated_at'
-        > & {
-          id?: string;
+        Insert: {
           created_at?: string | null;
+          id?: string;
+          registration_id: string;
+          scan_type: string;
+          scanned_at?: string | null;
+          scanned_by?: string | null;
           updated_at?: string | null;
         };
-        Update: Partial<Database['public']['Tables']['scan_logs']['Row']>;
-        Relationships: [];
+        Update: {
+          created_at?: string | null;
+          id?: string;
+          registration_id?: string;
+          scan_type?: string;
+          scanned_at?: string | null;
+          scanned_by?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'scan_logs_registration_id_fkey';
+            columns: ['registration_id'];
+            isOneToOne: false;
+            referencedRelation: 'registrations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'scan_logs_scanned_by_fkey';
+            columns: ['scanned_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       session_registrations: {
         Row: {
+          registered_at: string | null;
           registration_id: string;
           session_id: string;
-          registered_at: string | null;
         };
-        Insert: Database['public']['Tables']['session_registrations']['Row'];
-        Update: Partial<Database['public']['Tables']['session_registrations']['Row']>;
-        Relationships: [];
+        Insert: {
+          registered_at?: string | null;
+          registration_id: string;
+          session_id: string;
+        };
+        Update: {
+          registered_at?: string | null;
+          registration_id?: string;
+          session_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'session_registrations_registration_id_fkey';
+            columns: ['registration_id'];
+            isOneToOne: false;
+            referencedRelation: 'registrations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'session_registrations_session_id_fkey';
+            columns: ['session_id'];
+            isOneToOne: false;
+            referencedRelation: 'sessions';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       sessions: {
         Row: {
-          id: string;
-          event_id: string;
-          title: string;
           capacity: number;
+          city: string | null;
           created_at: string | null;
+          date: string | null;
+          end_time: string | null;
+          event_id: string;
+          id: string;
+          level: Database['public']['Enums']['session_level'] | null;
+          speaker: string | null;
+          speaker_avatar_url: string | null;
+          start_time: string | null;
+          title: string;
+          topic: string | null;
+          track_id: string | null;
           updated_at: string | null;
         };
-        Insert: Omit<
-          Database['public']['Tables']['sessions']['Row'],
-          'id' | 'created_at' | 'updated_at'
-        > & {
-          id?: string;
+        Insert: {
+          capacity: number;
+          city?: string | null;
           created_at?: string | null;
+          date?: string | null;
+          end_time?: string | null;
+          event_id: string;
+          id?: string;
+          level?: Database['public']['Enums']['session_level'] | null;
+          speaker?: string | null;
+          speaker_avatar_url?: string | null;
+          start_time?: string | null;
+          title: string;
+          topic?: string | null;
+          track_id?: string | null;
           updated_at?: string | null;
         };
-        Update: Partial<Database['public']['Tables']['sessions']['Row']>;
+        Update: {
+          capacity?: number;
+          city?: string | null;
+          created_at?: string | null;
+          date?: string | null;
+          end_time?: string | null;
+          event_id?: string;
+          id?: string;
+          level?: Database['public']['Enums']['session_level'] | null;
+          speaker?: string | null;
+          speaker_avatar_url?: string | null;
+          start_time?: string | null;
+          title?: string;
+          topic?: string | null;
+          track_id?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'sessions_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'sessions_track_id_fkey';
+            columns: ['track_id'];
+            isOneToOne: false;
+            referencedRelation: 'tracks';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      sponsors: {
+        Row: {
+          created_at: string;
+          description: string | null;
+          id: string;
+          name: string | null;
+          score: string | null;
+          state: Database['public']['Enums']['state_enum'];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          name?: string | null;
+          score?: string | null;
+          state?: Database['public']['Enums']['state_enum'];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          name?: string | null;
+          score?: string | null;
+          state?: Database['public']['Enums']['state_enum'];
+          updated_at?: string;
+        };
         Relationships: [];
       };
       staff_whitelist: {
         Row: {
-          id: string;
-          email: string;
-          role: string;
           created_at: string | null;
+          email: string;
+          id: string;
+          role: string;
           updated_at: string | null;
         };
-        Insert: Omit<
-          Database['public']['Tables']['staff_whitelist']['Row'],
-          'id' | 'created_at' | 'updated_at'
-        > & {
-          id?: string;
+        Insert: {
           created_at?: string | null;
+          email: string;
+          id?: string;
+          role: string;
           updated_at?: string | null;
         };
-        Update: Partial<Database['public']['Tables']['staff_whitelist']['Row']>;
+        Update: {
+          created_at?: string | null;
+          email?: string;
+          id?: string;
+          role?: string;
+          updated_at?: string | null;
+        };
         Relationships: [];
+      };
+      ticket_types: {
+        Row: {
+          created_at: string | null;
+          description: string | null;
+          event_id: string;
+          id: string;
+          image_url: string | null;
+          name: string;
+          payment_qr_url: string | null;
+          price: number;
+          ticket_capacity: number | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          description?: string | null;
+          event_id: string;
+          id?: string;
+          image_url?: string | null;
+          name: string;
+          payment_qr_url?: string | null;
+          price?: number;
+          ticket_capacity?: number | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          description?: string | null;
+          event_id?: string;
+          id?: string;
+          image_url?: string | null;
+          name?: string;
+          payment_qr_url?: string | null;
+          price?: number;
+          ticket_capacity?: number | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'ticket_types_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       tracks: {
         Row: {
-          id: string;
-          evento_id: string;
-          nombre: string;
-          descripcion: string | null;
           created_at: string;
+          descripcion: string | null;
+          evento_id: string;
+          id: string;
+          nombre: string;
+          updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['tracks']['Row'], 'id' | 'created_at'> & {
-          id?: string;
+        Insert: {
           created_at?: string;
+          descripcion?: string | null;
+          evento_id: string;
+          id?: string;
+          nombre: string;
+          updated_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['tracks']['Row']>;
+        Update: {
+          created_at?: string;
+          descripcion?: string | null;
+          evento_id?: string;
+          id?: string;
+          nombre?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      users: {
+        Row: {
+          avatar_url: string | null;
+          created_at: string | null;
+          email: string;
+          extra_info: Json | null;
+          first_name: string;
+          id: string;
+          is_staff: boolean | null;
+          last_name: string;
+          phone: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          avatar_url?: string | null;
+          created_at?: string | null;
+          email: string;
+          extra_info?: Json | null;
+          first_name: string;
+          id: string;
+          is_staff?: boolean | null;
+          last_name: string;
+          phone?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          avatar_url?: string | null;
+          created_at?: string | null;
+          email?: string;
+          extra_info?: Json | null;
+          first_name?: string;
+          id?: string;
+          is_staff?: boolean | null;
+          last_name?: string;
+          phone?: string | null;
+          updated_at?: string | null;
+        };
         Relationships: [];
       };
     };
     Views: Record<string, never>;
     Functions: {
+      get_coupon_uses: { Args: { p_coupon_id: string }; Returns: number };
       get_my_profile: {
-        Args: Record<string, never>;
-        Returns: Profile[];
+        Args: never;
+        Returns: {
+          avatar_url: string | null;
+          created_at: string | null;
+          email: string;
+          extra_info: Json | null;
+          first_name: string;
+          id: string;
+          is_staff: boolean | null;
+          last_name: string;
+          phone: string | null;
+          updated_at: string | null;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'users';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      get_my_role: { Args: never; Returns: string };
+      get_public_certificate: {
+        Args: { p_registration_id: string };
+        Returns: {
+          check_in_date: string;
+          event_banner_url: string;
+          event_date_end: string;
+          event_date_start: string;
+          event_id: string;
+          event_role: string;
+          event_slug: string;
+          event_title: string;
+          registration_id: string;
+          ticket_name: string;
+          user_email: string;
+          user_first_name: string;
+          user_id: string;
+          user_last_name: string;
+        }[];
+      };
+      has_event_access: { Args: { p_event_id: string }; Returns: boolean };
+      is_staff: { Args: never; Returns: boolean };
+      is_superadmin: { Args: never; Returns: boolean };
+      registrar_asistencia_qr: {
+        Args: { p_session_id: string; p_usuario_id: string };
+        Returns: string;
+      };
+      update_user_profile: {
+        Args: { p_first_name: string; p_last_name: string; p_phone: string };
+        Returns: {
+          avatar_url: string | null;
+          created_at: string | null;
+          email: string;
+          extra_info: Json | null;
+          first_name: string;
+          id: string;
+          is_staff: boolean | null;
+          last_name: string;
+          phone: string | null;
+          updated_at: string | null;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'users';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
       upsert_user_profile: {
         Args: {
-          p_id: string;
+          p_avatar_url?: string;
           p_email: string;
           p_first_name: string;
+          p_id: string;
           p_last_name: string;
-          p_avatar_url: string | null;
         };
-        Returns: Profile[];
+        Returns: {
+          avatar_url: string | null;
+          created_at: string | null;
+          email: string;
+          extra_info: Json | null;
+          first_name: string;
+          id: string;
+          is_staff: boolean | null;
+          last_name: string;
+          phone: string | null;
+          updated_at: string | null;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'users';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      validate_coupon: {
+        Args: { p_code: string; p_event_id: string };
+        Returns: {
+          id: string;
+          max_uses: number;
+          role: string;
+          uses_left: number;
+        }[];
       };
     };
-    Enums: Record<string, never>;
+    Enums: {
+      session_level: 'Basico' | 'Intermedio' | 'Avanzado';
+      state_enum: 'ACTIVE' | 'INACTIVE';
+    };
     CompositeTypes: Record<string, never>;
   };
 }

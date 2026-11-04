@@ -36,16 +36,21 @@ describe('AuthService Whitelist', () => {
     service = TestBed.inject(AuthService);
   });
 
-  it('should allow whitelisted emails', () => {
-    // pedro2528anze@gmail.com está en la whitelist por defecto
-    expect(service.isWhitelisted('pedro2528anze@gmail.com')).toBe(true);
-    expect(service.isWhitelisted('PEDRO2528ANZE@GMAIL.COM')).toBe(true); // Insensible a mayúsculas
+  it('should resolve the role from the get_my_role RPC', async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: 'SUPERADMIN', error: null });
+
+    const role = await service.resolveRole();
+
+    expect(role).toBe('SUPERADMIN');
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('get_my_role');
   });
 
-  it('should reject non-whitelisted emails', () => {
-    expect(service.isWhitelisted('unauthorized@gmail.com')).toBe(false);
-    expect(service.isWhitelisted('')).toBe(false);
-    expect(service.isWhitelisted(undefined)).toBe(false);
+  it('should resolve null when the user has no role assigned', async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: null, error: null });
+
+    const role = await service.resolveRole();
+
+    expect(role).toBeNull();
   });
 
   it('should set auth error and sign out when signOutWithError is called', async () => {

@@ -1,6 +1,6 @@
-import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
@@ -11,6 +11,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 
+import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { EventsRepository } from '../../../domain/events.repository';
 import { EventsApi } from '../../../data/events.api';
 import { Event } from '../../../domain/event.model';
@@ -39,6 +40,11 @@ import { CredentialGenerator } from '../../components/credential-generator/crede
 export class EventsPage implements OnInit {
   private readonly eventsRepo = inject(EventsRepository);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
+  /** Solo SUPERADMIN ve crear/editar (RLS sigue siendo la seguridad real). */
+  readonly isSuperadmin = computed(() => this.auth.role() === 'SUPERADMIN');
+  readonly forbidden = this.route.snapshot.queryParamMap.get('forbidden') === '1';
   readonly credentialGenerator = viewChild<CredentialGenerator>(CredentialGenerator);
 
   readonly events = signal<Event[]>([]);
@@ -78,6 +84,14 @@ export class EventsPage implements OnInit {
         }, 2000);
       });
     }
+  }
+
+  createEvent(): void {
+    this.router.navigate(['/events', 'new']);
+  }
+
+  editEvent(event: Event): void {
+    this.router.navigate(['/events', event.id, 'edit']);
   }
 
   viewAttendees(event: Event): void {

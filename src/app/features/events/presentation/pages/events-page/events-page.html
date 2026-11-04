@@ -9,7 +9,29 @@
         Gestiona y visualiza la lista de eventos creados de la comunidad GDG Tarija.
       </p>
     </div>
+    @if (isSuperadmin()) {
+      <button
+        type="button"
+        (click)="createEvent()"
+        class="inline-flex items-center gap-2 self-start rounded-full bg-google-blue px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+      >
+        <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+        Nuevo evento
+      </button>
+    }
   </div>
+
+  @if (forbidden) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-yellow-light/40 p-4 text-sm font-medium text-text-primary dark:text-neutral-200"
+      role="alert"
+    >
+      <span class="material-symbols-rounded text-xl text-google-yellow" aria-hidden="true"
+        >lock</span
+      >
+      <span>Solo un superadministrador puede crear o editar eventos.</span>
+    </div>
+  }
 
   @if (errorMsg(); as err) {
     <div
@@ -82,7 +104,7 @@
             <th pSortableColumn="isPublished" class="dark:text-neutral-300">
               Estado <p-sortIcon field="isPublished"></p-sortIcon>
             </th>
-            <th class="dark:text-neutral-300 text-center w-48">Acciones</th>
+            <th class="dark:text-neutral-300 text-center w-72">Acciones</th>
           </tr>
         </ng-template>
 
@@ -169,6 +191,18 @@
                   <span class="material-symbols-rounded text-sm">group</span>
                   <span>Asistentes</span>
                 </button>
+
+                @if (isSuperadmin()) {
+                  <button
+                    type="button"
+                    (click)="editEvent(event)"
+                    class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-text-primary dark:text-neutral-200 transition-colors"
+                    title="Editar y gestionar evento"
+                  >
+                    <span class="material-symbols-rounded text-sm">edit</span>
+                    <span>Gestionar</span>
+                  </button>
+                }
               </div>
             </td>
           </tr>

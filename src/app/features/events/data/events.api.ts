@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { SUPABASE } from '../../../core/supabase/supabase.client';
 import { EventsRepository } from '../domain/events.repository';
-import { Event, Attendee } from '../domain/event.model';
-import { toDomainEvent, toDomainAttendee } from './events.mapper';
+import { Event, EventInput, Attendee } from '../domain/event.model';
+import { toDomainEvent, toDomainAttendee, toEventRow } from './events.mapper';
+import { toDomainError } from './postgres-error.mapper';
 import { RegistrationWithDetailsRow, RawRegistrationRow } from './events.dto';
 
 @Injectable({
@@ -39,6 +40,67 @@ export class EventsApi implements EventsRepository {
     }
 
     return data ? toDomainEvent(data) : null;
+  }
+
+  async create(input: EventInput): Promise<Event> {
+    const { data, error } = await this.supabase
+      .from('events')
+      .insert({ ...toEventRow(input), is_published: false })
+      .select('*')
+      .single();
+    if (error) throw toDomainError(error, 'event');
+    return toDomainEvent(data);
+  }
+
+  async update(eventId: string, input: EventInput): Promise<Event> {
+    const { data: current, error: readError } = await this.supabase
+      .from('events')
+      .select('extra_info')
+      .eq('id', eventId)
+      .single();
+    if (readError) throw toDomainError(readError, 'event');
+
+    const { data, error } = await this.supabase
+      .from('events')
+      .update(toEventRow(input, current.extra_info))
+      .eq('id', eventId)
+      .select('*')
+      .single();
+    if (error) throw toDomainError(error, 'event');
+    return toDomainEvent(data);
+  }
+
+  async setPublished(eventId: string, published: boolean): Promise<Event> {
+    const { data, error } = await this.supabase
+      .from('events')
+      .update({ is_published: published })
+      .eq('id', eventId)
+      .select('*')
+      .single();
+    if (error) throw toDomainError(error, 'event');
+    return toDomainEvent(data);
+  }
+
+  async delete(eventId: string): Promise<void> {
+    const { error } = await this.supabase.from('events').delete().eq('id', eventId);
+    if (error) throw toDomainError(error, 'event');
+  }
+
+  async isSlugAvailable(slug: string, excludeEventId?: string): Promise<boolean> {
+    let query = this.supabase.from('events').select('id').eq('slug', slug);
+    if (excludeEventId) query = query.neq('id', excludeEventId);
+    const { data, error } = await query.limit(1);
+    if (error) throw toDomainError(error, 'event');
+    return (data ?? []).length === 0;
+  }
+
+  async countRegistrations(eventId: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId);
+    if (error) throw toDomainError(error, 'event');
+    return count ?? 0;
   }
 
   async getAttendees(eventId: string): Promise<Attendee[]> {

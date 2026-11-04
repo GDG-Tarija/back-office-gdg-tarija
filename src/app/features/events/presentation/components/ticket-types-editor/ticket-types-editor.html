@@ -1,0 +1,317 @@
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">Paquetes</h2>
+      <p class="text-sm text-text-secondary dark:text-neutral-400">
+        Tipos de entrada del evento. Se necesita al menos uno para publicar.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="inline-flex items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+      (click)="openCreate()"
+    >
+      <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+      Nuevo paquete
+    </button>
+  </div>
+
+  @if (notice(); as msg) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
+      role="status"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
+      <span>{{ msg }}</span>
+    </div>
+  }
+  @for (w of capacityWarnings(); track w.message) {
+    <div
+      class="flex items-center gap-3 rounded-2xl bg-google-yellow-light/40 p-3 text-sm font-medium text-text-primary dark:text-neutral-200"
+      role="status"
+    >
+      <span class="material-symbols-rounded text-xl text-google-yellow" aria-hidden="true"
+        >warning</span
+      >
+      <span>{{ w.message }}</span>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center p-8" role="status" aria-label="Cargando paquetes">
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+        >progress_activity</span
+      >
+    </div>
+  } @else if (loadError(); as err) {
+    <div
+      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-google-red"
+      role="alert"
+    >
+      <span>{{ err }}</span>
+      <button type="button" class="underline" (click)="load()">Reintentar</button>
+    </div>
+  } @else if (tickets().length === 0) {
+    <div
+      class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 p-10 text-center dark:border-white/10"
+    >
+      <span
+        class="material-symbols-rounded text-4xl text-neutral-300 dark:text-neutral-600"
+        aria-hidden="true"
+        >confirmation_number</span
+      >
+      <p class="text-base font-bold text-text-primary dark:text-neutral-200">Aún no hay paquetes</p>
+      <p class="text-sm text-text-secondary dark:text-neutral-400">
+        Crea el primero para que las personas puedan inscribirse.
+      </p>
+    </div>
+  } @else {
+    <ul class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      @for (t of tickets(); track t.id) {
+        <li
+          class="flex items-start gap-4 rounded-2xl border border-black/5 p-4 dark:border-white/5"
+        >
+          <div
+            class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800"
+          >
+            @if (t.imageUrl) {
+              <img
+                [src]="t.imageUrl"
+                [alt]="'Imagen de ' + t.name"
+                class="size-full object-cover"
+              />
+            } @else {
+              <span
+                class="material-symbols-rounded text-2xl text-neutral-300 dark:text-neutral-600"
+                aria-hidden="true"
+                >confirmation_number</span
+              >
+            }
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-base font-bold text-text-primary dark:text-neutral-100">
+              {{ t.name }}
+            </p>
+            <p class="text-sm text-text-secondary dark:text-neutral-400">
+              {{ t.price === 0 ? 'Gratis' : 'Bs ' + t.price.toFixed(2) }} ·
+              {{ registered(t) }} inscrito(s)
+              @if (t.ticketCapacity !== null) {
+                de {{ t.ticketCapacity }} cupos
+              } @else {
+                · sin cupo propio
+              }
+            </p>
+            @if (t.description) {
+              <p class="mt-1 line-clamp-2 text-xs text-text-secondary dark:text-neutral-400">
+                {{ t.description }}
+              </p>
+            }
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+              [attr.aria-label]="'Editar paquete ' + t.name"
+              (click)="openEdit(t)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">edit</span>
+            </button>
+            <span [pTooltip]="deleteBlockReason(t) ?? ''" [tooltipDisabled]="!deleteBlockReason(t)">
+              <button
+                type="button"
+                class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                [attr.aria-label]="
+                  deleteBlockReason(t)
+                    ? 'Eliminar paquete ' + t.name + ' (no disponible: tiene inscritos)'
+                    : 'Eliminar paquete ' + t.name
+                "
+                [disabled]="!!deleteBlockReason(t)"
+                (click)="askDelete(t)"
+              >
+                <span class="material-symbols-rounded text-xl" aria-hidden="true">delete</span>
+              </button>
+            </span>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+@if (dialogOpen()) {
+  <app-dialog-frame
+    [title]="editing() ? 'Editar paquete' : 'Nuevo paquete'"
+    icon="confirmation_number"
+    initialSize="md"
+    (closeDialog)="closeDialog()"
+  >
+    <form class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div class="flex flex-col gap-1.5 md:col-span-2">
+          <label for="tt-name" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Nombre *</label
+          >
+          <input
+            id="tt-name"
+            type="text"
+            pInputText
+            class="w-full !rounded-xl"
+            [formField]="f.name"
+            [attr.aria-invalid]="!!fieldError('name')"
+          />
+          @if (fieldError('name'); as err) {
+            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+          }
+        </div>
+
+        <div class="flex flex-col gap-1.5 md:col-span-2">
+          <label for="tt-desc" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Descripción</label
+          >
+          <textarea
+            id="tt-desc"
+            rows="3"
+            pInputText
+            class="w-full !rounded-xl"
+            [formField]="f.description"
+          ></textarea>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label
+            for="tt-price"
+            class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Precio (Bs) *</label
+          >
+          <input
+            id="tt-price"
+            type="text"
+            inputmode="decimal"
+            pInputText
+            class="w-full !rounded-xl"
+            [formField]="f.price"
+            [attr.aria-invalid]="!!fieldError('price')"
+          />
+          @if (fieldError('price'); as err) {
+            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+          }
+          @if (fieldWarning('price'); as warn) {
+            <small class="font-medium text-text-secondary dark:text-neutral-400" role="status">{{
+              warn
+            }}</small>
+          }
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label for="tt-cap" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Cupo (opcional)</label
+          >
+          <input
+            id="tt-cap"
+            type="text"
+            inputmode="numeric"
+            pInputText
+            class="w-full !rounded-xl"
+            placeholder="Sin cupo propio"
+            [formField]="f.ticketCapacity"
+            [attr.aria-invalid]="!!fieldError('ticketCapacity')"
+          />
+          @if (editing() && editingCount() > 0) {
+            <small class="text-text-secondary dark:text-neutral-400"
+              >Mínimo {{ editingCount() }} (inscritos actuales).</small
+            >
+          }
+          @if (fieldError('ticketCapacity'); as err) {
+            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+          }
+        </div>
+
+        <app-image-uploader
+          kind="ticket"
+          label="Imagen del paquete"
+          hint="JPG, PNG o WebP, máximo 2 MB."
+          [eventId]="eventId()"
+          [value]="model().imageUrl"
+          (valueChange)="setImage('imageUrl', $event)"
+          (uploaded)="onImageUploaded($event)"
+          (discarded)="onImageDiscarded($event)"
+        />
+
+        @if (priceIsPaid()) {
+          <div class="flex flex-col gap-1.5">
+            <app-image-uploader
+              kind="qr"
+              label="QR de pago *"
+              hint="Obligatorio en paquetes de pago. JPG, PNG o WebP, máximo 500 KB."
+              [eventId]="eventId()"
+              [value]="model().paymentQrUrl"
+              (valueChange)="setImage('paymentQrUrl', $event)"
+              (uploaded)="onImageUploaded($event)"
+              (discarded)="onImageDiscarded($event)"
+            />
+            @if (fieldError('paymentQrUrl'); as err) {
+              <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            }
+          </div>
+        }
+      </div>
+
+      @if (dialogError(); as err) {
+        <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+      }
+    </form>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+        (click)="closeDialog()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="saving() || (submitted() && !canSave())"
+        (click)="save()"
+      >
+        {{ saving() ? 'Guardando...' : 'Guardar paquete' }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}
+
+@if (toDelete(); as t) {
+  <app-dialog-frame
+    title="Eliminar paquete"
+    icon="delete"
+    initialSize="sm"
+    (closeDialog)="cancelDelete()"
+  >
+    <div class="flex flex-col gap-3 text-sm text-text-primary dark:text-neutral-200">
+      <p>
+        ¿Eliminar el paquete <strong>{{ t.name }}</strong
+        >? Esta acción es permanente.
+      </p>
+      @if (deleteError(); as err) {
+        <p class="font-medium text-google-red" role="alert">{{ err }}</p>
+      }
+    </div>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+        (click)="cancelDelete()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="rounded-full bg-google-red px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="deleting()"
+        (click)="confirmDelete()"
+      >
+        {{ deleting() ? 'Eliminando...' : 'Eliminar' }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}

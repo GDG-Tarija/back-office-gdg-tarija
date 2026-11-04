@@ -82,6 +82,13 @@
               <span class="truncate text-[11px] text-text-secondary dark:text-neutral-400">
                 {{ user.email }}
               </span>
+              @if (roleLabel(); as role) {
+                <span
+                  class="mt-1 w-fit rounded-full bg-google-blue-light/60 dark:bg-google-blue/15 px-2 py-0.5 text-[10px] font-semibold text-google-blue"
+                >
+                  {{ role }}
+                </span>
+              }
             </div>
           </div>
 

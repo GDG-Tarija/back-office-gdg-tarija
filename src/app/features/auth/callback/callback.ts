@@ -23,7 +23,7 @@ export class Callback implements OnInit {
     this.auth
       .getSession()
       .then(async (session) => {
-        if (session && !this.auth.isWhitelisted(session.user?.email)) {
+        if (session && !(await this.auth.resolveRole())) {
           await this.auth.signOutWithError(
             'Tu correo no está autorizado para acceder a este panel.',
           );
