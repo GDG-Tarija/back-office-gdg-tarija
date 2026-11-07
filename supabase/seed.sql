@@ -102,6 +102,13 @@ insert into public.ticket_types (id, event_id, name, price, ticket_capacity, pay
    'https://res.cloudinary.com/dopkch3x9/image/upload/v1753129644/logoGDGTarija_lyzyzo.svg', 'Charlas + workshops + kit.'),
   ('00000000-0000-4000-8000-0000000001e3', '00000000-0000-4000-8000-0000000000e3', 'Entrada Gratuita', 0.00, 100, null, 'Acceso a la sala virtual.');
 
+-- Fases de precio (preventa -> normal) del 'Ticket Básico' de la conferencia
+insert into public.ticket_phases (id, ticket_type_id, name, position, price, capacity, payment_qr_url) values
+  ('00000000-0000-4000-8000-0000000001f1', '00000000-0000-4000-8000-0000000002e2', 'Preventa', 1, 10.00, 10,
+   'https://res.cloudinary.com/dopkch3x9/image/upload/v1753129644/logoGDGTarija_lyzyzo.svg'),
+  ('00000000-0000-4000-8000-0000000001f2', '00000000-0000-4000-8000-0000000002e2', 'Entrada normal', 2, 15.00, null,
+   'https://res.cloudinary.com/dopkch3x9/image/upload/v1753129644/logoGDGTarija_lyzyzo.svg');
+
 -- ---------------------------------------------------------------------------
 -- Tracks y sesiones (agenda)
 -- ---------------------------------------------------------------------------
