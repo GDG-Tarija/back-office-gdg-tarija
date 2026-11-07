@@ -20,12 +20,20 @@ import { DialogFrame } from '../../../../../shared/components/dialog-frame/dialo
 import { AssetCleanupTracker } from '../../../domain/asset-cleanup';
 import { AssetsRepository } from '../../../domain/assets.repository';
 import { validateTicketCapacities, validateTicketType } from '../../../domain/event-validators';
+import { PhaseAvailability } from '../../../domain/ticket-phase.model';
 import { TicketType } from '../../../domain/ticket-type.model';
 import {
+  PhaseFormValue,
   TicketTypeFormValue,
+  applyPhasePricesToQr,
   applyPriceToQr,
+  emptyPhaseFormValue,
   emptyTicketTypeFormValue,
+  enablePhases,
+  formValueToPhaseInput,
   formValueToTicketTypeInput,
+  movePhase,
+  phaseDeleteBlockReason,
   ticketDeleteBlockReason,
   ticketTypeToFormValue,
 } from '../../../domain/ticket-type-form';
@@ -50,6 +58,8 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
 
   readonly tickets = signal<TicketType[]>([]);
   readonly counts = signal<Record<string, number>>({});
+  /** Vendidos/restantes por fase (ticket_phase_id). */
+  readonly availability = signal<Record<string, PhaseAvailability>>({});
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly notice = signal<string | null>(null);
@@ -81,6 +91,10 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
     return !isNaN(price) && price > 0;
   });
 
+  readonly soldByPhaseId = computed(() =>
+    Object.fromEntries(Object.values(this.availability()).map((a) => [a.ticketPhaseId, a.sold])),
+  );
+
   readonly validation = computed(() => {
     const editing = this.editing();
     return validateTicketType(formValueToTicketTypeInput(this.model()), {
@@ -89,7 +103,18 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
         .map((t) => t.name),
       registeredCount: editing ? this.editingCount() : undefined,
       originalPrice: editing?.price,
+      existingPhases: editing?.phases.map((p) => ({ id: p.id, name: p.name, price: p.price })),
+      soldByPhaseId: this.soldByPhaseId(),
     });
+  });
+
+  /** No se puede volver a "sin fases" si alguna fase guardada ya tiene ventas. */
+  readonly disablePhasesBlockReason = computed(() => {
+    const sold = this.soldByPhaseId();
+    const withSales = (this.editing()?.phases ?? []).filter((p) => (sold[p.id] ?? 0) > 0);
+    return withSales.length
+      ? `No se puede quitar el sistema de fases: "${withSales[0].name}" ya tiene inscripciones.`
+      : null;
   });
 
   readonly capacityWarnings = computed(
@@ -107,6 +132,13 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
         if (discardedQr) {
           void this.cleanup.trackDiscarded(discardedQr);
           this.model.set(next);
+          return;
+        }
+        // Cada fase gratuita descarta su QR, igual que el paquete.
+        const { value: phased, discardedQrs } = applyPhasePricesToQr(value);
+        if (discardedQrs.length) {
+          discardedQrs.forEach((qr) => void this.cleanup.trackDiscarded(qr));
+          this.model.set(phased);
         }
       });
     });
@@ -124,12 +156,14 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const [tickets, counts] = await Promise.all([
+      const [tickets, counts, availability] = await Promise.all([
         this.repo.list(this.eventId()),
         this.repo.getRegistrationCounts(this.eventId()),
+        this.repo.getPhaseAvailability(this.eventId()),
       ]);
       this.tickets.set(tickets);
       this.counts.set(counts);
+      this.availability.set(availability);
       this.ticketsChange.emit(tickets);
     } catch (err) {
       this.loadError.set(
@@ -146,6 +180,90 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
 
   deleteBlockReason(t: TicketType): string | null {
     return ticketDeleteBlockReason(this.registered(t));
+  }
+
+  phaseSold(phaseId: string | null): number {
+    return phaseId ? (this.availability()[phaseId]?.sold ?? 0) : 0;
+  }
+
+  phaseAvailability(phaseId: string | null): PhaseAvailability | null {
+    return phaseId ? (this.availability()[phaseId] ?? null) : null;
+  }
+
+  phaseDeleteBlockReason(phase: PhaseFormValue): string | null {
+    return phaseDeleteBlockReason(this.phaseSold(phase.id));
+  }
+
+  /** Resumen "Preventa 12/50 · Normal 3" de las fases guardadas de un paquete. */
+  phaseSummary(t: TicketType): { name: string; label: string; active: boolean }[] {
+    return t.phases.map((p) => {
+      const a = this.availability()[p.id];
+      const sold = a?.sold ?? 0;
+      return {
+        name: p.name,
+        label: p.capacity === null ? `${sold} vendidos` : `${sold}/${p.capacity}`,
+        active: !!a?.isActive,
+      };
+    });
+  }
+
+  toggleUsesPhases(checked: boolean): void {
+    if (checked) {
+      this.model.update((v) => enablePhases(v));
+      return;
+    }
+    if (this.disablePhasesBlockReason()) return;
+    // Los QR de las fases desaparecen con ellas.
+    for (const p of this.model().phases) {
+      if (p.paymentQrUrl) void this.cleanup.trackDiscarded(p.paymentQrUrl);
+    }
+    this.model.update((v) => ({ ...v, usesPhases: false, phases: [] }));
+  }
+
+  addPhase(): void {
+    this.model.update((v) => ({ ...v, phases: [...v.phases, emptyPhaseFormValue()] }));
+  }
+
+  removePhase(index: number): void {
+    const phase = this.model().phases[index];
+    if (!phase || this.phaseDeleteBlockReason(phase)) return;
+    if (phase.paymentQrUrl) void this.cleanup.trackDiscarded(phase.paymentQrUrl);
+    this.model.update((v) => ({ ...v, phases: v.phases.filter((_, i) => i !== index) }));
+  }
+
+  shiftPhase(index: number, direction: -1 | 1): void {
+    this.model.update((v) => ({ ...v, phases: movePhase(v.phases, index, direction) }));
+  }
+
+  updatePhase(index: number, patch: Partial<Omit<PhaseFormValue, 'id'>>): void {
+    this.model.update((v) => ({
+      ...v,
+      phases: v.phases.map((p, i) => (i === index ? { ...p, ...patch } : p)),
+    }));
+  }
+
+  phasePriceIsPaid(phase: PhaseFormValue): boolean {
+    const price = formValueToPhaseInput(phase).price;
+    return !isNaN(price) && price > 0;
+  }
+
+  phaseError(index: number, field: 'name' | 'price' | 'capacity' | 'paymentQrUrl'): string | null {
+    if (!this.submitted()) return null;
+    return (
+      this.validation().errors.find((e) => e.field === `phases[${index}].${field}`)?.message ?? null
+    );
+  }
+
+  /** Errores de las fases que no pertenecen a una fila (vacío, fase con ventas quitada). */
+  phasesError(): string | null {
+    if (!this.submitted()) return null;
+    return this.validation().errors.find((e) => e.field === 'phases')?.message ?? null;
+  }
+
+  phasesWarnings(): string[] {
+    return this.validation()
+      .warnings.filter((w) => w.field === 'phases')
+      .map((w) => w.message);
   }
 
   fieldError(field: string): string | null {
@@ -198,10 +316,13 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       );
       this.ticketsChange.emit(this.tickets());
       await this.cleanup.commit();
+      await this.refreshAvailability();
       this.dialogOpen.set(false);
       this.notice.set(editing ? 'Paquete actualizado.' : 'Paquete creado.');
     } catch (err) {
       this.dialogError.set(err instanceof Error ? err.message : 'No se pudo guardar el paquete.');
+      // El guardado de fases no es transaccional: muestra lo que quedó realmente en la BD.
+      await this.refreshQuietly();
     } finally {
       this.saving.set(false);
     }
@@ -239,6 +360,29 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       this.deleteError.set(err instanceof Error ? err.message : 'No se pudo eliminar el paquete.');
     } finally {
       this.deleting.set(false);
+    }
+  }
+
+  private async refreshAvailability(): Promise<void> {
+    try {
+      this.availability.set(await this.repo.getPhaseAvailability(this.eventId()));
+    } catch {
+      // Los contadores se actualizan en la próxima carga.
+    }
+  }
+
+  /** Recarga paquetes y disponibilidad sin spinner; un fallo aquí no debe tapar el resultado. */
+  private async refreshQuietly(): Promise<void> {
+    try {
+      const [tickets, availability] = await Promise.all([
+        this.repo.list(this.eventId()),
+        this.repo.getPhaseAvailability(this.eventId()),
+      ]);
+      this.tickets.set(tickets);
+      this.availability.set(availability);
+      this.ticketsChange.emit(tickets);
+    } catch {
+      // La lista queda como estaba; "Reintentar" recarga todo.
     }
   }
 

@@ -138,7 +138,7 @@ export function distinctCategories(events: Pick<Event, 'category'>[]): string[] 
 /** Contexto para validatePublish a partir de los datos ya guardados. */
 export function buildPublishContext(
   event: Event,
-  ticketTypes: Pick<TicketType, 'ticketCapacity'>[],
+  ticketTypes: Pick<TicketType, 'name' | 'ticketCapacity' | 'phases'>[],
   sessions: Session[],
 ): PublishContext {
   return {

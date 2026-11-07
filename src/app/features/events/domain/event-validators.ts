@@ -2,6 +2,7 @@ import { COUPON_ROLES, CouponInput } from './coupon.model';
 import { EVENT_TYPES, EventInput, LOCATION_TYPES } from './event.model';
 import { FORM_FIELD_TYPES, FormField } from './form-field.model';
 import { SESSION_LEVELS, SessionInput } from './session.model';
+import { TicketPhaseInput } from './ticket-phase.model';
 import { TicketTypeInput } from './ticket-type.model';
 
 export interface ValidationIssue {
@@ -211,6 +212,10 @@ export interface TicketTypeValidationContext {
   registeredCount?: number;
   /** Precio actual guardado, para avisar si cambia con inscritos. */
   originalPrice?: number;
+  /** Fases ya guardadas del paquete (al editar), para detectar borrados. */
+  existingPhases?: { id: string; name: string; price?: number }[];
+  /** Inscripciones que cuentan para el cupo, por id de fase (get_ticket_availability). */
+  soldByPhaseId?: Record<string, number>;
 }
 
 function hasAtMostTwoDecimals(n: number): boolean {
@@ -231,23 +236,26 @@ export function validateTicketType(
     r.errors.push({ field: 'name', message: 'Ya existe un paquete con ese nombre en el evento.' });
   }
 
-  if (typeof input.price !== 'number' || isNaN(input.price) || input.price < 0) {
-    r.errors.push({ field: 'price', message: 'El precio debe ser un número mayor o igual a 0.' });
-  } else if (!hasAtMostTwoDecimals(input.price)) {
-    r.errors.push({ field: 'price', message: 'El precio admite como máximo 2 decimales.' });
-  } else {
-    const qr = input.paymentQrUrl?.trim();
-    if (input.price > 0 && !qr) {
-      r.errors.push({
-        field: 'paymentQrUrl',
-        message: 'Los paquetes de pago requieren el QR de pago.',
-      });
-    }
-    if (input.price === 0 && qr) {
-      r.errors.push({
-        field: 'paymentQrUrl',
-        message: 'Los paquetes gratuitos no deben tener QR de pago.',
-      });
+  // Con fases, precio y QR del paquete salen de la primera fase (ver toTicketTypeRow).
+  if (!input.phases) {
+    if (typeof input.price !== 'number' || isNaN(input.price) || input.price < 0) {
+      r.errors.push({ field: 'price', message: 'El precio debe ser un número mayor o igual a 0.' });
+    } else if (!hasAtMostTwoDecimals(input.price)) {
+      r.errors.push({ field: 'price', message: 'El precio admite como máximo 2 decimales.' });
+    } else {
+      const qr = input.paymentQrUrl?.trim();
+      if (input.price > 0 && !qr) {
+        r.errors.push({
+          field: 'paymentQrUrl',
+          message: 'Los paquetes de pago requieren el QR de pago.',
+        });
+      }
+      if (input.price === 0 && qr) {
+        r.errors.push({
+          field: 'paymentQrUrl',
+          message: 'Los paquetes gratuitos no deben tener QR de pago.',
+        });
+      }
     }
   }
 
@@ -265,10 +273,145 @@ export function validateTicketType(
     }
   }
 
-  if (ctx.registeredCount && ctx.originalPrice !== undefined && ctx.originalPrice !== input.price) {
+  if (input.phases) {
+    const phases = validateTicketPhases(input.phases, ctx, input.ticketCapacity);
+    r.errors.push(...phases.errors);
+    r.warnings.push(...phases.warnings);
+  } else {
+    r.errors.push(...removedPhaseErrors([], ctx));
+  }
+  if (
+    !input.phases &&
+    ctx.registeredCount &&
+    ctx.originalPrice !== undefined &&
+    ctx.originalPrice !== input.price
+  ) {
     r.warnings.push({
       field: 'price',
       message: 'Cambiar el precio no afecta a quienes ya se inscribieron con el precio anterior.',
+    });
+  }
+  return r;
+}
+
+/** Fases guardadas con ventas que el formulario ya no incluye (no se pueden borrar). */
+function removedPhaseErrors(
+  phases: PhaseDraft[],
+  ctx: Pick<TicketTypeValidationContext, 'existingPhases' | 'soldByPhaseId'>,
+): ValidationIssue[] {
+  const kept = new Set(phases.map((p) => p.id).filter((id): id is string => !!id));
+  const issues: ValidationIssue[] = [];
+  for (const e of ctx.existingPhases ?? []) {
+    const n = ctx.soldByPhaseId?.[e.id] ?? 0;
+    if (!kept.has(e.id) && n > 0) {
+      issues.push({
+        field: 'phases',
+        message: `No se puede quitar la fase "${e.name}": tiene ${n} inscripción(es).`,
+      });
+    }
+  }
+  return issues;
+}
+
+/** Fase mínima que validan tanto el formulario como el checklist de publicación. */
+export type PhaseDraft = Pick<TicketPhaseInput, 'name' | 'price' | 'capacity' | 'paymentQrUrl'> & {
+  id?: string | null;
+};
+
+/**
+ * Reglas de las fases de un paquete. Los campos de error son `phases` (general) o
+ * `phases[i].name|price|capacity|paymentQrUrl`.
+ */
+export function validateTicketPhases(
+  phases: PhaseDraft[],
+  ctx: Pick<TicketTypeValidationContext, 'existingPhases' | 'soldByPhaseId'> = {},
+  ticketCapacity: number | null = null,
+): ValidationResult {
+  const r = newResult();
+  const sold = ctx.soldByPhaseId ?? {};
+
+  if (phases.length < 1) {
+    r.errors.push({ field: 'phases', message: 'Agrega al menos una fase al paquete.' });
+  }
+
+  const seen = new Set<string>();
+  phases.forEach((p, i) => {
+    const at = `phases[${i}]`;
+    const name = p.name.trim();
+    if (!name) {
+      r.errors.push({ field: `${at}.name`, message: 'El nombre de la fase es obligatorio.' });
+    } else if (name.length > 100) {
+      r.errors.push({
+        field: `${at}.name`,
+        message: 'El nombre no puede superar los 100 caracteres.',
+      });
+    } else if (seen.has(name.toLowerCase())) {
+      r.errors.push({ field: `${at}.name`, message: `El nombre "${name}" está repetido.` });
+    }
+    seen.add(name.toLowerCase());
+
+    if (typeof p.price !== 'number' || isNaN(p.price) || p.price < 0) {
+      r.errors.push({
+        field: `${at}.price`,
+        message: 'El precio debe ser un número mayor o igual a 0.',
+      });
+    } else if (!hasAtMostTwoDecimals(p.price)) {
+      r.errors.push({ field: `${at}.price`, message: 'El precio admite como máximo 2 decimales.' });
+    } else {
+      const qr = p.paymentQrUrl?.trim();
+      if (p.price > 0 && !qr) {
+        r.errors.push({
+          field: `${at}.paymentQrUrl`,
+          message: 'Las fases de pago requieren el QR de pago.',
+        });
+      }
+      if (p.price === 0 && qr) {
+        r.errors.push({
+          field: `${at}.paymentQrUrl`,
+          message: 'Las fases gratuitas no deben tener QR de pago.',
+        });
+      }
+    }
+
+    const isLast = i === phases.length - 1;
+    const soldHere = p.id ? (sold[p.id] ?? 0) : 0;
+    if (p.capacity === null) {
+      if (!isLast) {
+        r.errors.push({
+          field: `${at}.capacity`,
+          message: 'Solo la última fase puede quedar sin cupo.',
+        });
+      }
+    } else if (!Number.isInteger(p.capacity) || p.capacity < 1) {
+      r.errors.push({
+        field: `${at}.capacity`,
+        message: 'El cupo debe ser un entero mayor o igual a 1.',
+      });
+    } else if (p.capacity < soldHere) {
+      r.errors.push({
+        field: `${at}.capacity`,
+        message: `El cupo no puede ser menor a las ${soldHere} inscripciones de la fase.`,
+      });
+    }
+  });
+
+  r.errors.push(...removedPhaseErrors(phases, ctx));
+
+  for (const e of ctx.existingPhases ?? []) {
+    const edited = phases.find((p) => p.id === e.id);
+    if (edited && e.price !== undefined && e.price !== edited.price && (sold[e.id] ?? 0) > 0) {
+      r.warnings.push({
+        field: 'phases',
+        message: `Cambiar el precio de "${e.name}" no afecta a quienes ya se inscribieron con el precio anterior.`,
+      });
+    }
+  }
+
+  const total = phases.reduce((acc, p) => acc + (p.capacity ?? 0), 0);
+  if (ticketCapacity !== null && total > ticketCapacity) {
+    r.warnings.push({
+      field: 'phases',
+      message: `La suma de cupos de las fases (${total}) supera el cupo del paquete (${ticketCapacity}); el paquete se agotará antes de completar todas las fases.`,
     });
   }
   return r;
@@ -581,7 +724,12 @@ export function validateImageFile(
 
 export interface PublishContext {
   event: EventInput;
-  ticketTypes: Pick<TicketTypeInput, 'ticketCapacity'>[];
+  ticketTypes: {
+    name?: string;
+    ticketCapacity: number | null;
+    /** Fases guardadas; vacío/ausente = paquete sin fases. */
+    phases?: PhaseDraft[];
+  }[];
   sessions: SessionSlot[];
 }
 
@@ -607,6 +755,16 @@ export function validatePublish(ctx: PublishContext): ValidationResult {
   if (ctx.ticketTypes.length < 1) {
     r.errors.push({ field: 'ticketTypes', message: 'Crea al menos un paquete de entrada.' });
   }
+  ctx.ticketTypes.forEach((t, i) => {
+    if (!t.phases?.length) return;
+    const issue = validateTicketPhases(t.phases, {}, t.ticketCapacity).errors[0];
+    if (issue) {
+      r.errors.push({
+        field: `ticketTypes[${i}].phases`,
+        message: `Paquete "${t.name ?? i + 1}": ${issue.message}`,
+      });
+    }
+  });
   if (!e.imageUrl) {
     r.errors.push({ field: 'imageUrl', message: 'Sube una imagen de portada.' });
   }
