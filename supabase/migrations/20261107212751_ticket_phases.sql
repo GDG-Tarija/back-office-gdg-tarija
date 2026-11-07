@@ -281,9 +281,13 @@ begin
     end if;
   end if;
 
-  -- Estado para usuarios normales: CONFIRMED solo si la fase (o paquete) es gratis.
+  -- Estado para usuarios normales: CONFIRMED si la fase (o paquete) es gratis o si traen un
+  -- cupón válido (el cupón ATTENDEE es un descuento del 100%); PENDING si deben pagar.
   if v_restricted and (v_coupon_role is null or v_coupon_role = 'ATTENDEE') then
-    new.status := case when coalesce(v_price, 0) = 0 then 'CONFIRMED' else 'PENDING' end;
+    new.status := case
+      when v_coupon_role is not null or coalesce(v_price, 0) = 0 then 'CONFIRMED'
+      else 'PENDING'
+    end;
   end if;
 
   return new;

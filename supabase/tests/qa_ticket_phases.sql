@@ -35,7 +35,8 @@ insert into public.ticket_phases (id, ticket_type_id, name, position, price, cap
   ('dddddddd-0000-4000-8000-000000000001', 'cccccccc-0000-4000-8000-000000000001', 'Preventa', 1, 30, 2, 'https://x/qr30.png'),
   ('dddddddd-0000-4000-8000-000000000002', 'cccccccc-0000-4000-8000-000000000001', 'Normal',   2, 50, 3, 'https://x/qr50.png');
 insert into public.event_coupons (id, event_id, code, role, max_uses) values
-  ('eeeeeeee-0000-4000-8000-000000000001', 'bbbbbbbb-0000-4000-8000-000000000001', 'QA-SPEAKER', 'SPEAKER', 5);
+  ('eeeeeeee-0000-4000-8000-000000000001', 'bbbbbbbb-0000-4000-8000-000000000001', 'QA-SPEAKER', 'SPEAKER', 5),
+  ('eeeeeeee-0000-4000-8000-000000000002', 'bbbbbbbb-0000-4000-8000-000000000002', 'QA-ATTENDEE', 'ATTENDEE', 5);
 
 -- Helpers para actuar como usuario autenticado / superadmin
 create function pg_temp.as_user(n int) returns void language plpgsql as $$
@@ -145,6 +146,10 @@ begin
   perform pg_temp.as_user(2);  r := pg_temp.reg(2, 'cccccccc-0000-4000-8000-000000000002', 'ATTENDEE', 'CONFIRMED');
   perform pg_temp.as_postgres();
   perform pg_temp.assert(r.status = 'PENDING' and r.ticket_phase_id is null, '6b. Sin fases, de pago: PENDING con precio del paquete');
+  perform pg_temp.as_user(9);  r := pg_temp.reg(9, 'cccccccc-0000-4000-8000-000000000002', 'STAFF', 'PENDING', null, 'eeeeeeee-0000-4000-8000-000000000002');
+  perform pg_temp.as_postgres();
+  perform pg_temp.assert(r.status = 'CONFIRMED' and r.event_role = 'ATTENDEE',
+    '6c. Cupón ATTENDEE en paquete de pago: descuento total, CONFIRMED y ATTENDEE');
   perform pg_temp.as_user(3);  r := pg_temp.reg(3, 'cccccccc-0000-4000-8000-000000000002');
   perform pg_temp.as_postgres();
   perform pg_temp.assert(true, '6c. Sin fases: ticket_capacity no se aplica en servidor (comportamiento previo intacto)');
@@ -260,7 +265,7 @@ begin
     '9b. sold coincide con el conteo real de registrations (ATTENDEE, CONFIRMED|PENDING)');
   select * into a from public.get_ticket_availability('bbbbbbbb-0000-4000-8000-000000000002')
    where ticket_type_id = 'cccccccc-0000-4000-8000-000000000002';
-  perform pg_temp.assert(a.ticket_phase_id is null and a.sold = 2 and a.remaining = 0 and a.price = 20,
+  perform pg_temp.assert(a.ticket_phase_id is null and a.sold = 3 and a.remaining = 0 and a.price = 20,
     '9c. Paquete sin fases: una fila con ticket_phase_id NULL y datos del paquete');
   perform pg_temp.assert((select count(*) from public.get_ticket_availability('bbbbbbbb-0000-4000-8000-000000000001') where is_active and ticket_type_id = 'cccccccc-0000-4000-8000-000000000001') = 0,
     '9d. Paquete con todo lleno: ninguna fase activa');
