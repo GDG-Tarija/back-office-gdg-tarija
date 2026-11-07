@@ -7,7 +7,8 @@ export type ErrorContext =
   | 'session'
   | 'coupon'
   | 'staff'
-  | 'asset';
+  | 'asset'
+  | 'registration';
 
 export interface PostgresLikeError {
   code?: string | null;
@@ -23,6 +24,7 @@ const DUPLICATE_MESSAGES: Record<ErrorContext, { message: string; field?: string
   coupon: { message: 'Ya existe un cupón con ese código en el evento.', field: 'code' },
   staff: { message: 'Ese correo ya está asignado al evento.', field: 'staffEmail' },
   asset: { message: 'Ya existe un archivo con ese nombre.' },
+  registration: { message: 'Esa persona ya tiene una inscripción en el evento.' },
 };
 
 const REGISTRATIONS_MESSAGES: Record<ErrorContext, string> = {
@@ -33,6 +35,7 @@ const REGISTRATIONS_MESSAGES: Record<ErrorContext, string> = {
   coupon: 'No se puede eliminar un cupón que ya fue utilizado.',
   staff: 'No se puede eliminar la asignación porque tiene elementos asociados.',
   asset: 'No se puede eliminar el archivo.',
+  registration: 'La inscripción tiene elementos asociados y no se puede modificar así.',
 };
 
 /** Traduce errores de Postgres/PostgREST/Storage a un DomainError legible. */

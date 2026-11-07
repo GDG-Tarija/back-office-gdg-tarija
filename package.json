@@ -18,6 +18,7 @@
     "db:reset": "supabase db reset",
     "db:migrate": "supabase migration up --local",
     "db:new": "supabase migration new",
+    "db:test": "supabase test db",
     "prepare": "husky"
   },
   "private": true,

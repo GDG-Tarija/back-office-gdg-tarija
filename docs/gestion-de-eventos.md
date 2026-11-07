@@ -28,6 +28,21 @@ Después, todo se edita en `/events/:id/edit` (pestañas equivalentes + Publicac
 - **Publicar** exige: datos completos (descripción, lugar, modalidad, fecha de fin), imagen de portada, al menos un paquete, formulario válido y sesiones con fecha y hora completas.
 - **Eliminar**: solo si el evento no tiene inscritos (la base de datos lo impide). Con inscritos, **despublicar**. Igual para sesiones con inscritos.
 
+## Estado de las inscripciones
+
+En **Eventos > Asistentes** (`/events/:id/attendees`) cada inscripción tiene un estado:
+
+| Estado              | Valor en la BD | Significado                                                                        |
+| ------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| Pagada / Confirmada | `CONFIRMED`    | Pago validado (o entrada gratuita / cupón especial). Puede hacer check-in.         |
+| Pendiente de pago   | `PENDING`      | Falta validar el pago. El check-in por QR la rechaza.                              |
+| Anulada             | `CANCELLED`    | No cuenta como asistente. **No puede** registrar check-in, refrigerio ni sesiones. |
+
+- **Cambiar el estado** (solo SUPERADMIN): desde el botón de estado de cada fila (menú rápido) o desde el detalle del asistente (sección "Estado de la inscripción", junto al comprobante de pago).
+- **Anular pide confirmación.** Al anular no se borra el historial: los check-ins anteriores se conservan. Una inscripción anulada se puede restaurar cambiando su estado otra vez.
+- **Filtro por estado** en la barra de la tabla (Todos, Confirmados / pagados, Pendientes, Anulados), compatible con la búsqueda, el orden y la paginación. Las exportaciones siguen incluyendo a todos los inscritos.
+- STAFF ve los estados y usa el filtro, pero no puede cambiarlos (la base de datos lo impide aunque se intente por la API).
+
 ## Roles
 
 | Rol        | Puede                                                                                                                                |
@@ -54,6 +69,10 @@ Marcar cada punto con un usuario SUPERADMIN, salvo donde se indique.
 - [ ] Abrir `/e/<slug>` en la app pública: se ven datos, paquetes, agenda e imágenes.
 - [ ] Registrarse como asistente con un paquete gratis y con el formulario; repetir con cupón SPEAKER (queda CONFIRMED con rol SPEAKER) y con un cupón agotado (debe rechazar). Probar paquete de pago con comprobante (queda PENDING).
 - [ ] En `/events/:id/attendees` aparece la inscripción.
+- [ ] Marcar una inscripción pendiente como **pagada** desde el detalle y otra desde el menú de la fila; la tabla y el detalle muestran el nuevo estado sin recargar.
+- [ ] **Anular**: aparece la confirmación; con "Volver" no cambia nada; al confirmar queda "Anulada". El check-in manual y por QR se rechaza. Restaurarla a pagada vuelve a permitir el check-in.
+- [ ] Filtrar por cada estado; los contadores del filtro coinciden con la tabla.
+- [ ] Como STAFF: no aparecen las acciones de cambio de estado.
 - [ ] Como STAFF asignado: ve solo su evento y hace check-in; no puede abrir `/events/new` ni editar; en un evento no asignado no ve inscritos.
 - [ ] Intentar **eliminar** el evento con inscritos: se bloquea; probar también eliminar una sesión con inscritos. Despublicar y confirmar que `/e/<slug>` deja de estar disponible.
 - [ ] Eliminar un borrador sin inscritos: desaparece del listado.

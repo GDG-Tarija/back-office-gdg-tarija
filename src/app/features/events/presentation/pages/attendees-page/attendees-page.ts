@@ -1,8 +1,9 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, viewChild } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TableModule } from 'primeng/table';
+import { Table, TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { IconFieldModule } from 'primeng/iconfield';
@@ -10,8 +11,29 @@ import { InputIconModule } from 'primeng/inputicon';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
+import { SelectModule } from 'primeng/select';
+import { Menu, MenuModule } from 'primeng/menu';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 
 import { EventsRepository } from '../../../domain/events.repository';
+import { RegistrationsRepository } from '../../../domain/registrations.repository';
+import { RegistrationsApi } from '../../../data/registrations.api';
+import {
+  REGISTRATION_STATUS_OPTIONS,
+  RegistrationStatus,
+  RegistrationStatusFilter,
+  blocksAttendance,
+  countByRegistrationStatus,
+  filterByRegistrationStatus,
+  parseRegistrationStatus,
+  registrationStatusLabel,
+} from '../../../domain/registration-status';
+import {
+  REGISTRATION_STATUS_UI_KEY,
+  RegistrationStatusController,
+} from './registration-status-controller';
 import { EventsApi } from '../../../data/events.api';
 import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.model';
 
@@ -28,10 +50,21 @@ import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.mode
     ProgressSpinnerModule,
     TagModule,
     DialogModule,
+    FormsModule,
+    SelectModule,
+    MenuModule,
+    ConfirmDialogModule,
+    ToastModule,
     DatePipe,
     CurrencyPipe,
   ],
-  providers: [{ provide: EventsRepository, useClass: EventsApi }],
+  providers: [
+    { provide: EventsRepository, useClass: EventsApi },
+    { provide: RegistrationsRepository, useClass: RegistrationsApi },
+    ConfirmationService,
+    MessageService,
+    RegistrationStatusController,
+  ],
   templateUrl: './attendees-page.html',
   styleUrl: './attendees-page.scss',
 })
@@ -115,6 +148,32 @@ export class AttendeesPage implements OnInit {
     });
   });
 
+  // Estado de la inscripción (issue #7): tabla y detalle usan el mismo controlador.
+  readonly statusCtl = inject(RegistrationStatusController);
+  readonly statusUiKey = REGISTRATION_STATUS_UI_KEY;
+  readonly statusMenuItems = signal<MenuItem[]>([]);
+  readonly statusFilter = signal<RegistrationStatusFilter>('ALL');
+  private readonly statusMenu = viewChild<Menu>('statusMenu');
+  private readonly attendeesTable = viewChild<Table>('dtAttendees');
+
+  readonly statusFilterOptions = computed<{ value: RegistrationStatusFilter; label: string }[]>(
+    () => {
+      const counts = countByRegistrationStatus(this.attendees());
+      return [
+        { value: 'ALL', label: `Todos (${this.attendees().length})` },
+        ...REGISTRATION_STATUS_OPTIONS.map((o) => ({
+          value: o.value,
+          label: `${o.filterLabel} (${counts[o.value]})`,
+        })),
+      ];
+    },
+  );
+
+  /** Filas de la tabla: el filtro de estado se aplica antes de la búsqueda, orden y paginación. */
+  readonly visibleAttendees = computed(() =>
+    filterByRegistrationStatus(this.attendees(), this.statusFilter()),
+  );
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -146,6 +205,64 @@ export class AttendeesPage implements OnInit {
       this.errorMsg.set('Ocurrió un error al cargar la información. Intente de nuevo.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  statusLabel(status: string): string {
+    return registrationStatusLabel(status);
+  }
+
+  isCurrentStatus(attendee: Attendee, status: RegistrationStatus): boolean {
+    return parseRegistrationStatus(attendee.status) === status;
+  }
+
+  /** Una inscripción anulada no registra asistencia (la BD también lo impide). */
+  isAttendanceBlocked(attendee: Attendee): boolean {
+    return blocksAttendance(attendee.status);
+  }
+
+  onStatusFilterChange(filter: RegistrationStatusFilter): void {
+    this.statusFilter.set(filter);
+    const table = this.attendeesTable();
+    if (table) table.first = 0;
+  }
+
+  openStatusMenu(event: MouseEvent, attendee: Attendee): void {
+    if (!this.statusCtl.canEdit()) return;
+    this.statusMenuItems.set([
+      {
+        label: 'Cambiar estado',
+        items: this.statusCtl.options.map((o) => ({
+          label: o.actionLabel,
+          disabled: this.isCurrentStatus(attendee, o.value),
+          state: { icon: o.icon, danger: o.requiresConfirmation },
+          command: () => void this.changeStatus(attendee, o.value),
+        })),
+      },
+    ]);
+    this.statusMenu()?.toggle(event);
+  }
+
+  /** Cambia el estado (con confirmación si se anula) y sincroniza tabla y detalle con lo guardado. */
+  async changeStatus(attendee: Attendee, status: RegistrationStatus): Promise<void> {
+    const current = this.attendees().find((a) => a.id === attendee.id) ?? attendee;
+    const saved = await this.statusCtl.change(
+      {
+        id: current.id,
+        status: current.status,
+        displayName: `${current.firstName} ${current.lastName}`.trim() || current.email,
+        detail: current.ticketName,
+      },
+      status,
+    );
+    if (!saved) return;
+
+    this.attendees.update((list) =>
+      list.map((a) => (a.id === saved.id ? { ...a, status: saved.status } : a)),
+    );
+    const selected = this.selectedAttendee();
+    if (selected?.id === saved.id) {
+      this.selectedAttendee.set({ ...selected, status: saved.status });
     }
   }
 

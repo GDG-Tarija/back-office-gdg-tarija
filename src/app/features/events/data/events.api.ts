@@ -347,7 +347,9 @@ export class EventsApi implements EventsRepository {
     });
 
     if (scanError) {
+      // Rechazado por la BD (p. ej. inscripción anulada): no sincronizar ni reportar éxito.
       console.error('Error registering manual session scan_log:', scanError);
+      return false;
     }
 
     if (userId) {
