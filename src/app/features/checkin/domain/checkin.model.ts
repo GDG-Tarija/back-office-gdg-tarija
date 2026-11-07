@@ -1,4 +1,5 @@
 export type ScanMode = 'checkin' | 'refrigerio' | 'session';
+export type CheckinEntryMode = 'qr' | 'manual';
 
 export interface Session {
   id: string;
@@ -21,6 +22,7 @@ export interface ScanResult {
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string | null;
     role: string;
     ticketName: string;
   };

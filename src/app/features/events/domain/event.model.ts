@@ -89,4 +89,5 @@ export interface Attendee {
   checkedInAt?: Date | null;
   refrigerioDelivered?: boolean;
   refrigerioDeliveredAt?: Date | null;
+  scanTypes?: string[];
 }

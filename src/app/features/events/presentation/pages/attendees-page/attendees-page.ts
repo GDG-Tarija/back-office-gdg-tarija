@@ -14,6 +14,17 @@ import { DialogModule } from 'primeng/dialog';
 import { EventsRepository } from '../../../domain/events.repository';
 import { EventsApi } from '../../../data/events.api';
 import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.model';
+import {
+  filterAttendees,
+  formatCustomResponseLabel,
+  getAttendeeRoleSeverity,
+  getAttendeeStatusSeverity,
+  translateAttendeeRole,
+  translateAttendeeStatus,
+} from '../../../domain/attendee-search';
+import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
+import { CheckinApi } from '../../../../checkin/data/checkin.api';
+import { AuthService } from '../../../../../core/auth/services/auth.service';
 
 @Component({
   selector: 'app-attendees-page',
@@ -31,7 +42,10 @@ import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.mode
     DatePipe,
     CurrencyPipe,
   ],
-  providers: [{ provide: EventsRepository, useClass: EventsApi }],
+  providers: [
+    { provide: EventsRepository, useClass: EventsApi },
+    { provide: CheckinRepository, useClass: CheckinApi },
+  ],
   templateUrl: './attendees-page.html',
   styleUrl: './attendees-page.scss',
 })
@@ -39,6 +53,8 @@ export class AttendeesPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly eventsRepo = inject(EventsRepository);
+  private readonly checkinRepo = inject(CheckinRepository);
+  private readonly auth = inject(AuthService);
 
   readonly event = signal<Event | null>(null);
   readonly attendees = signal<Attendee[]>([]);
@@ -52,9 +68,13 @@ export class AttendeesPage implements OnInit {
   readonly attendeeSessions = signal<AttendeeSessionItem[]>([]);
   readonly loadingSessions = signal<boolean>(false);
   readonly actionLoading = signal<boolean>(false);
+  readonly actionError = signal<string | null>(null);
 
-  // Global table search filter
+  // Global table search filter (nombre, apellido, correo, celular, ID y respuestas del formulario)
   readonly globalFilter = signal<string>('');
+  readonly filteredAttendees = computed(() =>
+    filterAttendees(this.attendees(), this.globalFilter()),
+  );
 
   copyToClipboard(id: string): void {
     if (navigator.clipboard) {
@@ -154,111 +174,23 @@ export class AttendeesPage implements OnInit {
   }
 
   getRoleSeverity(role: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (role?.toUpperCase()) {
-      case 'ORGANIZER':
-      case 'STAFF':
-        return 'danger';
-      case 'SPEAKER':
-        return 'warn';
-      case 'VOLUNTEER':
-        return 'info';
-      default:
-        return 'secondary';
-    }
+    return getAttendeeRoleSeverity(role);
   }
 
   getStatusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (status?.toUpperCase()) {
-      case 'CONFIRMED':
-        return 'success';
-      case 'PENDING':
-        return 'warn';
-      case 'CANCELLED':
-        return 'danger';
-      default:
-        return 'secondary';
-    }
+    return getAttendeeStatusSeverity(status);
   }
 
   translateRole(role: string): string {
-    switch (role?.toUpperCase()) {
-      case 'ORGANIZER':
-      case 'STAFF':
-        return 'Staff';
-      case 'SPEAKER':
-        return 'Expositor';
-      case 'VOLUNTEER':
-        return 'Voluntario';
-      case 'ATTENDEE':
-        return 'Asistente';
-      default:
-        return role || 'Asistente';
-    }
+    return translateAttendeeRole(role);
   }
 
   translateStatus(status: string): string {
-    switch (status?.toUpperCase()) {
-      case 'CONFIRMED':
-        return 'Confirmado';
-      case 'PENDING':
-        return 'Pendiente';
-      case 'CANCELLED':
-        return 'Cancelado';
-      default:
-        return status || 'Desconocido';
-    }
+    return translateAttendeeStatus(status);
   }
 
   formatResponseKey(key: string | number | symbol): string {
-    const keyStr = String(key);
-    const lowerKey = keyStr.toLowerCase();
-
-    const commonKeys: Record<string, string> = {
-      t_shirt_size: 'Talla de polera',
-      tshirt: 'Talla de polera',
-      tshirt_size: 'Talla de polera',
-      polera: 'Talla de polera',
-      camiseta: 'Talla de camiseta',
-      occupation: 'Ocupación',
-      organization: 'Institución / Organización',
-      university: 'Universidad / Colegio',
-      company: 'Empresa',
-      dietary: 'Requerimientos alimentarios',
-      food_restrictions: 'Restricciones alimenticias',
-      city: 'Ciudad de residencia',
-      experience: 'Nivel de experiencia',
-      interest: 'Área de interés',
-      how_did_you_know: '¿Cómo te enteraste?',
-      how_heard: '¿Cómo te enteraste?',
-      first_time: '¿Es tu primera vez?',
-      github: 'Usuario de GitHub',
-      linkedin: 'Perfil de LinkedIn',
-      has_laptop: '¿Cuentas con una laptop?',
-      discovery_source: '¿Cómo se enteró del evento?',
-      experience_level: 'Nivel de experiencia',
-      dietary_restrictions: 'Restricciones alimentarias',
-      additional_notes: '¿Tiene alguna consulta o duda?',
-    };
-
-    const translation = commonKeys[lowerKey];
-    if (translation) {
-      return translation;
-    }
-
-    // Detección genérica de preguntas sobre computadora/laptop
-    if (
-      lowerKey.includes('compu') ||
-      lowerKey.includes('laptop') ||
-      lowerKey.includes('computer')
-    ) {
-      return '¿Llevará computadora?';
-    }
-
-    return keyStr
-      .replace(/[-_]/g, ' ')
-      .replace(/([A-Z])/g, ' $1')
-      .trim()
-      .replace(/^\w/, (c) => c.toUpperCase());
+    return formatCustomResponseLabel(key);
   }
 
   hasCustomResponses(attendee: Attendee): boolean {
@@ -509,6 +441,7 @@ export class AttendeesPage implements OnInit {
 
   async openAttendeeDetail(attendee: Attendee): Promise<void> {
     this.selectedAttendee.set(attendee);
+    this.actionError.set(null);
     this.showDetailModal.set(true);
     this.loadingSessions.set(true);
 
@@ -532,16 +465,24 @@ export class AttendeesPage implements OnInit {
 
   async doManualCheckin(): Promise<void> {
     const attendee = this.selectedAttendee();
-    if (!attendee) return;
+    const eventId = this.event()?.id;
+    if (!attendee || !eventId) return;
 
     this.actionLoading.set(true);
+    this.actionError.set(null);
     try {
-      const success = await this.eventsRepo.registerManualCheckin(attendee.id);
-      if (success) {
+      const result = await this.checkinRepo.registerScan(
+        attendee.id,
+        eventId,
+        'checkin',
+        null,
+        this.auth.user()?.id || null,
+      );
+      if (result.success) {
         const updatedAttendee: Attendee = {
           ...attendee,
           checkedIn: true,
-          checkedInAt: new Date(),
+          checkedInAt: result.scannedAt || new Date(),
         };
         this.selectedAttendee.set(updatedAttendee);
 
@@ -549,6 +490,8 @@ export class AttendeesPage implements OnInit {
         this.attendees.update((list) =>
           list.map((a) => (a.id === attendee.id ? updatedAttendee : a)),
         );
+      } else {
+        this.actionError.set(result.message);
       }
     } catch (err) {
       console.error('Error in manual checkin:', err);
@@ -559,22 +502,32 @@ export class AttendeesPage implements OnInit {
 
   async doManualRefrigerio(): Promise<void> {
     const attendee = this.selectedAttendee();
-    if (!attendee) return;
+    const eventId = this.event()?.id;
+    if (!attendee || !eventId) return;
 
     this.actionLoading.set(true);
+    this.actionError.set(null);
     try {
-      const success = await this.eventsRepo.registerManualRefrigerio(attendee.id);
-      if (success) {
+      const result = await this.checkinRepo.registerScan(
+        attendee.id,
+        eventId,
+        'refrigerio',
+        null,
+        this.auth.user()?.id || null,
+      );
+      if (result.success) {
         const updatedAttendee: Attendee = {
           ...attendee,
           refrigerioDelivered: true,
-          refrigerioDeliveredAt: new Date(),
+          refrigerioDeliveredAt: result.scannedAt || new Date(),
         };
         this.selectedAttendee.set(updatedAttendee);
 
         this.attendees.update((list) =>
           list.map((a) => (a.id === attendee.id ? updatedAttendee : a)),
         );
+      } else {
+        this.actionError.set(result.message);
       }
     } catch (err) {
       console.error('Error in manual refrigerio:', err);
@@ -585,23 +538,29 @@ export class AttendeesPage implements OnInit {
 
   async doManualSessionCheckin(session: AttendeeSessionItem): Promise<void> {
     const attendee = this.selectedAttendee();
-    if (!attendee) return;
+    const eventId = this.event()?.id;
+    if (!attendee || !eventId) return;
 
     this.actionLoading.set(true);
+    this.actionError.set(null);
     try {
-      const success = await this.eventsRepo.registerManualSessionCheckin(
+      const result = await this.checkinRepo.registerScan(
         attendee.id,
+        eventId,
+        'session',
         session.sessionId,
-        attendee.userId,
+        this.auth.user()?.id || null,
       );
 
-      if (success) {
-        const now = new Date();
+      if (result.success) {
+        const now = result.scannedAt || new Date();
         this.attendeeSessions.update((list) =>
           list.map((s) =>
             s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
           ),
         );
+      } else {
+        this.actionError.set(result.message);
       }
     } catch (err) {
       console.error('Error in manual session checkin:', err);

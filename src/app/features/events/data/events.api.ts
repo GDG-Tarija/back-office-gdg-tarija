@@ -125,7 +125,8 @@ export class EventsApi implements EventsRepository {
         ),
         scan_logs (
           id,
-          scan_type
+          scan_type,
+          scanned_at
         )
       `,
       )
@@ -143,7 +144,7 @@ export class EventsApi implements EventsRepository {
     // Explicitly cast regs to resolve type inference issues
     const regsData = regs as unknown as (RawRegistrationRow & {
       ticket_types: { id: string; name: string; price: number } | null;
-      scan_logs: { id: string }[] | null;
+      scan_logs: { id: string; scan_type: string; scanned_at: string | null }[] | null;
     })[];
 
     const userIds = regsData.map((r) => r.user_id).filter((id): id is string => !!id);
@@ -297,74 +298,5 @@ export class EventsApi implements EventsRepository {
         };
       },
     );
-  }
-
-  async registerManualCheckin(registrationId: string): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = this.supabase as any;
-    const { error } = await client.from('scan_logs').insert({
-      registration_id: registrationId,
-      scan_type: 'checkin',
-      scanned_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      console.error('Error registering manual check-in:', error);
-      return false;
-    }
-    return true;
-  }
-
-  async registerManualRefrigerio(registrationId: string): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = this.supabase as any;
-    const { error } = await client.from('scan_logs').insert({
-      registration_id: registrationId,
-      scan_type: 'refrigerio',
-      scanned_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      console.error('Error registering manual refrigerio:', error);
-      return false;
-    }
-    return true;
-  }
-
-  async registerManualSessionCheckin(
-    registrationId: string,
-    sessionId: string,
-    userId: string | null,
-  ): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = this.supabase as any;
-    const nowIso = new Date().toISOString();
-
-    const { error: scanError } = await client.from('scan_logs').insert({
-      registration_id: registrationId,
-      scan_type: `session_entry:${sessionId.substring(0, 16)}`,
-      scanned_at: nowIso,
-    });
-
-    if (scanError) {
-      console.error('Error registering manual session scan_log:', scanError);
-    }
-
-    if (userId) {
-      const { error: inscError } = await client
-        .from('inscripciones_sessions')
-        .update({
-          asistio: true,
-          checked_in_at: nowIso,
-        })
-        .eq('usuario_id', userId)
-        .eq('session_id', sessionId);
-
-      if (inscError) {
-        console.error('Error updating inscripciones_sessions:', inscError);
-      }
-    }
-
-    return true;
   }
 }

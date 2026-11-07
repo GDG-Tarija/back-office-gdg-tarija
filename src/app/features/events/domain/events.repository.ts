@@ -16,11 +16,4 @@ export abstract class EventsRepository {
     registrationId: string,
     userId: string | null,
   ): Promise<AttendeeSessionItem[]>;
-  abstract registerManualCheckin(registrationId: string): Promise<boolean>;
-  abstract registerManualRefrigerio(registrationId: string): Promise<boolean>;
-  abstract registerManualSessionCheckin(
-    registrationId: string,
-    sessionId: string,
-    userId: string | null,
-  ): Promise<boolean>;
 }
