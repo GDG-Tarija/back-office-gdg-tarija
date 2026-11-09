@@ -1,30 +1,25 @@
 import { Injectable, inject } from '@angular/core';
 import { PostgrestError } from '@supabase/supabase-js';
 import { SUPABASE } from '../../../core/supabase/supabase.client';
+import { blocksAttendance, registrationStatusLabel } from '../../events/domain/registration-status';
 import { CheckinRepository } from '../domain/checkin.repository';
 import { Session, ScanResult, ScanMode } from '../domain/checkin.model';
-import { Event } from '../../events/domain/event.model';
-import { toDomainEvent } from '../../events/data/events.mapper';
-import { EventRow } from '../../events/data/events.dto';
+import { Attendee, Event } from '../../events/domain/event.model';
+import { EventsApi } from '../../events/data/events.api';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CheckinApi implements CheckinRepository {
   private readonly supabase = inject(SUPABASE);
+  private readonly eventsApi = inject(EventsApi);
 
   async getEvents(): Promise<Event[]> {
-    const { data, error } = await this.supabase
-      .from('events')
-      .select('*')
-      .order('date_start', { ascending: false });
+    return this.eventsApi.getEvents();
+  }
 
-    if (error) {
-      console.error('Error fetching events in checkin:', error);
-      throw error;
-    }
-
-    return (data || []).map((row) => toDomainEvent(row as unknown as EventRow));
+  async getAttendees(eventId: string): Promise<Attendee[]> {
+    return this.eventsApi.getAttendees(eventId);
   }
 
   async getSessions(eventId: string): Promise<Session[]> {
@@ -154,7 +149,8 @@ export class CheckinApi implements CheckinRepository {
         users (
           first_name,
           last_name,
-          email
+          email,
+          phone
         )
       `,
       )
@@ -184,13 +180,14 @@ export class CheckinApi implements CheckinRepository {
       event_role: string;
       status: string;
       ticket_types: { name: string } | null;
-      users: { first_name: string; last_name: string; email: string } | null;
+      users: { first_name: string; last_name: string; email: string; phone?: string | null } | null;
     };
 
     const attendee = {
       firstName: rawReg.users?.first_name || 'Participante',
       lastName: rawReg.users?.last_name || '',
       email: rawReg.users?.email || '',
+      phone: rawReg.users?.phone || null,
       role: rawReg.event_role,
       ticketName: rawReg.ticket_types?.name || 'General Admission',
     };
@@ -204,11 +201,13 @@ export class CheckinApi implements CheckinRepository {
       };
     }
 
-    // 4. Validar que la registración esté confirmada
+    // 4. Validar que la registración esté confirmada (la BD además rechaza las anuladas)
     if (rawReg.status?.toUpperCase() !== 'CONFIRMED') {
       return {
         success: false,
-        message: `El registro del asistente está en estado: ${rawReg.status}. Debe estar Confirmado.`,
+        message: blocksAttendance(rawReg.status)
+          ? 'La inscripción está anulada: no puede registrar asistencia.'
+          : `El registro del asistente está en estado: ${registrationStatusLabel(rawReg.status)}. Debe estar Confirmado.`,
         attendee,
       };
     }

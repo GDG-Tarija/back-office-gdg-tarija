@@ -101,6 +101,8 @@ Trigger `trg_process_registration_coupon` (BEFORE INSERT en registrations; únic
 `id`, `event_id` (FK, CASCADE), `user_id` (FK users, SET NULL, nullable), `ticket_type_id` (FK ticket_types, ON DELETE RESTRICT), `event_role` varchar(20) default `ATTENDEE` (CHECK `ATTENDEE|SPEAKER|SPONSOR|STAFF`), `status` varchar(20) (CHECK `PENDING|CONFIRMED|CANCELLED`), `custom_responses` jsonb, `payment_proof_url` text, `coupon_id` uuid (FK event_coupons, SET NULL), `ticket_phase_id` uuid NULL (FK ticket_phases, ON DELETE RESTRICT, indexada; la asigna el trigger, el cliente no la elige), `created_at`, `updated_at`. UNIQUE (`event_id`, `user_id`).
 
 - `back.sql` declara default de `status` = `'REGISTERED'`, que viola el CHECK: **por verificar** el default real en remoto.
+- Estados en el back-office (issue #7): `CONFIRMED` = pagada/confirmada, `PENDING` = pendiente de pago, `CANCELLED` = anulada. Solo SUPERADMIN los cambia (policy `staff_update_registrations`); el front envía solo `{ status }` (`RegistrationsApi`). Cualquier transición es válida, incluida restaurar una anulada. Dominio en `features/events/domain/registration-status.ts`.
+- Una inscripción `CANCELLED` no registra asistencia: lo impide el trigger `trg_prevent_attendance_for_cancelled_registration` en `scan_logs` (ver 2.10). `PENDING` no lo bloquea la base; el check-in por QR exige `CONFIRMED` en la app.
 
 ### 2.9. `session_registrations`
 
@@ -112,6 +114,8 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 
 - Valores usados por el código del back-office: `checkin`, `refrigerio`, `session`, `session_entry:<id>`.
 - `back.sql` define un CHECK con valores distintos (`CHECK_IN_DOOR`, `SNACK_DAY_1`, `LUNCH_DAY_2`, `SWAG_DELIVERY`, `SESSION_IN`): **por verificar** el CHECK vigente en remoto (probablemente cambiado fuera de migraciones).
+- UNIQUE (`registration_id`, `scan_type`): un mismo tipo de escaneo no se registra dos veces.
+- Trigger `trg_prevent_attendance_for_cancelled_registration` (BEFORE INSERT o UPDATE de `registration_id`, migración `20261109031500`): rechaza (`P0001`) registrar asistencia de una inscripción `CANCELLED`, por cualquier camino (QR, manual, refrigerio, sesiones). Anular no borra los `scan_logs` previos.
 
 ### 2.11. `staff_whitelist`
 
@@ -132,23 +136,24 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 
 ### 2.15. Funciones
 
-| Función                               | Descripción                                                                                                                                                                                                                                                                                                                      |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_my_role()`                       | Rol (`SUPERADMIN`/`STAFF`) del usuario actual vía `staff_whitelist` + `auth.users` (SECURITY DEFINER).                                                                                                                                                                                                                           |
-| `is_superadmin()`                     | `get_my_role() = 'SUPERADMIN'`.                                                                                                                                                                                                                                                                                                  |
-| `has_event_access(event_id)`          | SUPERADMIN o email asignado en `event_staff_assignments`.                                                                                                                                                                                                                                                                        |
-| `validate_coupon(p_event_id, p_code)` | RPC SECURITY DEFINER; devuelve `id, role, max_uses, uses_left` del cupón (case-insensitive). Solo `authenticated`.                                                                                                                                                                                                               |
-| `get_coupon_uses(coupon_id)`          | Conteo de usos del cupón.                                                                                                                                                                                                                                                                                                        |
-| `is_staff()`                          | Definida en `017`, usada por políticas no reescritas (p. ej. sponsors). Estado actual **por verificar**.                                                                                                                                                                                                                         |
-| `get_ticket_availability(p_event_id)` | RPC STABLE SECURITY DEFINER, `anon`+`authenticated`. Una fila por fase (`ticket_type_id, ticket_phase_id, name, position, price, payment_qr_url, capacity, sold, remaining, is_active, package_capacity, package_sold`); paquetes sin fases devuelven una fila con `ticket_phase_id` NULL. No expone inscripciones individuales. |
-| `update_updated_at_column()`          | Trigger de `updated_at`.                                                                                                                                                                                                                                                                                                         |
+| Función                                           | Descripción                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_my_role()`                                   | Rol (`SUPERADMIN`/`STAFF`) del usuario actual vía `staff_whitelist` + `auth.users` (SECURITY DEFINER).                                                                                                                                                                                                                           |
+| `is_superadmin()`                                 | `get_my_role() = 'SUPERADMIN'`.                                                                                                                                                                                                                                                                                                  |
+| `has_event_access(event_id)`                      | SUPERADMIN o email asignado en `event_staff_assignments`.                                                                                                                                                                                                                                                                        |
+| `validate_coupon(p_event_id, p_code)`             | RPC SECURITY DEFINER; devuelve `id, role, max_uses, uses_left` del cupón (case-insensitive). Solo `authenticated`.                                                                                                                                                                                                               |
+| `get_coupon_uses(coupon_id)`                      | Conteo de usos del cupón.                                                                                                                                                                                                                                                                                                        |
+| `is_staff()`                                      | Definida en `017`, usada por políticas no reescritas (p. ej. sponsors). Estado actual **por verificar**.                                                                                                                                                                                                                         |
+| `get_ticket_availability(p_event_id)`             | RPC STABLE SECURITY DEFINER, `anon`+`authenticated`. Una fila por fase (`ticket_type_id, ticket_phase_id, name, position, price, payment_qr_url, capacity, sold, remaining, is_active, package_capacity, package_sold`); paquetes sin fases devuelven una fila con `ticket_phase_id` NULL. No expone inscripciones individuales. |
+| `update_updated_at_column()`                      | Trigger de `updated_at`.                                                                                                                                                                                                                                                                                                         |
+| `prevent_attendance_for_cancelled_registration()` | Trigger de `scan_logs` (SECURITY INVOKER): bloquea asistencia de inscripciones `CANCELLED`.                                                                                                                                                                                                                                      |
 
 ---
 
 ## 3. Flujo para Modificaciones de Base de Datos
 
 1. **Definir la columna/tabla en este documento** antes de usarla en el código.
-2. **Migración SQL** con `npm run db:new -- <nombre>` (crea `supabase/migrations/<timestamp>_<nombre>.sql`): PKs, FKs con `on delete` explícito, RLS habilitado. Probarla con `npm run db:reset` (local).
+2. **Migración SQL** con `npm run db:new -- <nombre>` (crea `supabase/migrations/<timestamp>_<nombre>.sql`): PKs, FKs con `on delete` explícito, RLS habilitado. Probarla con `npm run db:reset` (local). Si toca RLS o triggers, agregar pruebas pgTAP en `supabase/tests/*.test.sql` (transacción + `rollback`, cambiando de rol con `set local role` y `request.jwt.claims`) y correrlas con `npm run db:test`.
 3. **Regenerar tipos** (`npx supabase gen types typescript --local`) y actualizar `src/app/core/supabase/supabase.client.ts` en este repo y en eventos-gdg-tarija.
 4. Ajustar menú/rutas si cambia la navegación.
 5. **PR a `dev`** desde una rama de trabajo (nunca a `main`; el workflow `DB CI` re-aplica todas las migraciones) → en el release `dev → main`, `db-deploy-prod` aplica en prod tras aprobación manual. Si la migración toca datos existentes, antes hacer el ensayo con backup. Nunca aplicar migraciones en prod a mano (SQL Editor, MCP o `db push` local). Ver `docs/entornos-supabase.md`.
@@ -157,6 +162,7 @@ Migraciones pendientes, NO aplicadas en prod:
 
 - `20261024155150_close_coupon_read_leak.sql` (elimina `authenticated_read_event_coupons`). Aplicar solo después de desplegar el checkout público que usa `rpc validate_coupon`.
 - `20261024032944_tracks_event_fk.sql` (FK `tracks.evento_id → events.id`). Prod no tiene tracks huérfanos (verificado 2026-10-24).
+- `20261109031500_block_attendance_for_cancelled_registrations.sql` (trigger en `scan_logs` que rechaza asistencia de inscripciones `CANCELLED`). Aditiva: no cambia policies ni datos; no afecta al sitio público (no escribe en `scan_logs`).
 
 ---
 

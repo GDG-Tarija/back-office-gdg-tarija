@@ -1,3 +1,4 @@
+import { matchesAttendeeSearch } from './attendee-search';
 import { Attendee } from './event.model';
 
 export interface AmountInput {
@@ -81,12 +82,7 @@ export function entryKey(a: Pick<Attendee, 'ticketName' | 'phaseName'>): string 
   return entryLabel(a);
 }
 
-function normalize(text: string): string {
-  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-}
-
 export function filterAttendees(list: Attendee[], f: AttendeeFilters): Attendee[] {
-  const terms = normalize(f.search.trim()).split(/\s+/).filter(Boolean);
   return list.filter((a) => {
     if (f.status && a.status.toUpperCase() !== f.status) return false;
     if (f.role && a.role.toUpperCase() !== f.role) return false;
@@ -95,22 +91,7 @@ export function filterAttendees(list: Attendee[], f: AttendeeFilters): Attendee[
     if (f.entry && entryKey(a) !== f.entry) return false;
     if (f.proof === 'WITH_PROOF' && !a.paymentProofUrl) return false;
     if (f.proof === 'WITHOUT_PROOF' && a.paymentProofUrl) return false;
-    if (terms.length === 0) return true;
-    const haystack = normalize(
-      [
-        a.id,
-        a.userId ?? '',
-        a.firstName,
-        a.lastName,
-        a.email,
-        a.phone ?? '',
-        a.role,
-        a.status,
-        entryLabel(a),
-        a.couponCode ?? '',
-      ].join(' '),
-    );
-    return terms.every((t) => haystack.includes(t));
+    return matchesAttendeeSearch(a, f.search);
   });
 }
 

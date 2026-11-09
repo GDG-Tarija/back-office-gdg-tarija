@@ -1,18 +1,28 @@
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Html5Qrcode } from 'html5-qrcode';
 
 import { SelectModule } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 
 import { CheckinRepository } from '../../../domain/checkin.repository';
 import { CheckinApi } from '../../../../checkin/data/checkin.api';
-import { Event } from '../../../../events/domain/event.model';
-import { Session, ScanMode, ScanResult } from '../../../domain/checkin.model';
+import { Attendee, Event } from '../../../../events/domain/event.model';
+import {
+  MatchedCustomResponse,
+  filterAttendees,
+  getAttendeeRoleSeverity,
+  getAttendeeStatusSeverity,
+  getMatchedCustomResponses,
+  translateAttendeeRole,
+  translateAttendeeStatus,
+} from '../../../../events/domain/attendee-search';
+import { CheckinEntryMode, Session, ScanMode, ScanResult } from '../../../domain/checkin.model';
 import { AuthService } from '../../../../../core/auth/services/auth.service';
 
 @Component({
@@ -23,6 +33,7 @@ import { AuthService } from '../../../../../core/auth/services/auth.service';
     FormsModule,
     SelectModule,
     ButtonModule,
+    InputTextModule,
     ProgressSpinnerModule,
     TagModule,
     DialogModule,
@@ -38,6 +49,8 @@ export class CheckinPage implements OnInit, OnDestroy {
   private html5Qrcode: Html5Qrcode | null = null;
   private lastScannedCode: string | null = null;
   private lastScannedTime = 0;
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private loadedAttendeesEventId: string | null = null;
 
   // Reactividad con Signals
   readonly events = signal<Event[]>([]);
@@ -48,6 +61,19 @@ export class CheckinPage implements OnInit, OnDestroy {
   readonly selectedEvent = signal<Event | null>(null);
   readonly selectedMode = signal<ScanMode>('checkin');
   readonly selectedSession = signal<Session | null>(null);
+  readonly entryMode = signal<CheckinEntryMode>('qr');
+
+  // Búsqueda manual de inscritos
+  readonly attendees = signal<Attendee[]>([]);
+  readonly loadingAttendees = signal<boolean>(false);
+  readonly attendeesError = signal<string | null>(null);
+  readonly searchQuery = signal<string>('');
+  readonly debouncedQuery = signal<string>('');
+
+  readonly filteredAttendees = computed(() =>
+    filterAttendees(this.attendees(), this.debouncedQuery()),
+  );
+  readonly visibleAttendees = computed(() => this.filteredAttendees().slice(0, 50));
 
   // Cámara e interface de escáner
   readonly cameras = signal<{ id: string; label: string }[]>([]);
@@ -56,7 +82,7 @@ export class CheckinPage implements OnInit, OnDestroy {
   readonly qrError = signal<string | null>(null);
   readonly isProcessing = signal<boolean>(false);
 
-  // Resultados del escaneo
+  // Resultados del escaneo / verificación
   readonly scanResult = signal<ScanResult | null>(null);
   readonly pendingConfirmCode = signal<string | null>(null);
   readonly showConfirmDialog = signal<boolean>(false);
@@ -74,6 +100,10 @@ export class CheckinPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
     void this.stopScanner();
   }
 
@@ -84,12 +114,75 @@ export class CheckinPage implements OnInit, OnDestroy {
       this.events.set(data);
       if (data.length > 0) {
         this.selectedEvent.set(data[0]);
+        if (this.entryMode() === 'manual') {
+          void this.loadAttendees(data[0].id);
+        }
       }
     } catch (err) {
       console.error('Error loading events for check-in:', err);
     } finally {
       this.loadingEvents.set(false);
     }
+  }
+
+  async loadAttendees(eventId: string, force = false): Promise<void> {
+    if (!force && this.loadedAttendeesEventId === eventId && !this.attendeesError()) {
+      return;
+    }
+
+    this.loadingAttendees.set(true);
+    this.attendeesError.set(null);
+
+    try {
+      const list = await this.checkinRepo.getAttendees(eventId);
+      this.attendees.set(list);
+      this.loadedAttendeesEventId = eventId;
+    } catch (err) {
+      console.error('Error loading attendees for manual check-in:', err);
+      this.attendeesError.set('No se pudo cargar la lista de inscritos del evento.');
+    } finally {
+      this.loadingAttendees.set(false);
+    }
+  }
+
+  async setEntryMode(mode: CheckinEntryMode): Promise<void> {
+    if (this.entryMode() === mode) return;
+    this.entryMode.set(mode);
+    this.qrError.set(null);
+
+    if (mode === 'manual') {
+      await this.stopScanner();
+      const event = this.selectedEvent();
+      if (event) {
+        void this.loadAttendees(event.id);
+      }
+    }
+  }
+
+  onSearchInput(value: string): void {
+    this.searchQuery.set(value);
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
+
+    if (!value.trim()) {
+      this.debouncedQuery.set('');
+      return;
+    }
+
+    this.searchDebounceTimer = setTimeout(() => {
+      this.debouncedQuery.set(value);
+    }, 220);
+  }
+
+  clearSearch(): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
+    this.searchQuery.set('');
+    this.debouncedQuery.set('');
   }
 
   async loadCameras(): Promise<void> {
@@ -146,9 +239,16 @@ export class CheckinPage implements OnInit, OnDestroy {
     this.pendingConfirmCode.set(null);
     this.showConfirmDialog.set(false);
     this.lastScannedCode = null;
+    this.attendees.set([]);
+    this.loadedAttendeesEventId = null;
+    this.attendeesError.set(null);
 
     if (event && this.selectedMode() === 'session') {
       void this.loadSessions(event.id);
+    }
+
+    if (event && this.entryMode() === 'manual') {
+      void this.loadAttendees(event.id, true);
     }
 
     // Si estaba escaneando, reiniciamos el escáner para asegurar sincronización
@@ -165,6 +265,7 @@ export class CheckinPage implements OnInit, OnDestroy {
     this.pendingConfirmCode.set(null);
     this.showConfirmDialog.set(false);
     this.lastScannedCode = null;
+    this.qrError.set(null);
 
     const event = this.selectedEvent();
     if (this.selectedMode() === 'session' && event) {
@@ -253,6 +354,14 @@ export class CheckinPage implements OnInit, OnDestroy {
     this.scanning.set(false);
   }
 
+  async selectAttendee(attendee: Attendee): Promise<void> {
+    if (this.showConfirmDialog() || this.isProcessing()) {
+      return;
+    }
+    this.lastScannedCode = null;
+    await this.verifyAndOpenDialog(attendee.id);
+  }
+
   async handleQrDecoded(decodedText: string): Promise<void> {
     const now = Date.now();
 
@@ -268,9 +377,13 @@ export class CheckinPage implements OnInit, OnDestroy {
     this.lastScannedCode = decodedText;
     this.lastScannedTime = now;
 
+    await this.verifyAndOpenDialog(decodedText);
+  }
+
+  private async verifyAndOpenDialog(registrationId: string): Promise<void> {
     const event = this.selectedEvent();
     if (!event) {
-      this.qrError.set('Debe seleccionar un evento antes de escanear.');
+      this.qrError.set('Debe seleccionar un evento antes de registrar asistencia.');
       this.playErrorSound();
       return;
     }
@@ -279,17 +392,18 @@ export class CheckinPage implements OnInit, OnDestroy {
     const session = this.selectedSession();
 
     if (mode === 'session' && !session) {
-      this.qrError.set('Debe seleccionar una sesión para el escaneo de sesión.');
+      this.qrError.set('Debe seleccionar una sesión para registrar el ingreso.');
       this.playErrorSound();
       return;
     }
 
+    this.qrError.set(null);
     this.isProcessing.set(true);
 
     try {
       // En un flujo de dos pasos, primero verificamos la credencial en la base de datos
       const result = await this.checkinRepo.verifyRegistration(
-        decodedText,
+        registrationId,
         event.id,
         mode,
         mode === 'session' && session ? session.id : null,
@@ -304,7 +418,7 @@ export class CheckinPage implements OnInit, OnDestroy {
       this.scanResult.set({
         ...result,
         scanTypeLabel,
-        scannedCode: decodedText,
+        scannedCode: registrationId,
         scannedAt: result.scannedAt || new Date(),
       });
 
@@ -313,7 +427,7 @@ export class CheckinPage implements OnInit, OnDestroy {
 
       if (result.success && !result.alreadyScanned) {
         // Marcamos que hay un check-in listo para confirmación manual
-        this.pendingConfirmCode.set(decodedText);
+        this.pendingConfirmCode.set(registrationId);
       } else {
         // Si ya fue escaneado o hay un error, limpiamos pendiente y tocamos sonido de aviso/error
         this.pendingConfirmCode.set(null);
@@ -330,7 +444,7 @@ export class CheckinPage implements OnInit, OnDestroy {
       this.scanResult.set({
         success: false,
         message: 'Ocurrió un error inesperado al verificar la asistencia.',
-        scannedCode: decodedText,
+        scannedCode: registrationId,
       });
       this.showConfirmDialog.set(true);
     } finally {
@@ -364,11 +478,13 @@ export class CheckinPage implements OnInit, OnDestroy {
         scanTypeLabel = `Sesión: ${session.title}`;
       }
 
+      const scannedAt = result.scannedAt || new Date();
+
       this.scanResult.set({
         ...result,
         scanTypeLabel,
         scannedCode: code,
-        scannedAt: result.scannedAt || new Date(),
+        scannedAt,
       });
 
       // Limpiar el código pendiente para pasar de "Confirmación Pendiente" a "Registro Exitoso" (u otro estado)
@@ -376,6 +492,7 @@ export class CheckinPage implements OnInit, OnDestroy {
 
       // Reproducir sonido final según el resultado de inserción
       if (result.success) {
+        this.updateAttendeeAfterScan(code, mode, session?.id ?? null, scannedAt);
         this.playSuccessSound();
         // Si fue exitoso, auto-cerrar el diálogo tras 1.5 segundos para agilizar el flujo de check-in
         setTimeout(() => {
@@ -404,11 +521,64 @@ export class CheckinPage implements OnInit, OnDestroy {
     }
   }
 
+  private updateAttendeeAfterScan(
+    registrationId: string,
+    mode: ScanMode,
+    sessionId: string | null,
+    scannedAt: Date,
+  ): void {
+    const scanType =
+      mode === 'checkin'
+        ? 'checkin'
+        : mode === 'refrigerio'
+          ? 'refrigerio'
+          : `session_entry:${(sessionId || '').substring(0, 16)}`;
+
+    this.attendees.update((list) =>
+      list.map((attendee) => {
+        if (attendee.id !== registrationId) return attendee;
+        const currentScans = attendee.scanTypes ?? [];
+        const updatedScans = currentScans.includes(scanType)
+          ? currentScans
+          : [...currentScans, scanType];
+
+        return {
+          ...attendee,
+          checkedIn: mode === 'checkin' ? true : attendee.checkedIn,
+          checkedInAt: mode === 'checkin' ? scannedAt : attendee.checkedInAt,
+          refrigerioDelivered: mode === 'refrigerio' ? true : attendee.refrigerioDelivered,
+          refrigerioDeliveredAt: mode === 'refrigerio' ? scannedAt : attendee.refrigerioDeliveredAt,
+          scanTypes: updatedScans,
+        };
+      }),
+    );
+  }
+
   cancelCheckin(): void {
     this.showConfirmDialog.set(false);
     this.pendingConfirmCode.set(null);
     this.scanResult.set(null);
     this.lastScannedCode = null;
+  }
+
+  isAttendeeScannedForCurrentMode(attendee: Attendee): boolean {
+    const mode = this.selectedMode();
+    if (mode === 'checkin') {
+      return !!attendee.checkedIn;
+    }
+    if (mode === 'refrigerio') {
+      return !!attendee.refrigerioDelivered;
+    }
+    const session = this.selectedSession();
+    if (mode === 'session' && session) {
+      const scanKey = `session_entry:${session.id.substring(0, 16)}`;
+      return !!attendee.scanTypes?.includes(scanKey);
+    }
+    return false;
+  }
+
+  getMatchedResponses(attendee: Attendee): MatchedCustomResponse[] {
+    return getMatchedCustomResponses(attendee, this.debouncedQuery());
   }
 
   // Efectos de sonido mediante Web Audio API puro
@@ -481,34 +651,20 @@ export class CheckinPage implements OnInit, OnDestroy {
     }
   }
 
-  // Traducción y estilo de roles
+  // Traducción y estilo de roles y estados reutilizando el dominio
   getRoleSeverity(role?: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (role?.toUpperCase()) {
-      case 'ORGANIZER':
-      case 'STAFF':
-        return 'danger';
-      case 'SPEAKER':
-        return 'warn';
-      case 'VOLUNTEER':
-        return 'info';
-      default:
-        return 'secondary';
-    }
+    return getAttendeeRoleSeverity(role);
   }
 
   translateRole(role?: string): string {
-    switch (role?.toUpperCase()) {
-      case 'ORGANIZER':
-      case 'STAFF':
-        return 'Staff';
-      case 'SPEAKER':
-        return 'Expositor';
-      case 'VOLUNTEER':
-        return 'Voluntario';
-      case 'ATTENDEE':
-        return 'Asistente';
-      default:
-        return role || 'Asistente';
-    }
+    return translateAttendeeRole(role);
+  }
+
+  getStatusSeverity(status?: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+    return getAttendeeStatusSeverity(status);
+  }
+
+  translateStatus(status?: string): string {
+    return translateAttendeeStatus(status);
   }
 }

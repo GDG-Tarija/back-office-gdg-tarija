@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
 import { SUPABASE } from '../../../core/supabase/supabase.client';
-import { DomainError } from '../domain/domain-error';
 import { EventsRepository } from '../domain/events.repository';
 import { Event, EventInput, Attendee } from '../domain/event.model';
 import { toDomainEvent, toDomainAttendee, toEventRow } from './events.mapper';
@@ -237,106 +236,5 @@ export class EventsApi implements EventsRepository {
         };
       },
     );
-  }
-
-  async cancelPendingRegistration(registrationId: string): Promise<void> {
-    const { data, error } = await this.supabase
-      .from('registrations')
-      .update({ status: 'CANCELLED' })
-      .eq('id', registrationId)
-      .eq('status', 'PENDING')
-      .select('id');
-    if (error) throw toDomainError(error, 'event');
-    if (!data?.length) {
-      throw new DomainError(
-        'No se pudo cancelar: la inscripción ya no está pendiente o no tienes permiso.',
-        'FORBIDDEN',
-      );
-    }
-  }
-
-  async confirmPendingRegistration(registrationId: string): Promise<void> {
-    const { data, error } = await this.supabase
-      .from('registrations')
-      .update({ status: 'CONFIRMED' })
-      .eq('id', registrationId)
-      .eq('status', 'PENDING')
-      .select('id');
-    if (error) throw toDomainError(error, 'event');
-    if (!data?.length) {
-      throw new DomainError(
-        'No se pudo confirmar: la inscripción ya no está pendiente o no tienes permiso.',
-        'FORBIDDEN',
-      );
-    }
-  }
-
-  async registerManualCheckin(registrationId: string): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = this.supabase as any;
-    const { error } = await client.from('scan_logs').insert({
-      registration_id: registrationId,
-      scan_type: 'checkin',
-      scanned_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      console.error('Error registering manual check-in:', error);
-      return false;
-    }
-    return true;
-  }
-
-  async registerManualRefrigerio(registrationId: string): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = this.supabase as any;
-    const { error } = await client.from('scan_logs').insert({
-      registration_id: registrationId,
-      scan_type: 'refrigerio',
-      scanned_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      console.error('Error registering manual refrigerio:', error);
-      return false;
-    }
-    return true;
-  }
-
-  async registerManualSessionCheckin(
-    registrationId: string,
-    sessionId: string,
-    userId: string | null,
-  ): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = this.supabase as any;
-    const nowIso = new Date().toISOString();
-
-    const { error: scanError } = await client.from('scan_logs').insert({
-      registration_id: registrationId,
-      scan_type: `session_entry:${sessionId.substring(0, 16)}`,
-      scanned_at: nowIso,
-    });
-
-    if (scanError) {
-      console.error('Error registering manual session scan_log:', scanError);
-    }
-
-    if (userId) {
-      const { error: inscError } = await client
-        .from('inscripciones_sessions')
-        .update({
-          asistio: true,
-          checked_in_at: nowIso,
-        })
-        .eq('usuario_id', userId)
-        .eq('session_id', sessionId);
-
-      if (inscError) {
-        console.error('Error updating inscripciones_sessions:', inscError);
-      }
-    }
-
-    return true;
   }
 }

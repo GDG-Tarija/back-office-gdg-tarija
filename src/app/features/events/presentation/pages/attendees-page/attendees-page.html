@@ -185,15 +185,15 @@
               <input
                 type="search"
                 pInputText
-                placeholder="Buscar por nombre, correo, ID..."
-                aria-label="Buscar inscritos"
+                placeholder="Buscar por nombre, celular, correo, ID o respuestas..."
+                aria-label="Buscar por nombre, celular, correo, ID o respuestas del formulario"
                 class="w-full !pl-10 pr-4 text-sm !rounded-xl"
                 [value]="filters().search"
                 (input)="setFilter('search', $any($event.target).value)"
               />
             </div>
             <p-select
-              [options]="statusOptions"
+              [options]="statusOptions()"
               [ngModel]="filters().status"
               (ngModelChange)="setFilter('status', $event)"
               optionLabel="label"
@@ -341,19 +341,18 @@
                 <th pSortableColumn="registeredAt" class="dark:text-neutral-300">
                   Registro <p-sortIcon field="registeredAt"></p-sortIcon>
                 </th>
-                <th
-                  pFrozenColumn
-                  alignFrozen="right"
-                  class="dark:text-neutral-300 font-semibold text-center w-24"
-                >
-                  Acciones
-                </th>
-
                 @for (key of customResponseKeys(); track key) {
                   <th class="dark:text-neutral-300 font-semibold">
                     {{ formatResponseKey(key) }}
                   </th>
                 }
+                <th
+                  pFrozenColumn
+                  alignFrozen="right"
+                  class="dark:text-neutral-300 font-semibold text-center w-24 attendee-actions-cell"
+                >
+                  Acciones
+                </th>
               </tr>
             </ng-template>
 
@@ -499,7 +498,7 @@
                 </td>
                 <td>
                   <p-tag
-                    [value]="translateStatus(attendee.status)"
+                    [value]="statusLabel(attendee.status)"
                     [severity]="getStatusSeverity(attendee.status)"
                     styleClass="!text-xs !px-2.5 !py-0.5"
                   />
@@ -561,19 +560,6 @@
                   {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
                 </td>
 
-                <!-- Celda de botón de detalle/acciones -->
-                <td pFrozenColumn alignFrozen="right" class="text-center">
-                  <button
-                    type="button"
-                    (click)="openAttendeeDetail(attendee)"
-                    [attr.aria-label]="'Ver detalle y asistencia de ' + fullName(attendee)"
-                    class="inline-flex items-center justify-center size-8 rounded-full text-google-blue bg-google-blue-light/40 hover:bg-google-blue-light/70 dark:bg-google-blue/20 dark:hover:bg-google-blue/30 transition-all shadow-xs cursor-pointer"
-                    title="Ver historial, sesiones y asistencia"
-                  >
-                    <span class="material-symbols-rounded text-base">history</span>
-                  </button>
-                </td>
-
                 <!-- Celdas dinámicas de respuestas de formulario -->
                 @for (key of customResponseKeys(); track key) {
                   <td class="text-xs text-text-primary dark:text-neutral-200 font-medium">
@@ -603,6 +589,49 @@
                     }
                   </td>
                 }
+
+                <!-- Acciones: última columna, fija a la derecha -->
+                <td pFrozenColumn alignFrozen="right" class="text-center attendee-actions-cell">
+                  <div class="inline-flex items-center gap-1.5 whitespace-nowrap">
+                    @if (statusCtl.canEdit()) {
+                      <button
+                        type="button"
+                        (click)="openStatusMenu($event, attendee)"
+                        [disabled]="statusCtl.isSaving(attendee.id)"
+                        aria-haspopup="menu"
+                        [attr.aria-label]="
+                          'Cambiar estado de la inscripción de ' +
+                          attendee.firstName +
+                          ' ' +
+                          attendee.lastName
+                        "
+                        title="Cambiar estado de la inscripción"
+                        data-testid="row-status-action"
+                        class="inline-flex items-center justify-center size-8 shrink-0 rounded-full text-text-secondary bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 transition-all shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-blue/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900"
+                      >
+                        <span
+                          class="material-symbols-rounded text-base"
+                          [class.animate-gdg-spin]="statusCtl.isSaving(attendee.id)"
+                          aria-hidden="true"
+                          >{{
+                            statusCtl.isSaving(attendee.id)
+                              ? 'progress_activity'
+                              : 'published_with_changes'
+                          }}</span
+                        >
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      (click)="openAttendeeDetail(attendee)"
+                      [attr.aria-label]="'Ver detalle y asistencia de ' + fullName(attendee)"
+                      class="inline-flex items-center justify-center size-8 rounded-full text-google-blue bg-google-blue-light/40 hover:bg-google-blue-light/70 dark:bg-google-blue/20 dark:hover:bg-google-blue/30 transition-all shadow-xs cursor-pointer"
+                      title="Ver historial, sesiones y asistencia"
+                    >
+                      <span class="material-symbols-rounded text-base">history</span>
+                    </button>
+                  </div>
+                </td>
               </tr>
             </ng-template>
 
@@ -616,7 +645,7 @@
                   <div class="flex flex-col items-center gap-3">
                     <span
                       class="material-symbols-rounded text-5xl text-neutral-300 dark:text-neutral-600"
-                      >group</span
+                      >{{ attendees().length > 0 ? 'filter_alt_off' : 'group' }}</span
                     >
                     @if (attendees().length === 0) {
                       <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
@@ -690,6 +719,12 @@
                 [severity]="getRoleSeverity(attendee.role)"
                 styleClass="!text-[10px] !px-2 !py-0.5"
               />
+              <p-tag
+                [value]="statusLabel(attendee.status)"
+                [severity]="getStatusSeverity(attendee.status)"
+                styleClass="!text-[10px] !px-2 !py-0.5"
+                data-testid="detail-status-tag"
+              />
               <span
                 class="text-[11px] font-semibold text-text-secondary dark:text-neutral-400 bg-white dark:bg-neutral-800 px-2 py-0.5 rounded-md border border-black/5 dark:border-white/5"
               >
@@ -729,59 +764,6 @@
         }
         @if (actionError(); as err) {
           <p class="text-xs font-medium text-google-red" role="alert">{{ err }}</p>
-        }
-
-        @if (canCancel(attendee)) {
-          <div
-            class="flex flex-col gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/20 p-4"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="flex flex-col min-w-0">
-                <span class="text-xs font-bold text-text-primary dark:text-neutral-200"
-                  >Inscripción pendiente de pago</span
-                >
-                <span class="text-[11px] text-text-secondary dark:text-neutral-400"
-                  >Cancelarla libera su cupo en el paquete y en la fase de preventa.</span
-                >
-              </div>
-              @if (!confirmingCancel()) {
-                <button
-                  type="button"
-                  (click)="confirmingCancel.set(true)"
-                  class="px-3 py-1.5 text-xs font-semibold text-google-red border border-google-red/40 hover:bg-google-red-light/40 rounded-full transition-all shrink-0 cursor-pointer"
-                >
-                  Cancelar inscripción
-                </button>
-              }
-            </div>
-            @if (confirmingCancel()) {
-              <div class="flex flex-wrap items-center gap-2" role="alertdialog" aria-live="polite">
-                <span class="text-xs font-semibold text-text-primary dark:text-neutral-200"
-                  >¿Cancelar la inscripción de {{ attendee.firstName }} {{ attendee.lastName }}?
-                  Esta acción no se puede deshacer.</span
-                >
-                <button
-                  type="button"
-                  (click)="doCancelRegistration()"
-                  [disabled]="actionLoading()"
-                  class="px-3 py-1.5 text-xs font-semibold bg-google-red text-white hover:opacity-90 rounded-full disabled:opacity-50 cursor-pointer"
-                >
-                  Sí, cancelar
-                </button>
-                <button
-                  type="button"
-                  (click)="confirmingCancel.set(false)"
-                  [disabled]="actionLoading()"
-                  class="px-3 py-1.5 text-xs font-semibold bg-neutral-100 text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 rounded-full cursor-pointer"
-                >
-                  Volver
-                </button>
-              </div>
-            }
-            @if (cancelError(); as err) {
-              <p class="text-xs font-medium text-google-red" role="alert">{{ err }}</p>
-            }
-          </div>
         }
 
         <!-- Sección 1: Asistencia General y Beneficios -->
@@ -950,6 +932,103 @@
             </div>
           }
         </div>
+
+        <!-- Sección 3: Estado de la inscripción (pago) -->
+        <div class="space-y-3" data-testid="detail-status-section">
+          <h3
+            class="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-neutral-400 flex items-center gap-1.5"
+          >
+            <span class="material-symbols-rounded text-base text-google-blue" aria-hidden="true"
+              >payments</span
+            >
+            Estado de la inscripción
+          </h3>
+
+          <div
+            class="p-3.5 rounded-2xl border border-black/5 dark:border-white/5 bg-neutral-50 dark:bg-neutral-900 space-y-3"
+          >
+            <div class="flex items-center justify-between gap-x-3 gap-y-2 flex-wrap">
+              <div
+                class="flex items-center gap-2 text-xs text-text-secondary dark:text-neutral-400"
+              >
+                <span class="font-semibold whitespace-nowrap">Estado actual:</span>
+                <p-tag
+                  [value]="statusLabel(attendee.status)"
+                  [severity]="getStatusSeverity(attendee.status)"
+                  styleClass="!text-xs !px-2.5 !py-0.5"
+                />
+              </div>
+              @if (attendee.paymentProofUrl) {
+                <button
+                  type="button"
+                  (click)="openProof(attendee)"
+                  class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-google-green bg-google-green-light/40 hover:bg-google-green-light/70 dark:bg-google-green/15 dark:hover:bg-google-green/25 rounded-full transition-all cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-blue/60"
+                >
+                  <span class="material-symbols-rounded text-sm" aria-hidden="true">image</span>
+                  Ver comprobante
+                </button>
+              } @else if (attendee.ticketPrice > 0) {
+                <span class="text-[11px] font-semibold text-google-red"
+                  >Sin comprobante de pago</span
+                >
+              } @else {
+                <span class="text-[11px] font-semibold text-text-secondary dark:text-neutral-400"
+                  >Entrada gratuita</span
+                >
+              }
+            </div>
+
+            @if (statusCtl.canEdit()) {
+              <div
+                class="flex flex-col sm:flex-row sm:flex-wrap gap-2"
+                role="group"
+                aria-label="Cambiar estado de la inscripción"
+              >
+                @for (option of statusCtl.options; track option.value) {
+                  <button
+                    type="button"
+                    (click)="changeStatus(attendee, option.value)"
+                    [disabled]="
+                      isCurrentStatus(attendee, option.value) || statusCtl.isSaving(attendee.id)
+                    "
+                    [attr.aria-pressed]="isCurrentStatus(attendee, option.value)"
+                    [attr.data-testid]="'detail-status-' + option.value"
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 min-h-9 px-3.5 py-2 text-xs font-semibold whitespace-nowrap rounded-full border transition-all cursor-pointer disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-blue/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50 dark:focus-visible:ring-offset-neutral-900"
+                    [ngClass]="
+                      isCurrentStatus(attendee, option.value)
+                        ? 'border-transparent bg-google-blue text-white shadow-xs'
+                        : option.requiresConfirmation
+                          ? 'border-google-red/30 text-google-red hover:bg-google-red-light/40 dark:hover:bg-google-red/20 disabled:opacity-50'
+                          : 'border-black/10 dark:border-white/10 text-text-primary dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50'
+                    "
+                  >
+                    <span class="material-symbols-rounded text-sm" aria-hidden="true">{{
+                      option.icon
+                    }}</span>
+                    {{
+                      isCurrentStatus(attendee, option.value) ? option.label : option.actionLabel
+                    }}
+                  </button>
+                }
+              </div>
+              @if (statusCtl.isSaving(attendee.id)) {
+                <p
+                  class="flex items-center gap-1.5 text-[11px] text-text-secondary dark:text-neutral-400"
+                  role="status"
+                >
+                  <span class="material-symbols-rounded text-xs animate-gdg-spin" aria-hidden="true"
+                    >progress_activity</span
+                  >
+                  Guardando estado...
+                </p>
+              }
+            } @else {
+              <p class="text-[11px] text-text-secondary dark:text-neutral-400">
+                Solo un Super Admin puede cambiar el estado de la inscripción.
+              </p>
+            }
+          </div>
+        </div>
       </div>
     }
 
@@ -964,13 +1043,92 @@
     </ng-template>
   </p-dialog>
 
+  <!-- Estado de inscripción: menú rápido de la tabla, confirmación de anulación y mensajes -->
+  <p-menu
+    #statusMenu
+    [model]="statusMenuItems()"
+    [popup]="true"
+    appendTo="body"
+    ariaLabel="Cambiar estado de la inscripción"
+    styleClass="!min-w-56 !rounded-[0.875rem] !p-1 !border-black/10 dark:!border-white/10 !shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+  >
+    <ng-template #item let-item>
+      <a
+        class="p-menu-item-link flex items-center gap-2.5 !rounded-lg !px-3 !py-2 text-[0.8125rem] font-medium whitespace-nowrap"
+        [ngClass]="{ 'text-google-red dark:text-red-300': item.state?.danger && !item.disabled }"
+      >
+        <span class="material-symbols-rounded text-lg leading-none shrink-0" aria-hidden="true">{{
+          item.state?.icon
+        }}</span>
+        <span>{{ item.label }}</span>
+        @if (item.disabled) {
+          <span class="ml-auto pl-2 text-[11px] font-semibold text-text-secondary">Actual</span>
+        }
+      </a>
+    </ng-template>
+  </p-menu>
+
+  <!-- Headless: misma lógica (accept/reject/Escape/foco inicial de PrimeNG), maquetación propia -->
+  <p-confirmdialog
+    [key]="statusUiKey"
+    [style]="{ width: '30rem', 'max-width': 'calc(100vw - 2rem)' }"
+    styleClass="!rounded-3xl !border !border-black/5 dark:!border-white/10 overflow-hidden"
+    [draggable]="false"
+  >
+    <ng-template #headless let-confirmation let-onAccept="onAccept" let-onReject="onReject">
+      <div class="flex flex-col gap-6 bg-white p-5 sm:p-6 dark:bg-neutral-900">
+        <div
+          class="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left"
+        >
+          <span
+            class="flex size-12 shrink-0 items-center justify-center rounded-full bg-google-red/10 text-google-red dark:bg-google-red/20 dark:text-red-300"
+            aria-hidden="true"
+          >
+            <span class="material-symbols-rounded text-2xl">block</span>
+          </span>
+          <div class="flex min-w-0 flex-col gap-2">
+            <h2 class="m-0 text-lg font-bold leading-tight text-text-primary dark:text-neutral-100">
+              {{ confirmation.header }}
+            </h2>
+            <p class="m-0 text-sm leading-relaxed text-text-secondary dark:text-neutral-300">
+              {{ confirmation.message }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+          <button
+            type="button"
+            class="p-confirm-dialog-reject inline-flex min-h-10 w-full items-center justify-center rounded-full border border-black/10 px-5 text-sm font-semibold text-text-primary transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-blue/60 focus-visible:ring-offset-2 sm:w-auto dark:border-white/15 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus-visible:ring-offset-neutral-900"
+            (click)="onReject()"
+          >
+            {{ confirmation.rejectLabel }}
+          </button>
+          <button
+            type="button"
+            class="p-confirm-dialog-accept inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full bg-google-red px-5 text-sm font-semibold text-white shadow-xs transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-red/60 focus-visible:ring-offset-2 sm:w-auto dark:focus-visible:ring-offset-neutral-900"
+            (click)="onAccept()"
+          >
+            <span class="material-symbols-rounded text-lg" aria-hidden="true">block</span>
+            {{ confirmation.acceptLabel }}
+          </button>
+        </div>
+      </div>
+    </ng-template>
+  </p-confirmdialog>
+
+  <p-toast
+    [key]="statusUiKey"
+    position="top-right"
+    [breakpoints]="{ '640px': { width: 'calc(100vw - 2rem)', right: '1rem', left: 'auto' } }"
+  />
+
   <app-payment-proof-dialog
     [attendee]="proofAttendee()"
     [position]="proofPosition()"
     [total]="proofQueue().length"
-    [canManage]="isSuperadmin()"
+    [canManage]="statusCtl.canEdit()"
     [busy]="proofBusy()"
-    [error]="proofError()"
     (closed)="closeProof()"
     (previous)="stepProof(-1)"
     (next)="stepProof(1)"

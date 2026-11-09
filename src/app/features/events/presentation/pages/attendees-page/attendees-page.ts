@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, viewChild } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,9 +12,24 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
+import { Menu, MenuModule } from 'primeng/menu';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 
-import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { EventsRepository } from '../../../domain/events.repository';
+import { RegistrationsRepository } from '../../../domain/registrations.repository';
+import { RegistrationsApi } from '../../../data/registrations.api';
+import {
+  REGISTRATION_STATUS_OPTIONS,
+  RegistrationStatus,
+  parseRegistrationStatus,
+  registrationStatusLabel,
+} from '../../../domain/registration-status';
+import {
+  REGISTRATION_STATUS_UI_KEY,
+  RegistrationStatusController,
+} from './registration-status-controller';
 import { EventsApi } from '../../../data/events.api';
 import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.model';
 import {
@@ -29,6 +44,17 @@ import {
   filterAttendees,
   hasActiveFilters,
 } from '../../../domain/attendee-payment';
+import {
+  formatCustomResponseLabel,
+  getAttendeeRoleSeverity,
+  getAttendeeStatusSeverity,
+  translateAttendeeRole,
+  translateAttendeeStatus,
+} from '../../../domain/attendee-search';
+import { ScanMode, ScanResult } from '../../../../checkin/domain/checkin.model';
+import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
+import { CheckinApi } from '../../../../checkin/data/checkin.api';
+import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { PaymentProofDialog } from '../../components/payment-proof-dialog/payment-proof-dialog';
 
 @Component({
@@ -45,12 +71,22 @@ import { PaymentProofDialog } from '../../components/payment-proof-dialog/paymen
     ProgressSpinnerModule,
     TagModule,
     DialogModule,
+    MenuModule,
+    ConfirmDialogModule,
+    ToastModule,
     SelectModule,
     PaymentProofDialog,
     DatePipe,
     CurrencyPipe,
   ],
-  providers: [{ provide: EventsRepository, useClass: EventsApi }],
+  providers: [
+    { provide: EventsRepository, useClass: EventsApi },
+    { provide: RegistrationsRepository, useClass: RegistrationsApi },
+    { provide: CheckinRepository, useClass: CheckinApi },
+    ConfirmationService,
+    MessageService,
+    RegistrationStatusController,
+  ],
   templateUrl: './attendees-page.html',
   styleUrl: './attendees-page.scss',
 })
@@ -58,12 +94,8 @@ export class AttendeesPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly eventsRepo = inject(EventsRepository);
+  private readonly checkinRepo = inject(CheckinRepository);
   private readonly auth = inject(AuthService);
-
-  /** Solo SUPERADMIN cancela inscripciones (RLS sigue siendo la seguridad real). */
-  readonly isSuperadmin = computed(() => this.auth.role() === 'SUPERADMIN');
-  readonly confirmingCancel = signal<boolean>(false);
-  readonly cancelError = signal<string | null>(null);
 
   readonly event = signal<Event | null>(null);
   readonly attendees = signal<Attendee[]>([]);
@@ -87,12 +119,21 @@ export class AttendeesPage implements OnInit {
   readonly filteredAttendees = computed(() => filterAttendees(this.attendees(), this.filters()));
   readonly filtersActive = computed(() => hasActiveFilters(this.filters()));
 
-  readonly statusOptions = [
-    { label: 'Todos los estados', value: '' },
-    { label: 'Confirmado', value: 'CONFIRMED' },
-    { label: 'Pendiente', value: 'PENDING' },
-    { label: 'Cancelado', value: 'CANCELLED' },
-  ];
+  readonly statusOptions = computed(() => {
+    const stats = this.stats();
+    const counts: Record<RegistrationStatus, number> = {
+      CONFIRMED: stats.confirmed,
+      PENDING: stats.pending,
+      CANCELLED: stats.cancelled,
+    };
+    return [
+      { label: `Todos los estados (${stats.total})`, value: '' },
+      ...REGISTRATION_STATUS_OPTIONS.map((o) => ({
+        label: `${o.filterLabel} (${counts[o.value]})`,
+        value: o.value as string,
+      })),
+    ];
+  });
   readonly roleOptions = [
     { label: 'Todos los roles', value: '' },
     { label: 'Asistente', value: 'ATTENDEE' },
@@ -181,6 +222,12 @@ export class AttendeesPage implements OnInit {
     });
   });
 
+  // Estado de la inscripción (issue #7): tabla y detalle usan el mismo controlador.
+  readonly statusCtl = inject(RegistrationStatusController);
+  readonly statusUiKey = REGISTRATION_STATUS_UI_KEY;
+  readonly statusMenuItems = signal<MenuItem[]>([]);
+  private readonly statusMenu = viewChild<Menu>('statusMenu');
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -219,6 +266,52 @@ export class AttendeesPage implements OnInit {
     }
   }
 
+  statusLabel(status: string): string {
+    return registrationStatusLabel(status);
+  }
+
+  isCurrentStatus(attendee: Attendee, status: RegistrationStatus): boolean {
+    return parseRegistrationStatus(attendee.status) === status;
+  }
+
+  openStatusMenu(event: MouseEvent, attendee: Attendee): void {
+    if (!this.statusCtl.canEdit()) return;
+    this.statusMenuItems.set([
+      {
+        label: 'Cambiar estado',
+        items: this.statusCtl.options.map((o) => ({
+          label: o.actionLabel,
+          disabled: this.isCurrentStatus(attendee, o.value),
+          state: { icon: o.icon, danger: o.requiresConfirmation },
+          command: () => void this.changeStatus(attendee, o.value),
+        })),
+      },
+    ]);
+    this.statusMenu()?.toggle(event);
+  }
+
+  /** Cambia el estado (con confirmación si se anula) y sincroniza tabla y detalle con lo guardado. */
+  async changeStatus(
+    attendee: Attendee,
+    status: RegistrationStatus,
+    options?: { skipConfirmation?: boolean },
+  ): Promise<void> {
+    const current = this.attendees().find((a) => a.id === attendee.id) ?? attendee;
+    const saved = await this.statusCtl.change(
+      {
+        id: current.id,
+        status: current.status,
+        displayName: `${current.firstName} ${current.lastName}`.trim() || current.email,
+        detail: current.ticketName,
+      },
+      status,
+      options,
+    );
+    if (!saved) return;
+
+    this.patchAttendee(saved.id, { status: saved.status });
+  }
+
   reload(): void {
     const id = this.event()?.id ?? this.route.snapshot.paramMap.get('id');
     if (id) void this.loadData(id);
@@ -229,111 +322,23 @@ export class AttendeesPage implements OnInit {
   }
 
   getRoleSeverity(role: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (role?.toUpperCase()) {
-      case 'ORGANIZER':
-      case 'STAFF':
-        return 'danger';
-      case 'SPEAKER':
-        return 'warn';
-      case 'VOLUNTEER':
-        return 'info';
-      default:
-        return 'secondary';
-    }
+    return getAttendeeRoleSeverity(role);
   }
 
   getStatusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (status?.toUpperCase()) {
-      case 'CONFIRMED':
-        return 'success';
-      case 'PENDING':
-        return 'warn';
-      case 'CANCELLED':
-        return 'danger';
-      default:
-        return 'secondary';
-    }
+    return getAttendeeStatusSeverity(status);
   }
 
   translateRole(role: string): string {
-    switch (role?.toUpperCase()) {
-      case 'ORGANIZER':
-      case 'STAFF':
-        return 'Staff';
-      case 'SPEAKER':
-        return 'Expositor';
-      case 'VOLUNTEER':
-        return 'Voluntario';
-      case 'ATTENDEE':
-        return 'Asistente';
-      default:
-        return role || 'Asistente';
-    }
+    return translateAttendeeRole(role);
   }
 
   translateStatus(status: string): string {
-    switch (status?.toUpperCase()) {
-      case 'CONFIRMED':
-        return 'Confirmado';
-      case 'PENDING':
-        return 'Pendiente';
-      case 'CANCELLED':
-        return 'Cancelado';
-      default:
-        return status || 'Desconocido';
-    }
+    return translateAttendeeStatus(status);
   }
 
   formatResponseKey(key: string | number | symbol): string {
-    const keyStr = String(key);
-    const lowerKey = keyStr.toLowerCase();
-
-    const commonKeys: Record<string, string> = {
-      t_shirt_size: 'Talla de polera',
-      tshirt: 'Talla de polera',
-      tshirt_size: 'Talla de polera',
-      polera: 'Talla de polera',
-      camiseta: 'Talla de camiseta',
-      occupation: 'Ocupación',
-      organization: 'Institución / Organización',
-      university: 'Universidad / Colegio',
-      company: 'Empresa',
-      dietary: 'Requerimientos alimentarios',
-      food_restrictions: 'Restricciones alimenticias',
-      city: 'Ciudad de residencia',
-      experience: 'Nivel de experiencia',
-      interest: 'Área de interés',
-      how_did_you_know: '¿Cómo te enteraste?',
-      how_heard: '¿Cómo te enteraste?',
-      first_time: '¿Es tu primera vez?',
-      github: 'Usuario de GitHub',
-      linkedin: 'Perfil de LinkedIn',
-      has_laptop: '¿Cuentas con una laptop?',
-      discovery_source: '¿Cómo se enteró del evento?',
-      experience_level: 'Nivel de experiencia',
-      dietary_restrictions: 'Restricciones alimentarias',
-      additional_notes: '¿Tiene alguna consulta o duda?',
-    };
-
-    const translation = commonKeys[lowerKey];
-    if (translation) {
-      return translation;
-    }
-
-    // Detección genérica de preguntas sobre computadora/laptop
-    if (
-      lowerKey.includes('compu') ||
-      lowerKey.includes('laptop') ||
-      lowerKey.includes('computer')
-    ) {
-      return '¿Llevará computadora?';
-    }
-
-    return keyStr
-      .replace(/[-_]/g, ' ')
-      .replace(/([A-Z])/g, ' $1')
-      .trim()
-      .replace(/^\w/, (c) => c.toUpperCase());
+    return formatCustomResponseLabel(key);
   }
 
   hasCustomResponses(attendee: Attendee): boolean {
@@ -343,8 +348,10 @@ export class AttendeesPage implements OnInit {
   // Revisión de comprobantes: cola fija de ids al abrir (sigue estable aunque cambien los filtros)
   readonly proofQueue = signal<string[]>([]);
   readonly proofId = signal<string | null>(null);
-  readonly proofBusy = signal(false);
-  readonly proofError = signal<string | null>(null);
+  readonly proofBusy = computed(() => {
+    const id = this.proofId();
+    return !!id && this.statusCtl.isSaving(id);
+  });
   readonly proofAttendee = computed(() => {
     const id = this.proofId();
     return id ? (this.attendees().find((a) => a.id === id) ?? null) : null;
@@ -360,53 +367,28 @@ export class AttendeesPage implements OnInit {
       .filter((a) => !!a.paymentProofUrl)
       .map((a) => a.id);
     this.proofQueue.set(queue.includes(attendee.id) ? queue : [attendee.id]);
-    this.proofError.set(null);
     this.proofId.set(attendee.id);
   }
 
   closeProof(): void {
     this.proofId.set(null);
-    this.proofError.set(null);
   }
 
   stepProof(delta: -1 | 1): void {
     const queue = this.proofQueue();
     const next = queue[queue.indexOf(this.proofId() ?? '') + delta];
     if (!next) return;
-    this.proofError.set(null);
     this.proofId.set(next);
   }
 
+  /** Desde el visor: mismo camino que la tabla y el detalle (RegistrationStatusController). */
   async confirmPayment(attendee: Attendee): Promise<void> {
-    if (!this.isSuperadmin() || this.proofBusy()) return;
-    this.proofBusy.set(true);
-    this.proofError.set(null);
-    try {
-      await this.eventsRepo.confirmPendingRegistration(attendee.id);
-      this.patchAttendee(attendee.id, { status: 'CONFIRMED' });
-    } catch (err) {
-      this.proofError.set(
-        err instanceof Error ? err.message : 'No se pudo confirmar el pago. Intenta de nuevo.',
-      );
-    } finally {
-      this.proofBusy.set(false);
-    }
+    await this.changeStatus(attendee, 'CONFIRMED');
   }
 
+  /** El visor ya pidió confirmación propia: no se vuelve a preguntar. */
   async cancelFromProof(attendee: Attendee): Promise<void> {
-    if (!this.isSuperadmin() || this.proofBusy()) return;
-    this.proofBusy.set(true);
-    this.proofError.set(null);
-    try {
-      await this.eventsRepo.cancelPendingRegistration(attendee.id);
-      this.patchAttendee(attendee.id, { status: 'CANCELLED' });
-    } catch (err) {
-      this.proofError.set(
-        err instanceof Error ? err.message : 'No se pudo cancelar la inscripción.',
-      );
-    } finally {
-      this.proofBusy.set(false);
-    }
+    await this.changeStatus(attendee, 'CANCELLED', { skipConfirmation: true });
   }
 
   /** Actualiza la fila en la lista y en el detalle abierto, si es la misma inscripción. */
@@ -654,8 +636,6 @@ export class AttendeesPage implements OnInit {
 
   async openAttendeeDetail(attendee: Attendee): Promise<void> {
     const token = ++this.detailToken;
-    this.confirmingCancel.set(false);
-    this.cancelError.set(null);
     this.actionError.set(null);
     this.selectedAttendee.set(attendee);
     this.attendeeSessions.set([]);
@@ -687,25 +667,32 @@ export class AttendeesPage implements OnInit {
     return attendee.status?.toUpperCase() === 'CONFIRMED';
   }
 
-  /** Una inscripción pendiente (sin pago confirmado) se puede cancelar para liberar el cupo. */
-  canCancel(attendee: Attendee): boolean {
-    return this.isSuperadmin() && attendee.status?.toUpperCase() === 'PENDING';
-  }
-
-  async doCancelRegistration(): Promise<void> {
-    const attendee = this.selectedAttendee();
-    if (!attendee || !this.canCancel(attendee)) return;
+  /** Mismo flujo (verificación + registro) que el escaneo de QR y el modo manual de /checkin. */
+  private async registerScan(
+    attendee: Attendee,
+    mode: ScanMode,
+    sessionId: string | null,
+    fallbackError: string,
+  ): Promise<ScanResult | null> {
+    const eventId = this.event()?.id;
+    if (!eventId) return null;
 
     this.actionLoading.set(true);
-    this.cancelError.set(null);
+    this.actionError.set(null);
     try {
-      await this.eventsRepo.cancelPendingRegistration(attendee.id);
-      this.patchAttendee(attendee.id, { status: 'CANCELLED' });
-      this.confirmingCancel.set(false);
-    } catch (err) {
-      this.cancelError.set(
-        err instanceof Error ? err.message : 'No se pudo cancelar la inscripción.',
+      const result = await this.checkinRepo.registerScan(
+        attendee.id,
+        eventId,
+        mode,
+        sessionId,
+        this.auth.user()?.id || null,
       );
+      if (!result.success) this.actionError.set(result.message);
+      return result;
+    } catch (err) {
+      console.error(`Error in manual ${mode}:`, err);
+      this.actionError.set(fallbackError);
+      return null;
     } finally {
       this.actionLoading.set(false);
     }
@@ -715,20 +702,17 @@ export class AttendeesPage implements OnInit {
     const attendee = this.selectedAttendee();
     if (!attendee || !this.canCheckin(attendee) || attendee.checkedIn) return;
 
-    this.actionLoading.set(true);
-    this.actionError.set(null);
-    try {
-      const success = await this.eventsRepo.registerManualCheckin(attendee.id);
-      if (success) {
-        this.patchAttendee(attendee.id, { checkedIn: true, checkedInAt: new Date() });
-      } else {
-        this.actionError.set('No se pudo registrar el check-in. Intenta de nuevo.');
-      }
-    } catch (err) {
-      console.error('Error in manual checkin:', err);
-      this.actionError.set('No se pudo registrar el check-in. Intenta de nuevo.');
-    } finally {
-      this.actionLoading.set(false);
+    const result = await this.registerScan(
+      attendee,
+      'checkin',
+      null,
+      'No se pudo registrar el check-in. Intenta de nuevo.',
+    );
+    if (result?.success) {
+      this.patchAttendee(attendee.id, {
+        checkedIn: true,
+        checkedInAt: result.scannedAt || new Date(),
+      });
     }
   }
 
@@ -736,23 +720,17 @@ export class AttendeesPage implements OnInit {
     const attendee = this.selectedAttendee();
     if (!attendee || !this.canCheckin(attendee) || attendee.refrigerioDelivered) return;
 
-    this.actionLoading.set(true);
-    this.actionError.set(null);
-    try {
-      const success = await this.eventsRepo.registerManualRefrigerio(attendee.id);
-      if (success) {
-        this.patchAttendee(attendee.id, {
-          refrigerioDelivered: true,
-          refrigerioDeliveredAt: new Date(),
-        });
-      } else {
-        this.actionError.set('No se pudo registrar la entrega. Intenta de nuevo.');
-      }
-    } catch (err) {
-      console.error('Error in manual refrigerio:', err);
-      this.actionError.set('No se pudo registrar la entrega. Intenta de nuevo.');
-    } finally {
-      this.actionLoading.set(false);
+    const result = await this.registerScan(
+      attendee,
+      'refrigerio',
+      null,
+      'No se pudo registrar la entrega. Intenta de nuevo.',
+    );
+    if (result?.success) {
+      this.patchAttendee(attendee.id, {
+        refrigerioDelivered: true,
+        refrigerioDeliveredAt: result.scannedAt || new Date(),
+      });
     }
   }
 
@@ -760,28 +738,19 @@ export class AttendeesPage implements OnInit {
     const attendee = this.selectedAttendee();
     if (!attendee || !this.canCheckin(attendee) || session.asistio) return;
 
-    this.actionLoading.set(true);
-    this.actionError.set(null);
-    try {
-      const success = await this.eventsRepo.registerManualSessionCheckin(
-        attendee.id,
-        session.sessionId,
-        attendee.userId,
+    const result = await this.registerScan(
+      attendee,
+      'session',
+      session.sessionId,
+      'No se pudo registrar el ingreso a la sesión.',
+    );
+    if (result?.success) {
+      const now = result.scannedAt || new Date();
+      this.attendeeSessions.update((list) =>
+        list.map((s) =>
+          s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
+        ),
       );
-
-      if (success) {
-        const now = new Date();
-        this.attendeeSessions.update((list) =>
-          list.map((s) =>
-            s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
-          ),
-        );
-      }
-    } catch (err) {
-      console.error('Error in manual session checkin:', err);
-      this.actionError.set('No se pudo registrar el ingreso a la sesión.');
-    } finally {
-      this.actionLoading.set(false);
     }
   }
 }
