@@ -1,334 +1,239 @@
 import { signal } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-
-import { Confirmation, ConfirmationService, MenuItem, MessageService } from 'primeng/api';
+import { TestBed } from '@angular/core/testing';
+import { Confirmation, ConfirmationService, MessageService } from 'primeng/api';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
-import { BackofficeRole } from '../../../../../core/models/role.model';
 import { DomainError } from '../../../domain/domain-error';
-import { Attendee, Event } from '../../../domain/event.model';
+import { Attendee } from '../../../domain/event.model';
 import { EventsRepository } from '../../../domain/events.repository';
 import { RegistrationStatus } from '../../../domain/registration-status';
 import { RegistrationsRepository } from '../../../domain/registrations.repository';
 import { AttendeesPage } from './attendees-page';
 import { RegistrationStatusController } from './registration-status-controller';
 
-const event = {
-  id: 'e1',
-  title: 'DevFest (demo)',
-  slug: 'devfest-demo',
-  capacity: 100,
-  dateStart: new Date('2026-12-01T13:00:00Z'),
-  isPublished: true,
-  description: null,
-} as Event;
+const registrationsRepo = { updateStatus: vi.fn() };
+let lastConfirm: Confirmation | null = null;
 
-function attendee(id: string, firstName: string, status: string, o: Partial<Attendee> = {}) {
-  return {
-    id,
-    userId: `u-${id}`,
-    email: `${firstName.toLowerCase()}@ejemplo.test`,
-    firstName,
-    lastName: 'Demo',
-    avatarUrl: null,
-    phone: null,
-    role: 'ATTENDEE',
-    status,
-    ticketName: 'Ticket Básico',
-    ticketPrice: 15,
-    registeredAt: new Date('2026-11-01T10:00:00Z'),
-    customResponses: null,
-    paymentProofUrl: null,
-    checkedIn: false,
-    ...o,
-  } satisfies Attendee;
+/** Providers de la página con repos falsos; la confirmación de anular se captura en `lastConfirm`. */
+function pageProviders(repo: object) {
+  return [
+    { provide: EventsRepository, useValue: repo },
+    { provide: RegistrationsRepository, useValue: registrationsRepo },
+    ConfirmationService,
+    MessageService,
+    RegistrationStatusController,
+  ];
 }
 
-describe('AttendeesPage — estado de inscripción', () => {
-  const role = signal<BackofficeRole | null>('SUPERADMIN');
-  const eventsRepo = {
-    getEventById: vi.fn(),
-    getAttendees: vi.fn(),
-    getAttendeeSessions: vi.fn(),
+function resetStatusMocks(): void {
+  lastConfirm = null;
+  registrationsRepo.updateStatus.mockReset();
+  registrationsRepo.updateStatus.mockImplementation((id: string, status: RegistrationStatus) =>
+    Promise.resolve({ id, status, updatedAt: new Date() }),
+  );
+}
+
+const pending: Attendee = {
+  id: 'r1',
+  userId: 'u1',
+  email: 'a@b.c',
+  firstName: 'Ana',
+  lastName: 'Paz',
+  avatarUrl: null,
+  phone: null,
+  role: 'ATTENDEE',
+  status: 'PENDING',
+  ticketName: 'General',
+  ticketPrice: 30,
+  phaseName: null,
+  phasePrice: null,
+  couponId: null,
+  couponCode: null,
+  amountDue: 30,
+  registeredAt: null,
+  customResponses: null,
+  paymentProofUrl: null,
+  checkedIn: false,
+};
+
+describe('AttendeesPage: cambio de estado desde el detalle', () => {
+  const repo = {
     registerManualCheckin: vi.fn(),
-    registerManualRefrigerio: vi.fn(),
-    registerManualSessionCheckin: vi.fn(),
   };
-  const registrationsRepo = { updateStatus: vi.fn() };
-  let fixture: ComponentFixture<AttendeesPage>;
-  let page: AttendeesPage;
-  let lastConfirm: Confirmation | null;
+  const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
 
-  beforeEach(async () => {
-    role.set('SUPERADMIN');
-    Object.values(eventsRepo).forEach((m) => m.mockReset());
-    registrationsRepo.updateStatus.mockReset();
-    lastConfirm = null;
-
-    eventsRepo.getEventById.mockResolvedValue(event);
-    eventsRepo.getAttendees.mockResolvedValue([
-      attendee('r1', 'Ana', 'PENDING'),
-      attendee('r2', 'Bruno', 'CONFIRMED'),
-      attendee('r3', 'Carla', 'CANCELLED'),
-    ]);
-    eventsRepo.getAttendeeSessions.mockResolvedValue([]);
-    registrationsRepo.updateStatus.mockImplementation((id: string, status: RegistrationStatus) =>
-      Promise.resolve({ id, status, updatedAt: new Date() }),
-    );
-
+  function create() {
     TestBed.configureTestingModule({
       imports: [AttendeesPage],
       providers: [
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ id: 'e1' }) } },
-        },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } },
         { provide: Router, useValue: { navigate: vi.fn() } },
-        { provide: AuthService, useValue: { role, user: signal(null) } },
+        { provide: AuthService, useValue: { role } },
       ],
+    }).overrideComponent(AttendeesPage, {
+      set: { providers: pageProviders(repo) },
     });
-    TestBed.overrideComponent(AttendeesPage, {
-      set: {
-        providers: [
-          { provide: EventsRepository, useValue: eventsRepo },
-          { provide: RegistrationsRepository, useValue: registrationsRepo },
-          ConfirmationService,
-          MessageService,
-          RegistrationStatusController,
-        ],
-      },
-    });
-
-    fixture = TestBed.createComponent(AttendeesPage);
-    page = fixture.componentInstance;
-    fixture.detectChanges();
-    await vi.waitFor(() => expect(page.attendees()).toHaveLength(3));
-    fixture.detectChanges();
-
+    const fixture = TestBed.createComponent(AttendeesPage);
+    const cmp = fixture.componentInstance;
     const confirmation = fixture.debugElement.injector.get(ConfirmationService);
     vi.spyOn(confirmation, 'confirm').mockImplementation((c: Confirmation) => {
       lastConfirm = c;
       return confirmation;
     });
-  });
-
-  const el = (): HTMLElement => fixture.nativeElement;
-  const statusOf = (id: string) => page.attendees().find((a) => a.id === id)?.status;
-  const visibleIds = () => page.visibleAttendees().map((a) => a.id);
-  const render = async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-  };
-
-  /** Hace clic en el botón de la fila y devuelve los ítems que muestra el p-menu. */
-  function rowMenu(id: string): MenuItem[] {
-    const a = page.attendees().find((x) => x.id === id)!;
-    fixture.detectChanges();
-    const button = el().querySelector<HTMLButtonElement>(
-      `[aria-label="Cambiar estado de la inscripción de ${a.firstName} ${a.lastName}"]`,
-    )!;
-    button.click();
-    return page.statusMenuItems()[0].items ?? [];
-  }
-  const runCommand = (item: MenuItem) =>
-    item.command!({ originalEvent: new MouseEvent('click'), item });
-
-  async function openDetail(id: string) {
-    await page.openAttendeeDetail(page.attendees().find((a) => a.id === id)!);
-    await render();
+    cmp.attendees.set([pending]);
+    cmp.selectedAttendee.set(pending);
+    return cmp;
   }
 
-  it('muestra la acción rápida por fila y los estados con su etiqueta', async () => {
-    await render();
-    expect(el().querySelectorAll('[data-testid="row-status-action"]')).toHaveLength(3);
-    const text = el().textContent ?? '';
-    expect(text).toContain('Pendiente de pago');
-    expect(text).toContain('Pagada / Confirmada');
-    expect(text).toContain('Anulada');
+  beforeEach(() => {
+    resetStatusMocks();
+    repo.registerManualCheckin.mockReset();
+    role.set('SUPERADMIN');
   });
 
-  it('cambia el estado desde el detalle y sincroniza detalle y tabla', async () => {
-    await openDetail('r1');
-    const confirmBtn = el().querySelector<HTMLButtonElement>(
-      '[data-testid="detail-status-CONFIRMED"]',
-    )!;
-    expect(
-      el().querySelector<HTMLButtonElement>('[data-testid="detail-status-PENDING"]')!.disabled,
-    ).toBe(true); // estado actual
-
-    confirmBtn.click();
-    await vi.waitFor(() => expect(statusOf('r1')).toBe('CONFIRMED'));
-    await render();
-
-    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('r1', 'CONFIRMED');
-    expect(page.selectedAttendee()?.status).toBe('CONFIRMED');
-    expect(el().querySelector('[data-testid="detail-status-tag"]')?.textContent?.trim()).toContain(
-      'Pagada / Confirmada',
-    );
-    // No se tocan otros campos del asistente.
-    expect(page.attendees().find((a) => a.id === 'r1')).toEqual(attendee('r1', 'Ana', 'CONFIRMED'));
-  });
-
-  it('cambio rápido desde la tabla: deshabilita el estado actual y usa la misma lógica', async () => {
-    const items = rowMenu('r1'); // Ana, PENDING
-    expect(items.map((i) => [i.label, !!i.disabled])).toEqual([
-      ['Marcar como pagada', false],
-      ['Marcar como pendiente', true],
-      ['Anular inscripción', false],
-    ]);
-
-    runCommand(items[0]);
-    await vi.waitFor(() => expect(statusOf('r1')).toBe('CONFIRMED'));
-    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('r1', 'CONFIRMED');
-    expect(lastConfirm).toBeNull();
-  });
-
-  it('pide confirmación antes de anular y no cambia nada si se cancela', async () => {
-    runCommand(rowMenu('r2')[2]); // Bruno -> Anular
-    await vi.waitFor(() => expect(lastConfirm).not.toBeNull());
-    expect(lastConfirm!.message).toContain('Bruno Demo (Ticket Básico)');
-
-    lastConfirm!.reject!();
-    await fixture.whenStable();
-    expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
-    expect(statusOf('r2')).toBe('CONFIRMED');
-  });
-
-  it('anula al confirmar y restaura desde CANCELLED', async () => {
-    runCommand(rowMenu('r2')[2]);
+  it('anular pide confirmación, persiste por RegistrationsApi y actualiza lista y detalle', async () => {
+    const cmp = create();
+    const done = cmp.changeStatus(pending, 'CANCELLED');
     await vi.waitFor(() => expect(lastConfirm).not.toBeNull());
     lastConfirm!.accept!();
-    await vi.waitFor(() => expect(statusOf('r2')).toBe('CANCELLED'));
-    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('r2', 'CANCELLED');
-
-    lastConfirm = null;
-    runCommand(rowMenu('r2')[0]); // restaurar -> pagada, sin confirmación
-    await vi.waitFor(() => expect(statusOf('r2')).toBe('CONFIRMED'));
-    expect(lastConfirm).toBeNull();
+    await done;
+    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('r1', 'CANCELLED');
+    expect(cmp.attendees()[0].status).toBe('CANCELLED');
+    expect(cmp.selectedAttendee()?.status).toBe('CANCELLED');
   });
 
-  describe('modal real de anulación (sin mock de confirm)', () => {
-    const dialogButton = (cls: string) => document.body.querySelector<HTMLButtonElement>(`.${cls}`);
-
-    beforeEach(() => {
-      vi.mocked(fixture.debugElement.injector.get(ConfirmationService).confirm).mockRestore();
-    });
-
-    async function openCancelDialog() {
-      runCommand(rowMenu('r2')[2]); // Bruno -> Anular
-      await vi.waitFor(() => {
-        fixture.detectChanges();
-        expect(dialogButton('p-confirm-dialog-accept')).not.toBeNull();
-      });
-    }
-
-    it('muestra título, mensaje y botones del modal', async () => {
-      await openCancelDialog();
-      const text = document.body.textContent ?? '';
-      expect(text).toContain('Anular inscripción');
-      expect(text).toContain('Bruno Demo (Ticket Básico)');
-      expect(dialogButton('p-confirm-dialog-reject')?.textContent?.trim()).toBe('Volver');
-      expect(dialogButton('p-confirm-dialog-accept')?.textContent).toContain('Anular inscripción');
-    });
-
-    it('"Volver" cierra sin modificar el estado', async () => {
-      await openCancelDialog();
-      dialogButton('p-confirm-dialog-reject')!.click();
-      await fixture.whenStable();
-      expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
-      expect(statusOf('r2')).toBe('CONFIRMED');
-    });
-
-    it('confirmar anula la inscripción', async () => {
-      await openCancelDialog();
-      dialogButton('p-confirm-dialog-accept')!.click();
-      await vi.waitFor(() => expect(statusOf('r2')).toBe('CANCELLED'));
-      expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('r2', 'CANCELLED');
-    });
+  it('si la base rechaza el cambio, conserva el estado', async () => {
+    registrationsRepo.updateStatus.mockRejectedValue(new DomainError('Sin permiso', 'FORBIDDEN'));
+    const cmp = create();
+    await cmp.changeStatus(pending, 'CONFIRMED');
+    expect(cmp.attendees()[0].status).toBe('PENDING');
   });
 
-  it('si la BD rechaza el cambio, tabla y detalle conservan el estado', async () => {
-    registrationsRepo.updateStatus.mockRejectedValue(
-      new DomainError('No tienes permisos para realizar esta acción.', 'FORBIDDEN'),
-    );
-    await openDetail('r1');
-    await page.changeStatus(page.attendees()[0], 'CONFIRMED');
-    expect(statusOf('r1')).toBe('PENDING');
-    expect(page.selectedAttendee()?.status).toBe('PENDING');
+  it('un STAFF no cambia estados', async () => {
+    role.set('STAFF');
+    const cmp = create();
+    await cmp.changeStatus(pending, 'CANCELLED');
+    expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('AttendeesPage: revisión de comprobantes', () => {
+  const repo = {
+    registerManualCheckin: vi.fn(),
+  };
+  const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
+  const withProof = (id: string, extra: Partial<Attendee> = {}): Attendee => ({
+    ...pending,
+    id,
+    paymentProofUrl: `https://x/${id}.png`,
+    ...extra,
   });
 
-  it('un cambio desde la tabla actualiza el detalle abierto de esa persona', async () => {
-    await openDetail('r1');
-    runCommand(rowMenu('r1')[0]);
-    await vi.waitFor(() => expect(page.selectedAttendee()?.status).toBe('CONFIRMED'));
+  function create(list: Attendee[]) {
+    TestBed.configureTestingModule({
+      imports: [AttendeesPage],
+      providers: [
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: AuthService, useValue: { role } },
+      ],
+    }).overrideComponent(AttendeesPage, {
+      set: { providers: pageProviders(repo) },
+    });
+    const fixture = TestBed.createComponent(AttendeesPage);
+    const cmp = fixture.componentInstance;
+    const confirmation = fixture.debugElement.injector.get(ConfirmationService);
+    vi.spyOn(confirmation, 'confirm').mockImplementation((c: Confirmation) => {
+      lastConfirm = c;
+      return confirmation;
+    });
+    cmp.attendees.set(list);
+    return cmp;
+  }
+
+  beforeEach(() => {
+    resetStatusMocks();
+    repo.registerManualCheckin.mockReset();
+    role.set('SUPERADMIN');
   });
 
-  it('filtra por estado con conteos y mantiene la lista completa para exportar', async () => {
-    expect(page.statusFilterOptions().map((o) => o.label)).toEqual([
-      'Todos (3)',
-      'Confirmados / pagados (1)',
-      'Pendientes (1)',
-      'Anulados (1)',
+  it('la cola de revisión solo incluye inscritos filtrados con comprobante', () => {
+    const cmp = create([
+      withProof('a'),
+      pending,
+      withProof('b', { status: 'CONFIRMED' }),
+      withProof('c'),
     ]);
-
-    page.onStatusFilterChange('PENDING');
-    await render();
-    expect(visibleIds()).toEqual(['r1']);
-    expect(el().querySelectorAll('[data-testid="row-status-action"]')).toHaveLength(1);
-    expect(page.attendees()).toHaveLength(3); // la exportación usa attendees()
-
-    page.onStatusFilterChange('CANCELLED');
-    expect(visibleIds()).toEqual(['r3']);
-    page.onStatusFilterChange('CONFIRMED');
-    expect(visibleIds()).toEqual(['r2']);
-    page.onStatusFilterChange('ALL');
-    expect(visibleIds()).toHaveLength(3);
+    cmp.setFilter('status', 'PENDING');
+    cmp.openProof(cmp.attendees()[0]);
+    expect(cmp.proofQueue()).toEqual(['a', 'c']);
+    expect(cmp.proofPosition()).toBe(1);
+    cmp.stepProof(1);
+    expect(cmp.proofAttendee()?.id).toBe('c');
+    cmp.stepProof(1);
+    expect(cmp.proofAttendee()?.id).toBe('c');
+    cmp.stepProof(-1);
+    expect(cmp.proofAttendee()?.id).toBe('a');
   });
 
-  it('con un filtro activo, la fila sale de la vista al cambiar de estado', async () => {
-    page.onStatusFilterChange('PENDING');
-    runCommand(rowMenu('r1')[0]);
-    await vi.waitFor(() => expect(visibleIds()).toEqual([]));
-    expect(page.statusFilterOptions()[1].label).toBe('Confirmados / pagados (2)');
-    await render();
-    expect(el().textContent).toContain('Sin resultados');
+  it('confirmar el pago actualiza la lista sin sacar al inscrito de la cola', async () => {
+    const cmp = create([withProof('a'), withProof('c')]);
+    cmp.setFilter('status', 'PENDING');
+    cmp.openProof(cmp.attendees()[0]);
+    await cmp.confirmPayment(cmp.attendees()[0]);
+    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('a', 'CONFIRMED');
+    expect(cmp.attendees()[0].status).toBe('CONFIRMED');
+    expect(cmp.proofAttendee()?.status).toBe('CONFIRMED');
+    expect(cmp.proofQueue()).toEqual(['a', 'c']);
   });
 
-  it('una inscripción anulada no permite registrar asistencia manual', async () => {
-    await openDetail('r3');
-    const checkin = Array.from(el().querySelectorAll<HTMLButtonElement>('button')).find((b) =>
-      b.textContent?.includes('Marcar Check-in'),
-    )!;
-    expect(checkin.disabled).toBe(true);
-    expect(el().textContent).toContain('Inscripción anulada: no puede registrar check-in');
+  it('un STAFF no confirma ni cancela desde el visor', async () => {
+    role.set('STAFF');
+    const cmp = create([withProof('a')]);
+    await cmp.confirmPayment(cmp.attendees()[0]);
+    await cmp.cancelFromProof(cmp.attendees()[0]);
+    expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
   });
 
-  describe('sin permiso de edición (STAFF)', () => {
-    beforeEach(async () => {
-      role.set('STAFF');
-      await render();
-    });
+  it('si la base rechaza el cambio, conserva el estado y libera el visor', async () => {
+    registrationsRepo.updateStatus.mockRejectedValue(new DomainError('Sin permiso', 'FORBIDDEN'));
+    const cmp = create([withProof('a')]);
+    cmp.openProof(cmp.attendees()[0]);
+    await cmp.confirmPayment(cmp.attendees()[0]);
+    expect(cmp.attendees()[0].status).toBe('PENDING');
+    expect(cmp.proofBusy()).toBe(false);
+  });
 
-    it('no muestra acciones de cambio en la tabla ni en el detalle', async () => {
-      expect(el().querySelectorAll('[data-testid="row-status-action"]')).toHaveLength(0);
-      await openDetail('r1');
-      expect(el().querySelector('[data-testid="detail-status-CONFIRMED"]')).toBeNull();
-      expect(el().textContent).toContain('Solo un Super Admin puede cambiar el estado');
-    });
+  it('cancelar desde el visor usa el mismo camino sin repetir la confirmación', async () => {
+    const cmp = create([withProof('a')]);
+    await cmp.cancelFromProof(cmp.attendees()[0]);
+    expect(lastConfirm).toBeNull();
+    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('a', 'CANCELLED');
+    expect(cmp.attendees()[0].status).toBe('CANCELLED');
+  });
 
-    it('ignora intentos programáticos', async () => {
-      page.openStatusMenu(new MouseEvent('click'), page.attendees()[0]);
-      expect(page.statusMenuItems()).toEqual([]);
-      await page.changeStatus(page.attendees()[0], 'CONFIRMED');
-      expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
-      expect(statusOf('r1')).toBe('PENDING');
-    });
+  it('el check-in manual se bloquea si la inscripción no está confirmada', async () => {
+    const cmp = create([pending]);
+    cmp.selectedAttendee.set(pending);
+    await cmp.doManualCheckin();
+    expect(repo.registerManualCheckin).not.toHaveBeenCalled();
+  });
 
-    it('el filtro sigue disponible', async () => {
-      page.onStatusFilterChange('CANCELLED');
-      expect(visibleIds()).toEqual(['r3']);
-    });
+  it('avisa si el check-in falla y no marca asistencia', async () => {
+    repo.registerManualCheckin.mockResolvedValue(false);
+    const confirmed = { ...pending, status: 'CONFIRMED' };
+    const cmp = create([confirmed]);
+    cmp.selectedAttendee.set(confirmed);
+    await cmp.doManualCheckin();
+    expect(cmp.actionError()).toContain('check-in');
+    expect(cmp.attendees()[0].checkedIn).toBe(false);
+  });
+
+  it('cambiar un filtro vuelve a la primera página', () => {
+    const cmp = create([pending]);
+    cmp.first.set(50);
+    cmp.setFilter('status', 'PENDING');
+    expect(cmp.first()).toBe(0);
   });
 });

@@ -186,6 +186,7 @@ export interface Database {
           id: string;
           payment_proof_url: string | null;
           status: string;
+          ticket_phase_id: string | null;
           ticket_type_id: string;
           updated_at: string | null;
           user_id: string | null;
@@ -199,6 +200,7 @@ export interface Database {
           id?: string;
           payment_proof_url?: string | null;
           status?: string;
+          ticket_phase_id?: string | null;
           ticket_type_id: string;
           updated_at?: string | null;
           user_id?: string | null;
@@ -212,6 +214,7 @@ export interface Database {
           id?: string;
           payment_proof_url?: string | null;
           status?: string;
+          ticket_phase_id?: string | null;
           ticket_type_id?: string;
           updated_at?: string | null;
           user_id?: string | null;
@@ -229,6 +232,13 @@ export interface Database {
             columns: ['event_id'];
             isOneToOne: false;
             referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'registrations_ticket_phase_id_fkey';
+            columns: ['ticket_phase_id'];
+            isOneToOne: false;
+            referencedRelation: 'ticket_phases';
             referencedColumns: ['id'];
           },
           {
@@ -448,6 +458,50 @@ export interface Database {
         };
         Relationships: [];
       };
+      ticket_phases: {
+        Row: {
+          capacity: number | null;
+          created_at: string;
+          id: string;
+          name: string;
+          payment_qr_url: string | null;
+          position: number;
+          price: number;
+          ticket_type_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          capacity?: number | null;
+          created_at?: string;
+          id?: string;
+          name: string;
+          payment_qr_url?: string | null;
+          position: number;
+          price?: number;
+          ticket_type_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          capacity?: number | null;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          payment_qr_url?: string | null;
+          position?: number;
+          price?: number;
+          ticket_type_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'ticket_phases_ticket_type_id_fkey';
+            columns: ['ticket_type_id'];
+            isOneToOne: false;
+            referencedRelation: 'ticket_types';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       ticket_types: {
         Row: {
           created_at: string | null;
@@ -604,6 +658,23 @@ export interface Database {
           user_first_name: string;
           user_id: string;
           user_last_name: string;
+        }[];
+      };
+      get_ticket_availability: {
+        Args: { p_event_id: string };
+        Returns: {
+          capacity: number | null;
+          is_active: boolean;
+          name: string;
+          package_capacity: number | null;
+          package_sold: number;
+          payment_qr_url: string | null;
+          position: number;
+          price: number;
+          remaining: number | null;
+          sold: number;
+          ticket_phase_id: string | null;
+          ticket_type_id: string;
         }[];
       };
       has_event_access: { Args: { p_event_id: string }; Returns: boolean };

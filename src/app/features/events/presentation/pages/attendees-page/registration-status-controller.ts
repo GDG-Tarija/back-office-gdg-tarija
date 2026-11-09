@@ -56,6 +56,7 @@ export class RegistrationStatusController {
   async change(
     target: StatusChangeTarget,
     next: RegistrationStatus,
+    options: { skipConfirmation?: boolean } = {},
   ): Promise<RegistrationStatusChange | null> {
     if (!this.canEdit() || this.isSaving(target.id)) return null;
 
@@ -65,7 +66,12 @@ export class RegistrationStatusController {
       return null;
     }
 
-    if (check.requiresConfirmation && !(await this.confirmCancellation(target))) return null;
+    if (
+      check.requiresConfirmation &&
+      !options.skipConfirmation &&
+      !(await this.confirmCancellation(target))
+    )
+      return null;
     // Mientras el diálogo estaba abierto pudo empezar otro guardado de la misma inscripción.
     if (this.isSaving(target.id)) return null;
 
