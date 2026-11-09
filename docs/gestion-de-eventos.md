@@ -29,6 +29,21 @@ Después, todo se edita en `/events/:id/edit` (pestañas equivalentes + Publicac
 - **Publicar** exige: datos completos (descripción, lugar, modalidad, fecha de fin), imagen de portada, al menos un paquete (con fases válidas si las usa), formulario válido y sesiones con fecha y hora completas.
 - **Eliminar**: solo si el evento no tiene inscritos (la base de datos lo impide). Con inscritos, **despublicar**. Igual para sesiones con inscritos.
 
+## Estado de las inscripciones
+
+En **Eventos > Asistentes** (`/events/:id/attendees`) cada inscripción tiene un estado:
+
+| Estado              | Valor en la BD | Significado                                                                        |
+| ------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| Pagada / Confirmada | `CONFIRMED`    | Pago validado (o entrada gratuita / cupón especial). Puede hacer check-in.         |
+| Pendiente de pago   | `PENDING`      | Falta validar el pago. El check-in por QR la rechaza.                              |
+| Anulada             | `CANCELLED`    | No cuenta como asistente. **No puede** registrar check-in, refrigerio ni sesiones. |
+
+- **Cambiar el estado** (solo SUPERADMIN): desde el botón de estado de cada fila (menú rápido) o desde el detalle del asistente (sección "Estado de la inscripción", junto al comprobante de pago).
+- **Anular pide confirmación.** Al anular no se borra el historial: los check-ins anteriores se conservan. Una inscripción anulada se puede restaurar cambiando su estado otra vez.
+- **Filtro por estado** en la barra de la tabla (Todos, Confirmados / pagados, Pendientes, Anulados), compatible con la búsqueda, el orden y la paginación. Las exportaciones siguen incluyendo a todos los inscritos.
+- STAFF ve los estados y usa el filtro, pero no puede cambiarlos (la base de datos lo impide aunque se intente por la API).
+
 ## Roles
 
 | Rol        | Puede                                                                                                                                                                                      |
@@ -62,6 +77,10 @@ Marcar cada punto con un usuario SUPERADMIN, salvo donde se indique.
 - [ ] Abrir `/e/<slug>` en la app pública: se ven datos, paquetes, agenda e imágenes.
 - [ ] Registrarse como asistente con un paquete gratis y con el formulario; repetir con cupón SPEAKER (queda CONFIRMED con rol SPEAKER) y con un cupón agotado (debe rechazar). Probar paquete de pago con comprobante (queda PENDING).
 - [ ] En `/events/:id/attendees` aparece la inscripción.
+- [ ] Marcar una inscripción pendiente como **pagada** desde el detalle y otra desde el menú de la fila; la tabla y el detalle muestran el nuevo estado sin recargar.
+- [ ] **Anular**: aparece la confirmación; con "Volver" no cambia nada; al confirmar queda "Anulada". El check-in manual y por QR se rechaza. Restaurarla a pagada vuelve a permitir el check-in.
+- [ ] Filtrar por cada estado; los contadores del filtro coinciden con la tabla.
+- [ ] Como STAFF: no aparecen las acciones de cambio de estado.
 - [ ] Con un paquete con fases (p. ej. Preventa Bs 15 → Normal Bs 20), inscribir a dos personas de modo que caigan en fases distintas: la columna **Entrada** muestra "Paquete · Fase" y el monto de **su** fase (no el del paquete). Una inscripción con cupón muestra "Cupón · Bs 0".
 - [ ] En esa lista: los filtros (estado, rol, entrada/fase, check-in, comprobante) y el buscador actúan sobre todos los inscritos y "Mostrando N de M" es coherente; las tarjetas de estado filtran al hacer clic; la columna **Acciones** queda fija a la derecha al hacer scroll horizontal.
 - [ ] **Revisar un pago**: "Ver pago" abre el comprobante en un diálogo (sin pestaña nueva) con nombre, paquete/fase, monto esperado y zoom; ← / → pasan al siguiente comprobante de la lista filtrada y Esc cierra. Como SUPERADMIN, "Confirmar pago" y "Cancelar inscripción" piden confirmación; como STAFF no aparecen. Un PDF o una imagen que no carga ofrecen "Abrir en pestaña" y "Descargar".

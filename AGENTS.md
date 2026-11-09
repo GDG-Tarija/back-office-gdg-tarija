@@ -63,6 +63,7 @@ npm run db:status            # URLs y keys locales
 npm run db:reset             # recrea la base local desde cero (migraciones + seed)
 npm run db:migrate           # aplica solo las migraciones nuevas, conserva los datos locales
 npm run db:new -- <nombre>   # nueva migración en supabase/migrations/
+npm run db:test              # pruebas pgTAP de supabase/tests/ (RLS, triggers) contra la base local; hacen ROLLBACK
 npx supabase gen types typescript --local   # tipos para src/app/core/supabase/supabase.client.ts
 ```
 

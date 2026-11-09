@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, viewChild } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,9 +12,24 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
+import { Menu, MenuModule } from 'primeng/menu';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 
-import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { EventsRepository } from '../../../domain/events.repository';
+import { RegistrationsRepository } from '../../../domain/registrations.repository';
+import { RegistrationsApi } from '../../../data/registrations.api';
+import {
+  REGISTRATION_STATUS_OPTIONS,
+  RegistrationStatus,
+  parseRegistrationStatus,
+  registrationStatusLabel,
+} from '../../../domain/registration-status';
+import {
+  REGISTRATION_STATUS_UI_KEY,
+  RegistrationStatusController,
+} from './registration-status-controller';
 import { EventsApi } from '../../../data/events.api';
 import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.model';
 import {
@@ -45,12 +60,21 @@ import { PaymentProofDialog } from '../../components/payment-proof-dialog/paymen
     ProgressSpinnerModule,
     TagModule,
     DialogModule,
+    MenuModule,
+    ConfirmDialogModule,
+    ToastModule,
     SelectModule,
     PaymentProofDialog,
     DatePipe,
     CurrencyPipe,
   ],
-  providers: [{ provide: EventsRepository, useClass: EventsApi }],
+  providers: [
+    { provide: EventsRepository, useClass: EventsApi },
+    { provide: RegistrationsRepository, useClass: RegistrationsApi },
+    ConfirmationService,
+    MessageService,
+    RegistrationStatusController,
+  ],
   templateUrl: './attendees-page.html',
   styleUrl: './attendees-page.scss',
 })
@@ -58,12 +82,6 @@ export class AttendeesPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly eventsRepo = inject(EventsRepository);
-  private readonly auth = inject(AuthService);
-
-  /** Solo SUPERADMIN cancela inscripciones (RLS sigue siendo la seguridad real). */
-  readonly isSuperadmin = computed(() => this.auth.role() === 'SUPERADMIN');
-  readonly confirmingCancel = signal<boolean>(false);
-  readonly cancelError = signal<string | null>(null);
 
   readonly event = signal<Event | null>(null);
   readonly attendees = signal<Attendee[]>([]);
@@ -87,12 +105,21 @@ export class AttendeesPage implements OnInit {
   readonly filteredAttendees = computed(() => filterAttendees(this.attendees(), this.filters()));
   readonly filtersActive = computed(() => hasActiveFilters(this.filters()));
 
-  readonly statusOptions = [
-    { label: 'Todos los estados', value: '' },
-    { label: 'Confirmado', value: 'CONFIRMED' },
-    { label: 'Pendiente', value: 'PENDING' },
-    { label: 'Cancelado', value: 'CANCELLED' },
-  ];
+  readonly statusOptions = computed(() => {
+    const stats = this.stats();
+    const counts: Record<RegistrationStatus, number> = {
+      CONFIRMED: stats.confirmed,
+      PENDING: stats.pending,
+      CANCELLED: stats.cancelled,
+    };
+    return [
+      { label: `Todos los estados (${stats.total})`, value: '' },
+      ...REGISTRATION_STATUS_OPTIONS.map((o) => ({
+        label: `${o.filterLabel} (${counts[o.value]})`,
+        value: o.value as string,
+      })),
+    ];
+  });
   readonly roleOptions = [
     { label: 'Todos los roles', value: '' },
     { label: 'Asistente', value: 'ATTENDEE' },
@@ -181,6 +208,12 @@ export class AttendeesPage implements OnInit {
     });
   });
 
+  // Estado de la inscripción (issue #7): tabla y detalle usan el mismo controlador.
+  readonly statusCtl = inject(RegistrationStatusController);
+  readonly statusUiKey = REGISTRATION_STATUS_UI_KEY;
+  readonly statusMenuItems = signal<MenuItem[]>([]);
+  private readonly statusMenu = viewChild<Menu>('statusMenu');
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -217,6 +250,52 @@ export class AttendeesPage implements OnInit {
     } finally {
       if (token === this.loadToken) this.loading.set(false);
     }
+  }
+
+  statusLabel(status: string): string {
+    return registrationStatusLabel(status);
+  }
+
+  isCurrentStatus(attendee: Attendee, status: RegistrationStatus): boolean {
+    return parseRegistrationStatus(attendee.status) === status;
+  }
+
+  openStatusMenu(event: MouseEvent, attendee: Attendee): void {
+    if (!this.statusCtl.canEdit()) return;
+    this.statusMenuItems.set([
+      {
+        label: 'Cambiar estado',
+        items: this.statusCtl.options.map((o) => ({
+          label: o.actionLabel,
+          disabled: this.isCurrentStatus(attendee, o.value),
+          state: { icon: o.icon, danger: o.requiresConfirmation },
+          command: () => void this.changeStatus(attendee, o.value),
+        })),
+      },
+    ]);
+    this.statusMenu()?.toggle(event);
+  }
+
+  /** Cambia el estado (con confirmación si se anula) y sincroniza tabla y detalle con lo guardado. */
+  async changeStatus(
+    attendee: Attendee,
+    status: RegistrationStatus,
+    options?: { skipConfirmation?: boolean },
+  ): Promise<void> {
+    const current = this.attendees().find((a) => a.id === attendee.id) ?? attendee;
+    const saved = await this.statusCtl.change(
+      {
+        id: current.id,
+        status: current.status,
+        displayName: `${current.firstName} ${current.lastName}`.trim() || current.email,
+        detail: current.ticketName,
+      },
+      status,
+      options,
+    );
+    if (!saved) return;
+
+    this.patchAttendee(saved.id, { status: saved.status });
   }
 
   reload(): void {
@@ -343,8 +422,10 @@ export class AttendeesPage implements OnInit {
   // Revisión de comprobantes: cola fija de ids al abrir (sigue estable aunque cambien los filtros)
   readonly proofQueue = signal<string[]>([]);
   readonly proofId = signal<string | null>(null);
-  readonly proofBusy = signal(false);
-  readonly proofError = signal<string | null>(null);
+  readonly proofBusy = computed(() => {
+    const id = this.proofId();
+    return !!id && this.statusCtl.isSaving(id);
+  });
   readonly proofAttendee = computed(() => {
     const id = this.proofId();
     return id ? (this.attendees().find((a) => a.id === id) ?? null) : null;
@@ -360,53 +441,28 @@ export class AttendeesPage implements OnInit {
       .filter((a) => !!a.paymentProofUrl)
       .map((a) => a.id);
     this.proofQueue.set(queue.includes(attendee.id) ? queue : [attendee.id]);
-    this.proofError.set(null);
     this.proofId.set(attendee.id);
   }
 
   closeProof(): void {
     this.proofId.set(null);
-    this.proofError.set(null);
   }
 
   stepProof(delta: -1 | 1): void {
     const queue = this.proofQueue();
     const next = queue[queue.indexOf(this.proofId() ?? '') + delta];
     if (!next) return;
-    this.proofError.set(null);
     this.proofId.set(next);
   }
 
+  /** Desde el visor: mismo camino que la tabla y el detalle (RegistrationStatusController). */
   async confirmPayment(attendee: Attendee): Promise<void> {
-    if (!this.isSuperadmin() || this.proofBusy()) return;
-    this.proofBusy.set(true);
-    this.proofError.set(null);
-    try {
-      await this.eventsRepo.confirmPendingRegistration(attendee.id);
-      this.patchAttendee(attendee.id, { status: 'CONFIRMED' });
-    } catch (err) {
-      this.proofError.set(
-        err instanceof Error ? err.message : 'No se pudo confirmar el pago. Intenta de nuevo.',
-      );
-    } finally {
-      this.proofBusy.set(false);
-    }
+    await this.changeStatus(attendee, 'CONFIRMED');
   }
 
+  /** El visor ya pidió confirmación propia: no se vuelve a preguntar. */
   async cancelFromProof(attendee: Attendee): Promise<void> {
-    if (!this.isSuperadmin() || this.proofBusy()) return;
-    this.proofBusy.set(true);
-    this.proofError.set(null);
-    try {
-      await this.eventsRepo.cancelPendingRegistration(attendee.id);
-      this.patchAttendee(attendee.id, { status: 'CANCELLED' });
-    } catch (err) {
-      this.proofError.set(
-        err instanceof Error ? err.message : 'No se pudo cancelar la inscripción.',
-      );
-    } finally {
-      this.proofBusy.set(false);
-    }
+    await this.changeStatus(attendee, 'CANCELLED', { skipConfirmation: true });
   }
 
   /** Actualiza la fila en la lista y en el detalle abierto, si es la misma inscripción. */
@@ -654,8 +710,6 @@ export class AttendeesPage implements OnInit {
 
   async openAttendeeDetail(attendee: Attendee): Promise<void> {
     const token = ++this.detailToken;
-    this.confirmingCancel.set(false);
-    this.cancelError.set(null);
     this.actionError.set(null);
     this.selectedAttendee.set(attendee);
     this.attendeeSessions.set([]);
@@ -685,30 +739,6 @@ export class AttendeesPage implements OnInit {
   /** El check-in y la entrega solo aplican a inscripciones confirmadas. */
   canCheckin(attendee: Attendee): boolean {
     return attendee.status?.toUpperCase() === 'CONFIRMED';
-  }
-
-  /** Una inscripción pendiente (sin pago confirmado) se puede cancelar para liberar el cupo. */
-  canCancel(attendee: Attendee): boolean {
-    return this.isSuperadmin() && attendee.status?.toUpperCase() === 'PENDING';
-  }
-
-  async doCancelRegistration(): Promise<void> {
-    const attendee = this.selectedAttendee();
-    if (!attendee || !this.canCancel(attendee)) return;
-
-    this.actionLoading.set(true);
-    this.cancelError.set(null);
-    try {
-      await this.eventsRepo.cancelPendingRegistration(attendee.id);
-      this.patchAttendee(attendee.id, { status: 'CANCELLED' });
-      this.confirmingCancel.set(false);
-    } catch (err) {
-      this.cancelError.set(
-        err instanceof Error ? err.message : 'No se pudo cancelar la inscripción.',
-      );
-    } finally {
-      this.actionLoading.set(false);
-    }
   }
 
   async doManualCheckin(): Promise<void> {

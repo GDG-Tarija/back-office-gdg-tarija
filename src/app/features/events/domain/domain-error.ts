@@ -3,6 +3,7 @@ export type DomainErrorCode =
   | 'HAS_REGISTRATIONS'
   | 'REFERENCED'
   | 'FORBIDDEN'
+  | 'INVALID'
   | 'SOLD_OUT'
   | 'UNKNOWN';
 

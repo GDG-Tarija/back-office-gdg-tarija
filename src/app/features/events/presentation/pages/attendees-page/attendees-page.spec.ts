@@ -1,12 +1,38 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Confirmation, ConfirmationService, MessageService } from 'primeng/api';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { DomainError } from '../../../domain/domain-error';
 import { Attendee } from '../../../domain/event.model';
 import { EventsRepository } from '../../../domain/events.repository';
+import { RegistrationStatus } from '../../../domain/registration-status';
+import { RegistrationsRepository } from '../../../domain/registrations.repository';
 import { AttendeesPage } from './attendees-page';
+import { RegistrationStatusController } from './registration-status-controller';
+
+const registrationsRepo = { updateStatus: vi.fn() };
+let lastConfirm: Confirmation | null = null;
+
+/** Providers de la página con repos falsos; la confirmación de anular se captura en `lastConfirm`. */
+function pageProviders(repo: object) {
+  return [
+    { provide: EventsRepository, useValue: repo },
+    { provide: RegistrationsRepository, useValue: registrationsRepo },
+    ConfirmationService,
+    MessageService,
+    RegistrationStatusController,
+  ];
+}
+
+function resetStatusMocks(): void {
+  lastConfirm = null;
+  registrationsRepo.updateStatus.mockReset();
+  registrationsRepo.updateStatus.mockImplementation((id: string, status: RegistrationStatus) =>
+    Promise.resolve({ id, status, updatedAt: new Date() }),
+  );
+}
 
 const pending: Attendee = {
   id: 'r1',
@@ -31,10 +57,8 @@ const pending: Attendee = {
   checkedIn: false,
 };
 
-describe('AttendeesPage: cancelar inscripción pendiente', () => {
+describe('AttendeesPage: cambio de estado desde el detalle', () => {
   const repo = {
-    cancelPendingRegistration: vi.fn(),
-    confirmPendingRegistration: vi.fn(),
     registerManualCheckin: vi.fn(),
   };
   const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
@@ -48,61 +72,54 @@ describe('AttendeesPage: cancelar inscripción pendiente', () => {
         { provide: AuthService, useValue: { role } },
       ],
     }).overrideComponent(AttendeesPage, {
-      set: { providers: [{ provide: EventsRepository, useValue: repo }] },
+      set: { providers: pageProviders(repo) },
     });
-    const cmp = TestBed.createComponent(AttendeesPage).componentInstance;
+    const fixture = TestBed.createComponent(AttendeesPage);
+    const cmp = fixture.componentInstance;
+    const confirmation = fixture.debugElement.injector.get(ConfirmationService);
+    vi.spyOn(confirmation, 'confirm').mockImplementation((c: Confirmation) => {
+      lastConfirm = c;
+      return confirmation;
+    });
     cmp.attendees.set([pending]);
     cmp.selectedAttendee.set(pending);
     return cmp;
   }
 
   beforeEach(() => {
-    repo.cancelPendingRegistration.mockReset();
-    repo.confirmPendingRegistration.mockReset();
+    resetStatusMocks();
     repo.registerManualCheckin.mockReset();
     role.set('SUPERADMIN');
   });
 
-  it('solo SUPERADMIN puede cancelar y solo inscripciones PENDING', () => {
+  it('anular pide confirmación, persiste por RegistrationsApi y actualiza lista y detalle', async () => {
     const cmp = create();
-    expect(cmp.canCancel(pending)).toBe(true);
-    expect(cmp.canCancel({ ...pending, status: 'CONFIRMED' })).toBe(false);
-    expect(cmp.canCancel({ ...pending, status: 'CANCELLED' })).toBe(false);
-    role.set('STAFF');
-    expect(cmp.canCancel(pending)).toBe(false);
-  });
-
-  it('cancela y actualiza la lista y el detalle', async () => {
-    repo.cancelPendingRegistration.mockResolvedValue(undefined);
-    const cmp = create();
-    cmp.confirmingCancel.set(true);
-    await cmp.doCancelRegistration();
-    expect(repo.cancelPendingRegistration).toHaveBeenCalledWith('r1');
+    const done = cmp.changeStatus(pending, 'CANCELLED');
+    await vi.waitFor(() => expect(lastConfirm).not.toBeNull());
+    lastConfirm!.accept!();
+    await done;
+    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('r1', 'CANCELLED');
     expect(cmp.attendees()[0].status).toBe('CANCELLED');
     expect(cmp.selectedAttendee()?.status).toBe('CANCELLED');
-    expect(cmp.confirmingCancel()).toBe(false);
   });
 
-  it('muestra el error y conserva el estado si falla', async () => {
-    repo.cancelPendingRegistration.mockRejectedValue(new DomainError('Sin permiso', 'FORBIDDEN'));
+  it('si la base rechaza el cambio, conserva el estado', async () => {
+    registrationsRepo.updateStatus.mockRejectedValue(new DomainError('Sin permiso', 'FORBIDDEN'));
     const cmp = create();
-    await cmp.doCancelRegistration();
-    expect(cmp.cancelError()).toBe('Sin permiso');
+    await cmp.changeStatus(pending, 'CONFIRMED');
     expect(cmp.attendees()[0].status).toBe('PENDING');
   });
 
-  it('un STAFF no dispara la cancelación', async () => {
+  it('un STAFF no cambia estados', async () => {
     role.set('STAFF');
     const cmp = create();
-    await cmp.doCancelRegistration();
-    expect(repo.cancelPendingRegistration).not.toHaveBeenCalled();
+    await cmp.changeStatus(pending, 'CANCELLED');
+    expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
   });
 });
 
 describe('AttendeesPage: revisión de comprobantes', () => {
   const repo = {
-    cancelPendingRegistration: vi.fn(),
-    confirmPendingRegistration: vi.fn(),
     registerManualCheckin: vi.fn(),
   };
   const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
@@ -122,16 +139,21 @@ describe('AttendeesPage: revisión de comprobantes', () => {
         { provide: AuthService, useValue: { role } },
       ],
     }).overrideComponent(AttendeesPage, {
-      set: { providers: [{ provide: EventsRepository, useValue: repo }] },
+      set: { providers: pageProviders(repo) },
     });
-    const cmp = TestBed.createComponent(AttendeesPage).componentInstance;
+    const fixture = TestBed.createComponent(AttendeesPage);
+    const cmp = fixture.componentInstance;
+    const confirmation = fixture.debugElement.injector.get(ConfirmationService);
+    vi.spyOn(confirmation, 'confirm').mockImplementation((c: Confirmation) => {
+      lastConfirm = c;
+      return confirmation;
+    });
     cmp.attendees.set(list);
     return cmp;
   }
 
   beforeEach(() => {
-    repo.cancelPendingRegistration.mockReset();
-    repo.confirmPendingRegistration.mockReset();
+    resetStatusMocks();
     repo.registerManualCheckin.mockReset();
     role.set('SUPERADMIN');
   });
@@ -156,12 +178,11 @@ describe('AttendeesPage: revisión de comprobantes', () => {
   });
 
   it('confirmar el pago actualiza la lista sin sacar al inscrito de la cola', async () => {
-    repo.confirmPendingRegistration.mockResolvedValue(undefined);
     const cmp = create([withProof('a'), withProof('c')]);
     cmp.setFilter('status', 'PENDING');
     cmp.openProof(cmp.attendees()[0]);
     await cmp.confirmPayment(cmp.attendees()[0]);
-    expect(repo.confirmPendingRegistration).toHaveBeenCalledWith('a');
+    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('a', 'CONFIRMED');
     expect(cmp.attendees()[0].status).toBe('CONFIRMED');
     expect(cmp.proofAttendee()?.status).toBe('CONFIRMED');
     expect(cmp.proofQueue()).toEqual(['a', 'c']);
@@ -172,23 +193,23 @@ describe('AttendeesPage: revisión de comprobantes', () => {
     const cmp = create([withProof('a')]);
     await cmp.confirmPayment(cmp.attendees()[0]);
     await cmp.cancelFromProof(cmp.attendees()[0]);
-    expect(repo.confirmPendingRegistration).not.toHaveBeenCalled();
-    expect(repo.cancelPendingRegistration).not.toHaveBeenCalled();
+    expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('muestra el error del servidor y conserva el estado', async () => {
-    repo.confirmPendingRegistration.mockRejectedValue(new DomainError('Sin permiso', 'FORBIDDEN'));
+  it('si la base rechaza el cambio, conserva el estado y libera el visor', async () => {
+    registrationsRepo.updateStatus.mockRejectedValue(new DomainError('Sin permiso', 'FORBIDDEN'));
     const cmp = create([withProof('a')]);
+    cmp.openProof(cmp.attendees()[0]);
     await cmp.confirmPayment(cmp.attendees()[0]);
-    expect(cmp.proofError()).toBe('Sin permiso');
     expect(cmp.attendees()[0].status).toBe('PENDING');
     expect(cmp.proofBusy()).toBe(false);
   });
 
-  it('cancelar desde el visor libera la inscripción', async () => {
-    repo.cancelPendingRegistration.mockResolvedValue(undefined);
+  it('cancelar desde el visor usa el mismo camino sin repetir la confirmación', async () => {
     const cmp = create([withProof('a')]);
     await cmp.cancelFromProof(cmp.attendees()[0]);
+    expect(lastConfirm).toBeNull();
+    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('a', 'CANCELLED');
     expect(cmp.attendees()[0].status).toBe('CANCELLED');
   });
 
