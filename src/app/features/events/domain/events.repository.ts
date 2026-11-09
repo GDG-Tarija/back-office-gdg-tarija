@@ -16,6 +16,11 @@ export abstract class EventsRepository {
     registrationId: string,
     userId: string | null,
   ): Promise<AttendeeSessionItem[]>;
+  /**
+   * Pasa una inscripción PENDING a CANCELLED (libera su cupo en la fase). Solo SUPERADMIN (RLS).
+   * Falla con DomainError si ya no está pendiente o no hay permiso.
+   */
+  abstract cancelPendingRegistration(registrationId: string): Promise<void>;
   abstract registerManualCheckin(registrationId: string): Promise<boolean>;
   abstract registerManualRefrigerio(registrationId: string): Promise<boolean>;
   abstract registerManualSessionCheckin(

@@ -101,6 +101,22 @@
                 · sin cupo propio
               }
             </p>
+            @if (t.phases.length) {
+              <ul class="mt-1.5 flex flex-wrap gap-1.5" aria-label="Fases del paquete">
+                @for (ph of phaseSummary(t); track ph.name) {
+                  <li
+                    class="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                    [class]="
+                      ph.active
+                        ? 'bg-google-blue-light/60 text-google-blue'
+                        : 'bg-neutral-100 text-text-secondary dark:bg-neutral-800 dark:text-neutral-400'
+                    "
+                  >
+                    {{ ph.name }} · {{ ph.label }}{{ ph.active ? ' (activa)' : '' }}
+                  </li>
+                }
+              </ul>
+            }
             @if (t.description) {
               <p class="mt-1 line-clamp-2 text-xs text-text-secondary dark:text-neutral-400">
                 {{ t.description }}
@@ -142,7 +158,7 @@
   <app-dialog-frame
     [title]="editing() ? 'Editar paquete' : 'Nuevo paquete'"
     icon="confirmation_number"
-    initialSize="md"
+    initialSize="lg"
     (closeDialog)="closeDialog()"
   >
     <form class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
@@ -177,30 +193,56 @@
           ></textarea>
         </div>
 
-        <div class="flex flex-col gap-1.5">
+        <div class="flex flex-col gap-1 md:col-span-2">
           <label
-            for="tt-price"
-            class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-            >Precio (Bs) *</label
+            class="flex items-center gap-2 text-sm font-semibold text-text-primary dark:text-neutral-200"
           >
-          <input
-            id="tt-price"
-            type="text"
-            inputmode="decimal"
-            pInputText
-            class="w-full !rounded-xl"
-            [formField]="f.price"
-            [attr.aria-invalid]="!!fieldError('price')"
-          />
-          @if (fieldError('price'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
-          }
-          @if (fieldWarning('price'); as warn) {
-            <small class="font-medium text-text-secondary dark:text-neutral-400" role="status">{{
-              warn
-            }}</small>
-          }
+            <input
+              id="tt-uses-phases"
+              type="checkbox"
+              class="size-4 accent-google-blue"
+              [checked]="model().usesPhases"
+              [disabled]="model().usesPhases && !!disablePhasesBlockReason()"
+              (change)="toggleUsesPhases($any($event.target).checked)"
+            />
+            Vender por fases (preventa → entrada normal)
+          </label>
+          <small class="text-text-secondary dark:text-neutral-400">
+            @if (disablePhasesBlockReason(); as why) {
+              {{ why }}
+            } @else {
+              La persona ve un solo paquete con el precio de la fase activa; al agotarse el cupo de
+              una fase se activa la siguiente.
+            }
+          </small>
         </div>
+
+        @if (!model().usesPhases) {
+          <div class="flex flex-col gap-1.5">
+            <label
+              for="tt-price"
+              class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+              >Precio (Bs) *</label
+            >
+            <input
+              id="tt-price"
+              type="text"
+              inputmode="decimal"
+              pInputText
+              class="w-full !rounded-xl"
+              [formField]="f.price"
+              [attr.aria-invalid]="!!fieldError('price')"
+            />
+            @if (fieldError('price'); as err) {
+              <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            }
+            @if (fieldWarning('price'); as warn) {
+              <small class="font-medium text-text-secondary dark:text-neutral-400" role="status">{{
+                warn
+              }}</small>
+            }
+          </div>
+        }
 
         <div class="flex flex-col gap-1.5">
           <label for="tt-cap" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
@@ -237,7 +279,209 @@
           (discarded)="onImageDiscarded($event)"
         />
 
-        @if (priceIsPaid()) {
+        @if (model().usesPhases) {
+          <section class="flex flex-col gap-3 md:col-span-2" aria-labelledby="tt-phases-title">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3
+                id="tt-phases-title"
+                class="text-sm font-bold text-text-primary dark:text-neutral-100"
+              >
+                Fases
+              </h3>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full bg-google-blue-light/60 px-3 py-1.5 text-xs font-semibold text-google-blue hover:opacity-90"
+                (click)="addPhase()"
+              >
+                <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+                Agregar fase
+              </button>
+            </div>
+            <p class="text-xs text-text-secondary dark:text-neutral-400">
+              Se activan en orden: cuando una fase agota su cupo pasa a la siguiente. Solo la última
+              fase puede quedar sin cupo.
+            </p>
+
+            @for (
+              ph of model().phases;
+              track $index;
+              let i = $index;
+              let first = $first;
+              let last = $last
+            ) {
+              <div
+                class="flex flex-col gap-3 rounded-2xl border border-black/5 p-3 dark:border-white/5"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="flex size-6 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-text-secondary dark:bg-neutral-800"
+                      >{{ i + 1 }}</span
+                    >
+                    @if (phaseAvailability(ph.id); as a) {
+                      <span
+                        class="text-xs font-semibold text-text-secondary dark:text-neutral-400"
+                        role="status"
+                      >
+                        {{ a.sold }} vendido(s)
+                        @if (a.remaining !== null) {
+                          · {{ a.remaining }} restante(s)
+                        } @else {
+                          · sin límite
+                        }
+                        @if (a.isActive) {
+                          · <span class="text-google-blue">activa</span>
+                        }
+                      </span>
+                    }
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="flex size-8 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-neutral-800"
+                      [attr.aria-label]="'Subir fase ' + (i + 1)"
+                      [disabled]="first"
+                      (click)="shiftPhase(i, -1)"
+                    >
+                      <span class="material-symbols-rounded text-lg" aria-hidden="true"
+                        >arrow_upward</span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      class="flex size-8 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-neutral-800"
+                      [attr.aria-label]="'Bajar fase ' + (i + 1)"
+                      [disabled]="last"
+                      (click)="shiftPhase(i, 1)"
+                    >
+                      <span class="material-symbols-rounded text-lg" aria-hidden="true"
+                        >arrow_downward</span
+                      >
+                    </button>
+                    <span
+                      [pTooltip]="phaseDeleteBlockReason(ph) ?? ''"
+                      [tooltipDisabled]="!phaseDeleteBlockReason(ph)"
+                    >
+                      <button
+                        type="button"
+                        class="flex size-8 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        [attr.aria-label]="
+                          phaseDeleteBlockReason(ph)
+                            ? 'Quitar fase ' + (i + 1) + ' (no disponible: tiene inscripciones)'
+                            : 'Quitar fase ' + (i + 1)
+                        "
+                        [disabled]="!!phaseDeleteBlockReason(ph)"
+                        (click)="removePhase(i)"
+                      >
+                        <span class="material-symbols-rounded text-lg" aria-hidden="true"
+                          >delete</span
+                        >
+                      </button>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div class="flex flex-col gap-1.5">
+                    <label
+                      [for]="'ph-name-' + i"
+                      class="text-xs font-semibold text-text-primary dark:text-neutral-200"
+                      >Nombre *</label
+                    >
+                    <input
+                      [id]="'ph-name-' + i"
+                      type="text"
+                      pInputText
+                      class="w-full !rounded-xl"
+                      placeholder="Preventa"
+                      [value]="ph.name"
+                      [attr.aria-invalid]="!!phaseError(i, 'name')"
+                      (input)="updatePhase(i, { name: $any($event.target).value })"
+                    />
+                    @if (phaseError(i, 'name'); as err) {
+                      <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+                    }
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label
+                      [for]="'ph-price-' + i"
+                      class="text-xs font-semibold text-text-primary dark:text-neutral-200"
+                      >Precio (Bs) *</label
+                    >
+                    <input
+                      [id]="'ph-price-' + i"
+                      type="text"
+                      inputmode="decimal"
+                      pInputText
+                      class="w-full !rounded-xl"
+                      [value]="ph.price"
+                      [attr.aria-invalid]="!!phaseError(i, 'price')"
+                      (input)="updatePhase(i, { price: $any($event.target).value })"
+                    />
+                    @if (phaseError(i, 'price'); as err) {
+                      <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+                    }
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label
+                      [for]="'ph-cap-' + i"
+                      class="text-xs font-semibold text-text-primary dark:text-neutral-200"
+                      >Cupo {{ last ? '(vacío = sin límite)' : '*' }}</label
+                    >
+                    <input
+                      [id]="'ph-cap-' + i"
+                      type="text"
+                      inputmode="numeric"
+                      pInputText
+                      class="w-full !rounded-xl"
+                      [placeholder]="last ? 'Sin límite' : ''"
+                      [value]="ph.capacity"
+                      [attr.aria-invalid]="!!phaseError(i, 'capacity')"
+                      (input)="updatePhase(i, { capacity: $any($event.target).value })"
+                    />
+                    @if (phaseSold(ph.id) > 0) {
+                      <small class="text-text-secondary dark:text-neutral-400"
+                        >Mínimo {{ phaseSold(ph.id) }} (vendidos).</small
+                      >
+                    }
+                    @if (phaseError(i, 'capacity'); as err) {
+                      <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+                    }
+                  </div>
+                </div>
+
+                @if (phasePriceIsPaid(ph)) {
+                  <div class="flex flex-col gap-1.5">
+                    <app-image-uploader
+                      kind="qr"
+                      label="QR de pago de esta fase *"
+                      hint="Obligatorio en fases de pago. JPG, PNG o WebP, máximo 500 KB."
+                      [eventId]="eventId()"
+                      [value]="ph.paymentQrUrl"
+                      (valueChange)="updatePhase(i, { paymentQrUrl: $event })"
+                      (uploaded)="onImageUploaded($event)"
+                      (discarded)="onImageDiscarded($event)"
+                    />
+                    @if (phaseError(i, 'paymentQrUrl'); as err) {
+                      <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            @if (phasesError(); as err) {
+              <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            }
+            @for (w of phasesWarnings(); track w) {
+              <small class="font-medium text-text-secondary dark:text-neutral-400" role="status">{{
+                w
+              }}</small>
+            }
+          </section>
+        }
+
+        @if (!model().usesPhases && priceIsPaid()) {
           <div class="flex flex-col gap-1.5">
             <app-image-uploader
               kind="qr"

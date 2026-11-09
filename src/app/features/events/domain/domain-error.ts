@@ -3,6 +3,7 @@ export type DomainErrorCode =
   | 'HAS_REGISTRATIONS'
   | 'REFERENCED'
   | 'FORBIDDEN'
+  | 'SOLD_OUT'
   | 'UNKNOWN';
 
 /** Error con mensaje legible para el usuario, independiente de Postgres. */

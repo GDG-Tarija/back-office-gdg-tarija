@@ -11,6 +11,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 
+import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { EventsRepository } from '../../../domain/events.repository';
 import { EventsApi } from '../../../data/events.api';
 import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.model';
@@ -39,6 +40,12 @@ export class AttendeesPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly eventsRepo = inject(EventsRepository);
+  private readonly auth = inject(AuthService);
+
+  /** Solo SUPERADMIN cancela inscripciones (RLS sigue siendo la seguridad real). */
+  readonly isSuperadmin = computed(() => this.auth.role() === 'SUPERADMIN');
+  readonly confirmingCancel = signal<boolean>(false);
+  readonly cancelError = signal<string | null>(null);
 
   readonly event = signal<Event | null>(null);
   readonly attendees = signal<Attendee[]>([]);
@@ -508,6 +515,8 @@ export class AttendeesPage implements OnInit {
   }
 
   async openAttendeeDetail(attendee: Attendee): Promise<void> {
+    this.confirmingCancel.set(false);
+    this.cancelError.set(null);
     this.selectedAttendee.set(attendee);
     this.showDetailModal.set(true);
     this.loadingSessions.set(true);
@@ -527,6 +536,32 @@ export class AttendeesPage implements OnInit {
       } finally {
         this.loadingSessions.set(false);
       }
+    }
+  }
+
+  /** Una inscripción pendiente (sin pago confirmado) se puede cancelar para liberar el cupo. */
+  canCancel(attendee: Attendee): boolean {
+    return this.isSuperadmin() && attendee.status?.toUpperCase() === 'PENDING';
+  }
+
+  async doCancelRegistration(): Promise<void> {
+    const attendee = this.selectedAttendee();
+    if (!attendee || !this.canCancel(attendee)) return;
+
+    this.actionLoading.set(true);
+    this.cancelError.set(null);
+    try {
+      await this.eventsRepo.cancelPendingRegistration(attendee.id);
+      const updated: Attendee = { ...attendee, status: 'CANCELLED' };
+      this.selectedAttendee.set(updated);
+      this.attendees.update((list) => list.map((a) => (a.id === attendee.id ? updated : a)));
+      this.confirmingCancel.set(false);
+    } catch (err) {
+      this.cancelError.set(
+        err instanceof Error ? err.message : 'No se pudo cancelar la inscripción.',
+      );
+    } finally {
+      this.actionLoading.set(false);
     }
   }
 

@@ -1,7 +1,8 @@
 import { TicketType, TicketTypeInput } from '../domain/ticket-type.model';
-import { TicketTypeInsert, TicketTypeRow } from './ticket-types.dto';
+import { sortPhases } from './ticket-phases.mapper';
+import { TicketTypeInsert, TicketTypeWithPhasesRow } from './ticket-types.dto';
 
-export function toDomainTicketType(row: TicketTypeRow): TicketType {
+export function toDomainTicketType(row: TicketTypeWithPhasesRow): TicketType {
   return {
     id: row.id,
     eventId: row.event_id,
@@ -11,19 +12,24 @@ export function toDomainTicketType(row: TicketTypeRow): TicketType {
     ticketCapacity: row.ticket_capacity,
     imageUrl: row.image_url,
     paymentQrUrl: row.payment_qr_url,
+    phases: sortPhases(row.ticket_phases ?? []),
   };
 }
 
 export function toTicketTypeRow(input: TicketTypeInput): Omit<TicketTypeInsert, 'event_id'> {
-  const qr = input.paymentQrUrl?.trim() || null;
+  // Con fases, el paquete conserva el precio/QR de la primera fase ("desde"): los consumidores
+  // sin soporte de fases siguen viendo un precio coherente.
+  const first = input.phases?.[0];
+  const price = first ? first.price : input.price;
+  const qr = (first ? first.paymentQrUrl : input.paymentQrUrl)?.trim() || null;
   return {
     name: input.name.trim(),
     description: input.description?.trim() || null,
-    price: input.price,
+    price,
     ticket_capacity: input.ticketCapacity,
     image_url: input.imageUrl,
     // Espejo del CHECK: precio 0 nunca lleva QR.
-    payment_qr_url: input.price > 0 ? qr : null,
+    payment_qr_url: price > 0 ? qr : null,
   };
 }
 
