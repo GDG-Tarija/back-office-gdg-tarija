@@ -80,7 +80,7 @@ export class EventManagePage implements OnInit {
 
   readonly event = signal<Event | null>(null);
   readonly registrationCount = signal(0);
-  readonly tickets = signal<Pick<TicketType, 'ticketCapacity'>[]>([]);
+  readonly tickets = signal<Pick<TicketType, 'name' | 'ticketCapacity' | 'phases'>[]>([]);
   readonly sessions = signal<Session[]>([]);
 
   readonly loading = signal(true);

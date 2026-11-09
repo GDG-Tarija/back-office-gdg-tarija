@@ -27,3 +27,27 @@ describe('toDomainError', () => {
     expect(toDomainError({}, 'event').message).toContain('inesperado');
   });
 });
+
+describe('toDomainError (fases y cupo)', () => {
+  it('mapea P0010 a SOLD_OUT conservando el mensaje del servidor', () => {
+    const e = toDomainError(
+      { code: 'P0010', message: 'Se agotó el cupo de todas las fases de este paquete.' },
+      'ticket_type',
+    );
+    expect(e.code).toBe('SOLD_OUT');
+    expect(e.message).toContain('Se agotó');
+    expect(toDomainError({ code: 'P0010' }, 'ticket_type').message).toContain('agotado');
+  });
+  it('mapea P0011 (fase ajena)', () => {
+    expect(toDomainError({ code: 'P0011' }, 'ticket_phase').message).toContain('fase');
+  });
+  it('restrict_violation en fases muestra el motivo del trigger', () => {
+    const e = toDomainError(
+      { code: '23001', message: 'No se puede eliminar la fase "Preventa": tiene inscripciones.' },
+      'ticket_phase',
+    );
+    expect(e.code).toBe('HAS_REGISTRATIONS');
+    expect(e.message).toContain('Preventa');
+    expect(toDomainError({ code: '23001' }, 'ticket_phase').message).toContain('fase');
+  });
+});

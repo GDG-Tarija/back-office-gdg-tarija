@@ -75,7 +75,7 @@ export class EventWizardPage {
   readonly draft = signal<Event | null>(null);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly tickets = signal<Pick<TicketType, 'ticketCapacity'>[]>([]);
+  readonly tickets = signal<Pick<TicketType, 'name' | 'ticketCapacity' | 'phases'>[]>([]);
   readonly sessions = signal<Session[]>([]);
 
   readonly publishResult = computed(() => {

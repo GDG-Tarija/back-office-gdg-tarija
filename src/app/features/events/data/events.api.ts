@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { SUPABASE } from '../../../core/supabase/supabase.client';
+import { DomainError } from '../domain/domain-error';
 import { EventsRepository } from '../domain/events.repository';
 import { Event, EventInput, Attendee } from '../domain/event.model';
 import { toDomainEvent, toDomainAttendee, toEventRow } from './events.mapper';
@@ -297,6 +298,22 @@ export class EventsApi implements EventsRepository {
         };
       },
     );
+  }
+
+  async cancelPendingRegistration(registrationId: string): Promise<void> {
+    const { data, error } = await this.supabase
+      .from('registrations')
+      .update({ status: 'CANCELLED' })
+      .eq('id', registrationId)
+      .eq('status', 'PENDING')
+      .select('id');
+    if (error) throw toDomainError(error, 'event');
+    if (!data?.length) {
+      throw new DomainError(
+        'No se pudo cancelar: la inscripción ya no está pendiente o no tienes permiso.',
+        'FORBIDDEN',
+      );
+    }
   }
 
   async registerManualCheckin(registrationId: string): Promise<boolean> {
