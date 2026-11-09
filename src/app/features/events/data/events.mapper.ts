@@ -1,4 +1,5 @@
 import { Event, EventInput, Attendee } from '../domain/event.model';
+import { computeAmountDue } from '../domain/attendee-payment';
 import { FORM_FIELD_TYPES, FormField, FormFieldType } from '../domain/form-field.model';
 import { EventInsert, EventRow, RegistrationWithDetailsRow } from './events.dto';
 
@@ -103,6 +104,7 @@ export function toEventRow(
 export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
   const user = row.users;
   const ticket = row.ticket_types;
+  const phase = row.ticket_phases ?? null;
   const scanLogs = row.scan_logs;
   const checkinLog = scanLogs?.find((log) => log.scan_type === 'checkin');
   const refrigerioLog = scanLogs?.find((log) => log.scan_type === 'refrigerio');
@@ -119,6 +121,15 @@ export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
     status: row.status,
     ticketName: ticket?.name || 'General',
     ticketPrice: ticket?.price || 0,
+    phaseName: phase?.name ?? null,
+    phasePrice: phase ? phase.price : null,
+    couponId: row.coupon_id ?? null,
+    couponCode: row.event_coupons?.code ?? null,
+    amountDue: computeAmountDue({
+      couponId: row.coupon_id ?? null,
+      phasePrice: phase ? phase.price : null,
+      packagePrice: ticket?.price || 0,
+    }),
     registeredAt: row.created_at ? new Date(row.created_at) : null,
     customResponses: row.custom_responses,
     paymentProofUrl: row.payment_proof_url || null,

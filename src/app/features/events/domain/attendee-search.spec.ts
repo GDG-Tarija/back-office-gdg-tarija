@@ -21,6 +21,11 @@ const baseAttendee: Attendee = {
   status: 'CONFIRMED',
   ticketName: 'Entrada Gratuita',
   ticketPrice: 0,
+  phaseName: null,
+  phasePrice: null,
+  couponId: null,
+  couponCode: null,
+  amountDue: 0,
   registeredAt: new Date('2026-10-01T10:00:00Z'),
   customResponses: {
     university: 'Universidad Católica Boliviana (UCB)',

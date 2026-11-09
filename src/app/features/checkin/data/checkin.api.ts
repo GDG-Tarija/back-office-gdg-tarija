@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { PostgrestError } from '@supabase/supabase-js';
 import { SUPABASE } from '../../../core/supabase/supabase.client';
+import { blocksAttendance, registrationStatusLabel } from '../../events/domain/registration-status';
 import { CheckinRepository } from '../domain/checkin.repository';
 import { Session, ScanResult, ScanMode } from '../domain/checkin.model';
 import { Attendee, Event } from '../../events/domain/event.model';
@@ -200,11 +201,13 @@ export class CheckinApi implements CheckinRepository {
       };
     }
 
-    // 4. Validar que la registración esté confirmada
+    // 4. Validar que la registración esté confirmada (la BD además rechaza las anuladas)
     if (rawReg.status?.toUpperCase() !== 'CONFIRMED') {
       return {
         success: false,
-        message: `El registro del asistente está en estado: ${rawReg.status}. Debe estar Confirmado.`,
+        message: blocksAttendance(rawReg.status)
+          ? 'La inscripción está anulada: no puede registrar asistencia.'
+          : `El registro del asistente está en estado: ${registrationStatusLabel(rawReg.status)}. Debe estar Confirmado.`,
         attendee,
       };
     }

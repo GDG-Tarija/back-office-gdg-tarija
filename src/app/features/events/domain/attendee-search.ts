@@ -184,6 +184,8 @@ export function matchesAttendeeSearch(attendee: Attendee, rawQuery: string): boo
     attendee.email,
     attendee.phone ?? '',
     attendee.ticketName,
+    attendee.phaseName ?? '',
+    attendee.couponCode ?? '',
     attendee.role,
     translateAttendeeRole(attendee.role),
     attendee.status,

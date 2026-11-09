@@ -1,0 +1,308 @@
+<p-dialog
+  header="Comprobante de pago"
+  [visible]="!!attendee()"
+  (visibleChange)="onVisibleChange($event)"
+  [modal]="true"
+  [closable]="true"
+  [closeOnEscape]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [focusTrap]="true"
+  [style]="{ width: '96vw', 'max-width': '70rem' }"
+  [contentStyle]="{ padding: '0' }"
+>
+  @if (attendee(); as a) {
+    <div
+      class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] outline-none"
+      tabindex="-1"
+      (keydown)="onKeydown($event)"
+    >
+      <!-- Visor -->
+      <section
+        class="flex flex-col min-w-0 bg-neutral-100 dark:bg-neutral-950 lg:rounded-bl-xl"
+        aria-label="Imagen del comprobante"
+      >
+        <div
+          class="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-black/5 dark:border-white/10"
+        >
+          @if (showImage()) {
+            <div class="flex items-center gap-1" role="group" aria-label="Zoom">
+              <button
+                type="button"
+                (click)="zoomOut()"
+                [disabled]="!canZoomOut()"
+                class="flex size-8 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 cursor-pointer"
+                aria-label="Alejar"
+              >
+                <span class="material-symbols-rounded text-lg">zoom_out</span>
+              </button>
+              <button
+                type="button"
+                (click)="resetZoom()"
+                [disabled]="!canZoomOut()"
+                class="px-2 h-8 text-xs font-semibold rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-60 cursor-pointer"
+                aria-label="Ajustar a la ventana"
+              >
+                {{ zoomIndex() === 0 ? 'Ajustado' : zoom() * 100 + '%' }}
+              </button>
+              <button
+                type="button"
+                (click)="zoomIn()"
+                [disabled]="!canZoomIn()"
+                class="flex size-8 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 cursor-pointer"
+                aria-label="Acercar"
+              >
+                <span class="material-symbols-rounded text-lg">zoom_in</span>
+              </button>
+            </div>
+          }
+          <div class="flex items-center gap-2 ml-auto">
+            <a
+              [href]="proofUrl()"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <span class="material-symbols-rounded text-sm">open_in_new</span> Abrir en pestaña
+            </a>
+            <a
+              [href]="proofUrl()"
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <span class="material-symbols-rounded text-sm">download</span> Descargar
+            </a>
+          </div>
+        </div>
+
+        <div
+          class="relative flex-1 min-h-[16rem] max-h-[70vh] overflow-auto flex items-start justify-center p-3"
+        >
+          @if (showImage()) {
+            @if (imageState() === 'loading') {
+              <div
+                class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-text-secondary"
+                role="status"
+              >
+                <div class="gdg-spinner"></div>
+                <span>Cargando comprobante...</span>
+              </div>
+            }
+            <img
+              [src]="proofUrl()"
+              [alt]="'Comprobante de pago de ' + name()"
+              (load)="onImageLoad()"
+              (error)="onImageError()"
+              referrerpolicy="no-referrer"
+              class="rounded-lg shadow-sm bg-white"
+              [class.opacity-0]="imageState() === 'loading'"
+              [style.width]="zoomIndex() === 0 ? null : zoom() * 100 + '%'"
+              [style.max-width]="zoomIndex() === 0 ? '100%' : 'none'"
+              [style.max-height]="zoomIndex() === 0 ? '66vh' : 'none'"
+              [style.object-fit]="'contain'"
+            />
+          } @else {
+            <div
+              class="flex flex-col items-center justify-center gap-3 text-center max-w-xs py-10"
+              role="alert"
+            >
+              <span class="material-symbols-rounded text-5xl text-text-secondary">{{
+                isImage() ? 'broken_image' : 'description'
+              }}</span>
+              <p class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+                {{
+                  isImage()
+                    ? 'No se pudo cargar la imagen del comprobante.'
+                    : 'Este comprobante no es una imagen y no se puede previsualizar.'
+                }}
+              </p>
+              <p class="text-xs text-text-secondary dark:text-neutral-400">
+                Ábrelo en una pestaña o descárgalo para revisarlo.
+              </p>
+            </div>
+          }
+        </div>
+
+        <div
+          class="flex items-center justify-between gap-2 px-3 py-2 border-t border-black/5 dark:border-white/10"
+        >
+          <button
+            type="button"
+            (click)="goPrevious()"
+            [disabled]="!hasPrev() || busy()"
+            class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 cursor-pointer"
+            aria-label="Comprobante anterior"
+          >
+            <span class="material-symbols-rounded text-base">chevron_left</span> Anterior
+          </button>
+          <span
+            class="text-xs font-semibold text-text-secondary dark:text-neutral-400"
+            aria-live="polite"
+          >
+            {{ position() }} de {{ total() }}
+          </span>
+          <button
+            type="button"
+            (click)="goNext()"
+            [disabled]="!hasNext() || busy()"
+            class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 cursor-pointer"
+            aria-label="Comprobante siguiente"
+          >
+            Siguiente <span class="material-symbols-rounded text-base">chevron_right</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Datos para comparar y acciones -->
+      <aside class="flex flex-col gap-4 p-4 min-w-0" aria-label="Datos de la inscripción">
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <span
+            class="text-base font-extrabold text-text-primary dark:text-neutral-100 break-words"
+          >
+            {{ name() }}
+          </span>
+          <span class="text-xs text-text-secondary dark:text-neutral-400 break-all">{{
+            a.email
+          }}</span>
+          @if (a.phone) {
+            <span class="text-xs text-text-secondary dark:text-neutral-400">{{ a.phone }}</span>
+          }
+        </div>
+
+        <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
+          <dt class="text-text-secondary dark:text-neutral-400">Paquete</dt>
+          <dd class="font-semibold text-text-primary dark:text-neutral-200">{{ a.ticketName }}</dd>
+          @if (a.phaseName) {
+            <dt class="text-text-secondary dark:text-neutral-400">Fase</dt>
+            <dd class="font-semibold text-text-primary dark:text-neutral-200">{{ a.phaseName }}</dd>
+          }
+          <dt class="text-text-secondary dark:text-neutral-400">Inscripción</dt>
+          <dd class="text-text-primary dark:text-neutral-200">
+            {{ a.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
+          </dd>
+          <dt class="text-text-secondary dark:text-neutral-400">Estado</dt>
+          <dd>
+            <p-tag
+              [value]="
+                a.status === 'CONFIRMED'
+                  ? 'Confirmado'
+                  : a.status === 'PENDING'
+                    ? 'Pendiente'
+                    : a.status === 'CANCELLED'
+                      ? 'Cancelado'
+                      : a.status
+              "
+              [severity]="
+                a.status === 'CONFIRMED' ? 'success' : a.status === 'PENDING' ? 'warn' : 'danger'
+              "
+              styleClass="!text-[11px] !px-2 !py-0.5"
+            />
+          </dd>
+        </dl>
+
+        <div
+          class="rounded-2xl border border-google-blue/30 bg-google-blue-light/30 dark:bg-google-blue/10 p-3 text-center"
+        >
+          <span
+            class="block text-[11px] font-semibold uppercase tracking-wide text-text-secondary dark:text-neutral-400"
+          >
+            Monto esperado
+          </span>
+          @if (a.couponId) {
+            <span class="block text-2xl font-extrabold text-text-primary dark:text-neutral-100"
+              >Bs 0</span
+            >
+            <span class="block text-[11px] text-text-secondary dark:text-neutral-400">
+              Cupón{{ a.couponCode ? ' ' + a.couponCode : '' }} (descuento total)
+            </span>
+          } @else {
+            <span class="block text-2xl font-extrabold text-text-primary dark:text-neutral-100">
+              {{ a.amountDue | currency: 'Bs ' : 'symbol' : '1.0-2' }}
+            </span>
+            <span class="block text-[11px] text-text-secondary dark:text-neutral-400">
+              {{ entry() }}
+            </span>
+          }
+        </div>
+
+        @if (error(); as err) {
+          <p class="text-xs font-medium text-google-red" role="alert">{{ err }}</p>
+        }
+
+        @if (canAct()) {
+          @if (pendingAction(); as action) {
+            <div
+              class="flex flex-col gap-2 rounded-2xl border p-3"
+              [class]="
+                action === 'confirm'
+                  ? 'border-google-green/40 bg-google-green-light/20'
+                  : 'border-google-red/30 bg-google-red-light/20'
+              "
+              role="alertdialog"
+              aria-live="polite"
+              aria-label="Confirmar acción"
+            >
+              <span class="text-xs font-semibold text-text-primary dark:text-neutral-200">
+                @if (action === 'confirm') {
+                  ¿Confirmar el pago de {{ name() }} por
+                  {{ a.amountDue | currency: 'Bs ' : 'symbol' : '1.0-2' }}? Verifica que el monto
+                  del comprobante coincida.
+                } @else {
+                  ¿Cancelar la inscripción de {{ name() }}? Libera su cupo y no se puede deshacer.
+                }
+              </span>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  (click)="runAction()"
+                  [disabled]="busy()"
+                  class="px-3 py-1.5 text-xs font-semibold text-white rounded-full disabled:opacity-50 cursor-pointer"
+                  [class]="action === 'confirm' ? 'bg-google-green' : 'bg-google-red'"
+                >
+                  {{ action === 'confirm' ? 'Sí, confirmar pago' : 'Sí, cancelar' }}
+                </button>
+                <button
+                  type="button"
+                  (click)="dismissAction()"
+                  [disabled]="busy()"
+                  class="px-3 py-1.5 text-xs font-semibold bg-neutral-100 text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 rounded-full cursor-pointer"
+                >
+                  Volver
+                </button>
+              </div>
+            </div>
+          } @else {
+            <div class="flex flex-col gap-2">
+              <button
+                type="button"
+                (click)="startAction('confirm')"
+                [disabled]="busy()"
+                class="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-google-green hover:opacity-90 rounded-full disabled:opacity-50 cursor-pointer"
+              >
+                <span class="material-symbols-rounded text-base">task_alt</span> Confirmar pago
+              </button>
+              <button
+                type="button"
+                (click)="startAction('cancel')"
+                [disabled]="busy()"
+                class="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold text-google-red border border-google-red/40 hover:bg-google-red-light/40 rounded-full disabled:opacity-50 cursor-pointer"
+              >
+                <span class="material-symbols-rounded text-base">cancel</span> Cancelar inscripción
+              </button>
+            </div>
+          }
+        } @else if (isPending()) {
+          <p class="text-xs text-text-secondary dark:text-neutral-400">
+            Solo un SUPERADMIN puede confirmar o cancelar el pago.
+          </p>
+        }
+
+        <p class="text-[11px] text-text-secondary dark:text-neutral-500 mt-auto">
+          Atajos: ← → cambian de comprobante, Esc cierra.
+        </p>
+      </aside>
+    </div>
+  }
+</p-dialog>

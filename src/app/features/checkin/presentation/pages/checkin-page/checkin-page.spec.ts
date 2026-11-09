@@ -43,6 +43,11 @@ const mockAttendees: Attendee[] = [
     status: 'CONFIRMED',
     ticketName: 'Elite Builder',
     ticketPrice: 125,
+    phaseName: null,
+    phasePrice: null,
+    couponId: null,
+    couponCode: null,
+    amountDue: 125,
     registeredAt: new Date('2026-11-01T10:00:00Z'),
     customResponses: {
       discovery_source: 'redes de la UCB',
@@ -65,6 +70,11 @@ const mockAttendees: Attendee[] = [
     status: 'PENDING',
     ticketName: 'Ticket Básico',
     ticketPrice: 15,
+    phaseName: null,
+    phasePrice: null,
+    couponId: null,
+    couponCode: null,
+    amountDue: 15,
     registeredAt: new Date('2026-11-01T11:00:00Z'),
     customResponses: {
       discovery_source: 'redes del GDG',

@@ -1,5 +1,6 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, viewChild } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TableModule } from 'primeng/table';
@@ -10,27 +11,58 @@ import { InputIconModule } from 'primeng/inputicon';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
+import { SelectModule } from 'primeng/select';
+import { Menu, MenuModule } from 'primeng/menu';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 
 import { EventsRepository } from '../../../domain/events.repository';
+import { RegistrationsRepository } from '../../../domain/registrations.repository';
+import { RegistrationsApi } from '../../../data/registrations.api';
+import {
+  REGISTRATION_STATUS_OPTIONS,
+  RegistrationStatus,
+  parseRegistrationStatus,
+  registrationStatusLabel,
+} from '../../../domain/registration-status';
+import {
+  REGISTRATION_STATUS_UI_KEY,
+  RegistrationStatusController,
+} from './registration-status-controller';
 import { EventsApi } from '../../../data/events.api';
 import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.model';
 import {
+  AttendeeFilters,
+  EMPTY_FILTERS,
+  attendeeFullName,
+  attendeeInitials,
+  computeStats,
+  entryKey,
+  entryLabel,
+  expectsProof,
   filterAttendees,
+  hasActiveFilters,
+} from '../../../domain/attendee-payment';
+import {
   formatCustomResponseLabel,
   getAttendeeRoleSeverity,
   getAttendeeStatusSeverity,
   translateAttendeeRole,
   translateAttendeeStatus,
 } from '../../../domain/attendee-search';
+import { ScanMode, ScanResult } from '../../../../checkin/domain/checkin.model';
 import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
 import { CheckinApi } from '../../../../checkin/data/checkin.api';
 import { AuthService } from '../../../../../core/auth/services/auth.service';
+import { PaymentProofDialog } from '../../components/payment-proof-dialog/payment-proof-dialog';
 
 @Component({
   selector: 'app-attendees-page',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     TableModule,
     ButtonModule,
     InputTextModule,
@@ -39,12 +71,21 @@ import { AuthService } from '../../../../../core/auth/services/auth.service';
     ProgressSpinnerModule,
     TagModule,
     DialogModule,
+    MenuModule,
+    ConfirmDialogModule,
+    ToastModule,
+    SelectModule,
+    PaymentProofDialog,
     DatePipe,
     CurrencyPipe,
   ],
   providers: [
     { provide: EventsRepository, useClass: EventsApi },
+    { provide: RegistrationsRepository, useClass: RegistrationsApi },
     { provide: CheckinRepository, useClass: CheckinApi },
+    ConfirmationService,
+    MessageService,
+    RegistrationStatusController,
   ],
   templateUrl: './attendees-page.html',
   styleUrl: './attendees-page.scss',
@@ -61,6 +102,9 @@ export class AttendeesPage implements OnInit {
   readonly loading = signal<boolean>(false);
   readonly errorMsg = signal<string | null>(null);
   readonly copiedId = signal<string | null>(null);
+  private loadToken = 0;
+  private detailToken = 0;
+  readonly actionError = signal<string | null>(null);
 
   // Modal de detalle y asistencias
   readonly selectedAttendee = signal<Attendee | null>(null);
@@ -68,42 +112,85 @@ export class AttendeesPage implements OnInit {
   readonly attendeeSessions = signal<AttendeeSessionItem[]>([]);
   readonly loadingSessions = signal<boolean>(false);
   readonly actionLoading = signal<boolean>(false);
-  readonly actionError = signal<string | null>(null);
 
-  // Global table search filter (nombre, apellido, correo, celular, ID y respuestas del formulario)
-  readonly globalFilter = signal<string>('');
-  readonly filteredAttendees = computed(() =>
-    filterAttendees(this.attendees(), this.globalFilter()),
-  );
+  // Filtros de la lista (se aplican sobre todos los inscritos, no solo la página visible)
+  readonly filters = signal<AttendeeFilters>({ ...EMPTY_FILTERS });
+  readonly first = signal(0);
+  readonly filteredAttendees = computed(() => filterAttendees(this.attendees(), this.filters()));
+  readonly filtersActive = computed(() => hasActiveFilters(this.filters()));
+
+  readonly statusOptions = computed(() => {
+    const stats = this.stats();
+    const counts: Record<RegistrationStatus, number> = {
+      CONFIRMED: stats.confirmed,
+      PENDING: stats.pending,
+      CANCELLED: stats.cancelled,
+    };
+    return [
+      { label: `Todos los estados (${stats.total})`, value: '' },
+      ...REGISTRATION_STATUS_OPTIONS.map((o) => ({
+        label: `${o.filterLabel} (${counts[o.value]})`,
+        value: o.value as string,
+      })),
+    ];
+  });
+  readonly roleOptions = [
+    { label: 'Todos los roles', value: '' },
+    { label: 'Asistente', value: 'ATTENDEE' },
+    { label: 'Expositor', value: 'SPEAKER' },
+    { label: 'Voluntario', value: 'VOLUNTEER' },
+    { label: 'Staff', value: 'STAFF' },
+    { label: 'Organizador', value: 'ORGANIZER' },
+  ];
+  readonly checkinOptions = [
+    { label: 'Check-in: todos', value: 'ALL' },
+    { label: 'Ya asistió', value: 'CHECKED_IN' },
+    { label: 'Aún no asistió', value: 'NOT_CHECKED_IN' },
+  ];
+  readonly proofOptions = [
+    { label: 'Comprobante: todos', value: 'ALL' },
+    { label: 'Con comprobante', value: 'WITH_PROOF' },
+    { label: 'Sin comprobante', value: 'WITHOUT_PROOF' },
+  ];
+  readonly entryOptions = computed(() => [
+    { label: 'Todas las entradas', value: '' },
+    ...Array.from(new Set(this.attendees().map(entryKey)))
+      .sort((a, b) => a.localeCompare(b))
+      .map((key) => ({ label: key, value: key })),
+  ]);
+
+  setFilter<K extends keyof AttendeeFilters>(key: K, value: AttendeeFilters[K]): void {
+    this.filters.update((f) => ({ ...f, [key]: value }));
+    this.first.set(0);
+  }
+
+  clearFilters(): void {
+    this.filters.set({ ...EMPTY_FILTERS });
+    this.first.set(0);
+  }
 
   copyToClipboard(id: string): void {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(id).then(() => {
+    if (!navigator.clipboard) return;
+    navigator.clipboard
+      .writeText(id)
+      .then(() => {
         this.copiedId.set(id);
         setTimeout(() => {
           if (this.copiedId() === id) {
             this.copiedId.set(null);
           }
         }, 2000);
-      });
-    }
+      })
+      .catch(() => undefined);
   }
 
-  // Métricas computadas para las tarjetas del header
-  readonly totalConfirmed = computed(
-    () => this.attendees().filter((a) => a.status?.toUpperCase() === 'CONFIRMED').length,
-  );
+  // KPIs sobre todos los inscritos (no cambian con los filtros); un clic en la tarjeta filtra.
+  readonly stats = computed(() => computeStats(this.attendees()));
 
-  readonly totalCheckedIn = computed(() => this.attendees().filter((a) => a.checkedIn).length);
-
-  readonly totalPending = computed(
-    () => this.attendees().filter((a) => a.status?.toUpperCase() === 'PENDING').length,
-  );
-
-  readonly checkinRate = computed(() => {
-    const confirmed = this.totalConfirmed();
-    return confirmed > 0 ? Math.round((this.totalCheckedIn() / confirmed) * 100) : 0;
-  });
+  readonly fullName = attendeeFullName;
+  readonly initials = attendeeInitials;
+  readonly entryLabel = entryLabel;
+  readonly expectsProof = expectsProof;
 
   // unique custom response keys computed from all attendees
   readonly customResponseKeys = computed<string[]>(() => {
@@ -135,6 +222,12 @@ export class AttendeesPage implements OnInit {
     });
   });
 
+  // Estado de la inscripción (issue #7): tabla y detalle usan el mismo controlador.
+  readonly statusCtl = inject(RegistrationStatusController);
+  readonly statusUiKey = REGISTRATION_STATUS_UI_KEY;
+  readonly statusMenuItems = signal<MenuItem[]>([]);
+  private readonly statusMenu = viewChild<Menu>('statusMenu');
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -145,6 +238,7 @@ export class AttendeesPage implements OnInit {
   }
 
   async loadData(eventId: string): Promise<void> {
+    const token = ++this.loadToken;
     this.loading.set(true);
     this.errorMsg.set(null);
 
@@ -154,6 +248,7 @@ export class AttendeesPage implements OnInit {
         this.eventsRepo.getAttendees(eventId),
       ]);
 
+      if (token !== this.loadToken) return;
       if (!eventData) {
         this.errorMsg.set('El evento solicitado no existe o fue eliminado.');
         return;
@@ -163,10 +258,63 @@ export class AttendeesPage implements OnInit {
       this.attendees.set(attendeesData);
     } catch (err) {
       console.error(err);
-      this.errorMsg.set('Ocurrió un error al cargar la información. Intente de nuevo.');
+      if (token === this.loadToken) {
+        this.errorMsg.set('Ocurrió un error al cargar la información. Intente de nuevo.');
+      }
     } finally {
-      this.loading.set(false);
+      if (token === this.loadToken) this.loading.set(false);
     }
+  }
+
+  statusLabel(status: string): string {
+    return registrationStatusLabel(status);
+  }
+
+  isCurrentStatus(attendee: Attendee, status: RegistrationStatus): boolean {
+    return parseRegistrationStatus(attendee.status) === status;
+  }
+
+  openStatusMenu(event: MouseEvent, attendee: Attendee): void {
+    if (!this.statusCtl.canEdit()) return;
+    this.statusMenuItems.set([
+      {
+        label: 'Cambiar estado',
+        items: this.statusCtl.options.map((o) => ({
+          label: o.actionLabel,
+          disabled: this.isCurrentStatus(attendee, o.value),
+          state: { icon: o.icon, danger: o.requiresConfirmation },
+          command: () => void this.changeStatus(attendee, o.value),
+        })),
+      },
+    ]);
+    this.statusMenu()?.toggle(event);
+  }
+
+  /** Cambia el estado (con confirmación si se anula) y sincroniza tabla y detalle con lo guardado. */
+  async changeStatus(
+    attendee: Attendee,
+    status: RegistrationStatus,
+    options?: { skipConfirmation?: boolean },
+  ): Promise<void> {
+    const current = this.attendees().find((a) => a.id === attendee.id) ?? attendee;
+    const saved = await this.statusCtl.change(
+      {
+        id: current.id,
+        status: current.status,
+        displayName: `${current.firstName} ${current.lastName}`.trim() || current.email,
+        detail: current.ticketName,
+      },
+      status,
+      options,
+    );
+    if (!saved) return;
+
+    this.patchAttendee(saved.id, { status: saved.status });
+  }
+
+  reload(): void {
+    const id = this.event()?.id ?? this.route.snapshot.paramMap.get('id');
+    if (id) void this.loadData(id);
   }
 
   goBack(): void {
@@ -197,24 +345,57 @@ export class AttendeesPage implements OnInit {
     return !!attendee.customResponses && Object.keys(attendee.customResponses).length > 0;
   }
 
-  isImageProof(url: string | null): boolean {
-    if (!url) return false;
-    const cleanedUrl = url.split('?')[0].toLowerCase();
-    return (
-      cleanedUrl.endsWith('.jpg') ||
-      cleanedUrl.endsWith('.jpeg') ||
-      cleanedUrl.endsWith('.png') ||
-      cleanedUrl.endsWith('.webp') ||
-      cleanedUrl.endsWith('.gif') ||
-      cleanedUrl.endsWith('.svg') ||
-      url.includes('/storage/v1/object/public/')
-    );
+  // Revisión de comprobantes: cola fija de ids al abrir (sigue estable aunque cambien los filtros)
+  readonly proofQueue = signal<string[]>([]);
+  readonly proofId = signal<string | null>(null);
+  readonly proofBusy = computed(() => {
+    const id = this.proofId();
+    return !!id && this.statusCtl.isSaving(id);
+  });
+  readonly proofAttendee = computed(() => {
+    const id = this.proofId();
+    return id ? (this.attendees().find((a) => a.id === id) ?? null) : null;
+  });
+  readonly proofPosition = computed(() => {
+    const id = this.proofId();
+    return id ? this.proofQueue().indexOf(id) + 1 : 0;
+  });
+
+  openProof(attendee: Attendee): void {
+    if (!attendee.paymentProofUrl) return;
+    const queue = this.filteredAttendees()
+      .filter((a) => !!a.paymentProofUrl)
+      .map((a) => a.id);
+    this.proofQueue.set(queue.includes(attendee.id) ? queue : [attendee.id]);
+    this.proofId.set(attendee.id);
   }
 
-  openProof(url: string | null): void {
-    if (url) {
-      window.open(url, '_blank');
-    }
+  closeProof(): void {
+    this.proofId.set(null);
+  }
+
+  stepProof(delta: -1 | 1): void {
+    const queue = this.proofQueue();
+    const next = queue[queue.indexOf(this.proofId() ?? '') + delta];
+    if (!next) return;
+    this.proofId.set(next);
+  }
+
+  /** Desde el visor: mismo camino que la tabla y el detalle (RegistrationStatusController). */
+  async confirmPayment(attendee: Attendee): Promise<void> {
+    await this.changeStatus(attendee, 'CONFIRMED');
+  }
+
+  /** El visor ya pidió confirmación propia: no se vuelve a preguntar. */
+  async cancelFromProof(attendee: Attendee): Promise<void> {
+    await this.changeStatus(attendee, 'CANCELLED', { skipConfirmation: true });
+  }
+
+  /** Actualiza la fila en la lista y en el detalle abierto, si es la misma inscripción. */
+  private patchAttendee(id: string, changes: Partial<Attendee>): void {
+    this.attendees.update((list) => list.map((a) => (a.id === id ? { ...a, ...changes } : a)));
+    const selected = this.selectedAttendee();
+    if (selected?.id === id) this.selectedAttendee.set({ ...selected, ...changes });
   }
 
   isUrl(val: unknown): boolean {
@@ -242,7 +423,7 @@ export class AttendeesPage implements OnInit {
   }
 
   exportToCSV(): void {
-    const attendeesList = this.attendees();
+    const attendeesList = this.filteredAttendees();
     if (!attendeesList || attendeesList.length === 0) {
       return;
     }
@@ -255,6 +436,9 @@ export class AttendeesPage implements OnInit {
       'job_title',
       'company',
       'ticket_type',
+      'ticket_phase',
+      'amount_due',
+      'status',
       'trae_computadora',
     ];
 
@@ -292,6 +476,8 @@ export class AttendeesPage implements OnInit {
     const escapeCSVValue = (val: unknown): string => {
       if (val === null || val === undefined) return '';
       let str = String(val);
+      // Evita que Excel interprete texto del usuario como fórmula (=, +, -, @).
+      if (/^[=+\-@]/.test(str) && !/^[+-]?\d/.test(str)) str = `'${str}`;
       str = str.replace(/"/g, '""');
       if (
         str.includes(',') ||
@@ -335,6 +521,9 @@ export class AttendeesPage implements OnInit {
       ]);
 
       const ticketType = attendee.ticketName;
+      const ticketPhase = attendee.phaseName ?? '';
+      const amountDue = attendee.couponId ? '0 (cupón)' : String(attendee.amountDue);
+      const status = this.translateStatus(attendee.status);
 
       const rawBringsComputer = getValueByPattern(responses, [
         'computer',
@@ -361,6 +550,9 @@ export class AttendeesPage implements OnInit {
         jobTitle,
         company,
         ticketType,
+        ticketPhase,
+        amountDue,
+        status,
         bringsComputer,
       ].map(escapeCSVValue);
     });
@@ -384,7 +576,7 @@ export class AttendeesPage implements OnInit {
   }
 
   async exportToExcel(): Promise<void> {
-    const attendeesList = this.attendees();
+    const attendeesList = this.filteredAttendees();
     if (!attendeesList || attendeesList.length === 0) {
       return;
     }
@@ -402,7 +594,10 @@ export class AttendeesPage implements OnInit {
         Rol: this.translateRole(attendee.role),
         Estado: this.translateStatus(attendee.status),
         'Tipo de Entrada': attendee.ticketName,
-        'Precio ($)': attendee.ticketPrice,
+        Fase: attendee.phaseName ?? '',
+        'Precio del paquete (Bs)': attendee.ticketPrice,
+        'Monto a pagar (Bs)': attendee.amountDue,
+        Cupón: attendee.couponCode ?? (attendee.couponId ? 'Sí' : ''),
         '¿Asistió?': attendee.checkedIn ? 'Sí' : 'No',
         'Fecha Registro': attendee.registeredAt
           ? new Date(attendee.registeredAt).toLocaleString()
@@ -440,132 +635,122 @@ export class AttendeesPage implements OnInit {
   }
 
   async openAttendeeDetail(attendee: Attendee): Promise<void> {
-    this.selectedAttendee.set(attendee);
+    const token = ++this.detailToken;
     this.actionError.set(null);
+    this.selectedAttendee.set(attendee);
+    this.attendeeSessions.set([]);
     this.showDetailModal.set(true);
-    this.loadingSessions.set(true);
 
     const eventId = this.event()?.id;
-    if (eventId) {
-      try {
-        const sessions = await this.eventsRepo.getAttendeeSessions(
-          eventId,
-          attendee.id,
-          attendee.userId,
-        );
-        this.attendeeSessions.set(sessions);
-      } catch (err) {
-        console.error('Error loading attendee sessions:', err);
-        this.attendeeSessions.set([]);
-      } finally {
-        this.loadingSessions.set(false);
-      }
+    if (!eventId) {
+      this.loadingSessions.set(false);
+      return;
+    }
+    this.loadingSessions.set(true);
+    try {
+      const sessions = await this.eventsRepo.getAttendeeSessions(
+        eventId,
+        attendee.id,
+        attendee.userId,
+      );
+      if (token === this.detailToken) this.attendeeSessions.set(sessions);
+    } catch (err) {
+      console.error('Error loading attendee sessions:', err);
+      if (token === this.detailToken) this.attendeeSessions.set([]);
+    } finally {
+      if (token === this.detailToken) this.loadingSessions.set(false);
+    }
+  }
+
+  /** El check-in y la entrega solo aplican a inscripciones confirmadas. */
+  canCheckin(attendee: Attendee): boolean {
+    return attendee.status?.toUpperCase() === 'CONFIRMED';
+  }
+
+  /** Mismo flujo (verificación + registro) que el escaneo de QR y el modo manual de /checkin. */
+  private async registerScan(
+    attendee: Attendee,
+    mode: ScanMode,
+    sessionId: string | null,
+    fallbackError: string,
+  ): Promise<ScanResult | null> {
+    const eventId = this.event()?.id;
+    if (!eventId) return null;
+
+    this.actionLoading.set(true);
+    this.actionError.set(null);
+    try {
+      const result = await this.checkinRepo.registerScan(
+        attendee.id,
+        eventId,
+        mode,
+        sessionId,
+        this.auth.user()?.id || null,
+      );
+      if (!result.success) this.actionError.set(result.message);
+      return result;
+    } catch (err) {
+      console.error(`Error in manual ${mode}:`, err);
+      this.actionError.set(fallbackError);
+      return null;
+    } finally {
+      this.actionLoading.set(false);
     }
   }
 
   async doManualCheckin(): Promise<void> {
     const attendee = this.selectedAttendee();
-    const eventId = this.event()?.id;
-    if (!attendee || !eventId) return;
+    if (!attendee || !this.canCheckin(attendee) || attendee.checkedIn) return;
 
-    this.actionLoading.set(true);
-    this.actionError.set(null);
-    try {
-      const result = await this.checkinRepo.registerScan(
-        attendee.id,
-        eventId,
-        'checkin',
-        null,
-        this.auth.user()?.id || null,
-      );
-      if (result.success) {
-        const updatedAttendee: Attendee = {
-          ...attendee,
-          checkedIn: true,
-          checkedInAt: result.scannedAt || new Date(),
-        };
-        this.selectedAttendee.set(updatedAttendee);
-
-        // Actualizar en la lista general
-        this.attendees.update((list) =>
-          list.map((a) => (a.id === attendee.id ? updatedAttendee : a)),
-        );
-      } else {
-        this.actionError.set(result.message);
-      }
-    } catch (err) {
-      console.error('Error in manual checkin:', err);
-    } finally {
-      this.actionLoading.set(false);
+    const result = await this.registerScan(
+      attendee,
+      'checkin',
+      null,
+      'No se pudo registrar el check-in. Intenta de nuevo.',
+    );
+    if (result?.success) {
+      this.patchAttendee(attendee.id, {
+        checkedIn: true,
+        checkedInAt: result.scannedAt || new Date(),
+      });
     }
   }
 
   async doManualRefrigerio(): Promise<void> {
     const attendee = this.selectedAttendee();
-    const eventId = this.event()?.id;
-    if (!attendee || !eventId) return;
+    if (!attendee || !this.canCheckin(attendee) || attendee.refrigerioDelivered) return;
 
-    this.actionLoading.set(true);
-    this.actionError.set(null);
-    try {
-      const result = await this.checkinRepo.registerScan(
-        attendee.id,
-        eventId,
-        'refrigerio',
-        null,
-        this.auth.user()?.id || null,
-      );
-      if (result.success) {
-        const updatedAttendee: Attendee = {
-          ...attendee,
-          refrigerioDelivered: true,
-          refrigerioDeliveredAt: result.scannedAt || new Date(),
-        };
-        this.selectedAttendee.set(updatedAttendee);
-
-        this.attendees.update((list) =>
-          list.map((a) => (a.id === attendee.id ? updatedAttendee : a)),
-        );
-      } else {
-        this.actionError.set(result.message);
-      }
-    } catch (err) {
-      console.error('Error in manual refrigerio:', err);
-    } finally {
-      this.actionLoading.set(false);
+    const result = await this.registerScan(
+      attendee,
+      'refrigerio',
+      null,
+      'No se pudo registrar la entrega. Intenta de nuevo.',
+    );
+    if (result?.success) {
+      this.patchAttendee(attendee.id, {
+        refrigerioDelivered: true,
+        refrigerioDeliveredAt: result.scannedAt || new Date(),
+      });
     }
   }
 
   async doManualSessionCheckin(session: AttendeeSessionItem): Promise<void> {
     const attendee = this.selectedAttendee();
-    const eventId = this.event()?.id;
-    if (!attendee || !eventId) return;
+    if (!attendee || !this.canCheckin(attendee) || session.asistio) return;
 
-    this.actionLoading.set(true);
-    this.actionError.set(null);
-    try {
-      const result = await this.checkinRepo.registerScan(
-        attendee.id,
-        eventId,
-        'session',
-        session.sessionId,
-        this.auth.user()?.id || null,
+    const result = await this.registerScan(
+      attendee,
+      'session',
+      session.sessionId,
+      'No se pudo registrar el ingreso a la sesión.',
+    );
+    if (result?.success) {
+      const now = result.scannedAt || new Date();
+      this.attendeeSessions.update((list) =>
+        list.map((s) =>
+          s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
+        ),
       );
-
-      if (result.success) {
-        const now = result.scannedAt || new Date();
-        this.attendeeSessions.update((list) =>
-          list.map((s) =>
-            s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
-          ),
-        );
-      } else {
-        this.actionError.set(result.message);
-      }
-    } catch (err) {
-      console.error('Error in manual session checkin:', err);
-    } finally {
-      this.actionLoading.set(false);
     }
   }
 }

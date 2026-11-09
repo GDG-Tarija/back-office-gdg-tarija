@@ -81,7 +81,16 @@ export interface Attendee {
   role: string;
   status: string;
   ticketName: string;
+  /** Precio del paquete (no necesariamente lo que pagó: ver `amountDue`). */
   ticketPrice: number;
+  /** Fase asignada por el servidor al inscribirse; null en paquetes sin fases o inscripciones antiguas. */
+  phaseName: string | null;
+  phasePrice: number | null;
+  /** Cupón usado en la inscripción (el cupón ATTENDEE equivale a un descuento del 100%). */
+  couponId: string | null;
+  couponCode: string | null;
+  /** Monto que debe respaldar el comprobante: 0 con cupón, precio de la fase, o del paquete. */
+  amountDue: number;
   registeredAt: Date | null;
   customResponses: Record<string, unknown> | null;
   paymentProofUrl: string | null;

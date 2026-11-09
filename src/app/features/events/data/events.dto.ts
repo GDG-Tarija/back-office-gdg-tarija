@@ -15,7 +15,9 @@ export interface RawRegistrationRow {
   updated_at: string | null;
   custom_responses: Record<string, unknown> | null;
   payment_proof_url: string | null;
-  scan_logs?: { id: string; scan_type: string; scanned_at: string | null }[] | null;
+  ticket_phase_id?: string | null;
+  coupon_id?: string | null;
+  scan_logs?: { id: string; scan_type: string; scanned_at?: string | null }[] | null;
 }
 
 export interface RegistrationWithDetailsRow extends RawRegistrationRow {
@@ -31,5 +33,13 @@ export interface RegistrationWithDetailsRow extends RawRegistrationRow {
     id: string;
     name: string;
     price: number;
+  } | null;
+  ticket_phases?: {
+    id: string;
+    name: string;
+    price: number;
+  } | null;
+  event_coupons?: {
+    code: string;
   } | null;
 }
