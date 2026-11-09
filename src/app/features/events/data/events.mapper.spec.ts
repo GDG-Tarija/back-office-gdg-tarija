@@ -95,6 +95,72 @@ describe('Events Mapper', () => {
   });
 });
 
+describe('Events Mapper - fase y monto del asistente', () => {
+  const base: RegistrationWithDetailsRow = {
+    id: 'r1',
+    event_id: 'e1',
+    user_id: 'u1',
+    ticket_type_id: 't1',
+    event_role: 'ATTENDEE',
+    status: 'PENDING',
+    created_at: '2026-11-08T10:00:00Z',
+    updated_at: null,
+    custom_responses: null,
+    payment_proof_url: null,
+    scan_logs: [],
+    users: null,
+    ticket_types: { id: 't1', name: 'Entrada de Pago', price: 15 },
+  };
+
+  it('usa el precio de la fase asignada y no el del paquete', () => {
+    const a = toDomainAttendee({
+      ...base,
+      ticket_phase_id: 'p2',
+      ticket_phases: { id: 'p2', name: 'Normal', price: 20 },
+    });
+    expect(a.phaseName).toBe('Normal');
+    expect(a.phasePrice).toBe(20);
+    expect(a.ticketPrice).toBe(15);
+    expect(a.amountDue).toBe(20);
+  });
+
+  it('sin fase (inscripción antigua o paquete sin fases) usa el precio del paquete', () => {
+    const a = toDomainAttendee({ ...base, ticket_phases: null });
+    expect(a.phaseName).toBeNull();
+    expect(a.phasePrice).toBeNull();
+    expect(a.amountDue).toBe(15);
+  });
+
+  it('una fase gratuita no cae al precio del paquete', () => {
+    const a = toDomainAttendee({
+      ...base,
+      ticket_phases: { id: 'p0', name: 'Early', price: 0 },
+    });
+    expect(a.amountDue).toBe(0);
+  });
+
+  it('con cupón el monto es 0 y se conserva el código', () => {
+    const a = toDomainAttendee({
+      ...base,
+      coupon_id: 'c1',
+      event_coupons: { code: 'INVITADO' },
+      ticket_phases: { id: 'p2', name: 'Normal', price: 20 },
+    });
+    expect(a.amountDue).toBe(0);
+    expect(a.couponId).toBe('c1');
+    expect(a.couponCode).toBe('INVITADO');
+  });
+
+  it('lee la hora del check-in desde scan_logs', () => {
+    const a = toDomainAttendee({
+      ...base,
+      scan_logs: [{ id: 's1', scan_type: 'checkin', scanned_at: '2026-11-09T15:30:00Z' }],
+    });
+    expect(a.checkedIn).toBe(true);
+    expect(a.checkedInAt?.toISOString()).toBe('2026-11-09T15:30:00.000Z');
+  });
+});
+
 describe('Events Mapper - form fields y escritura', () => {
   it('parsea form_fields tolerando datos inválidos', () => {
     const fields = parseFormFields({

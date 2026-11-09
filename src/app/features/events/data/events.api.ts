@@ -6,7 +6,9 @@ import { EventsRepository } from '../domain/events.repository';
 import { Event, EventInput, Attendee } from '../domain/event.model';
 import { toDomainEvent, toDomainAttendee, toEventRow } from './events.mapper';
 import { toDomainError } from './postgres-error.mapper';
-import { RegistrationWithDetailsRow, RawRegistrationRow } from './events.dto';
+import { RegistrationWithDetailsRow } from './events.dto';
+
+const ATTENDEES_PAGE_SIZE = 1000;
 
 @Injectable({
   providedIn: 'root',
@@ -105,109 +107,46 @@ export class EventsApi implements EventsRepository {
   }
 
   async getAttendees(eventId: string): Promise<Attendee[]> {
-    const { data: regs, error: regsError } = await this.supabase
-      .from('registrations')
-      .select(
-        `
-        id,
-        event_id,
-        user_id,
-        ticket_type_id,
-        event_role,
-        status,
-        created_at,
-        updated_at,
-        custom_responses,
-        payment_proof_url,
-        ticket_types (
-          id,
-          name,
-          price
-        ),
-        scan_logs (
-          id,
-          scan_type
-        )
-      `,
-      )
-      .eq('event_id', eventId);
-
-    if (regsError) {
-      console.error('Error fetching registrations:', regsError);
-      throw regsError;
-    }
-
-    if (!regs || regs.length === 0) {
-      return [];
-    }
-
-    // Explicitly cast regs to resolve type inference issues
-    const regsData = regs as unknown as (RawRegistrationRow & {
-      ticket_types: { id: string; name: string; price: number } | null;
-      scan_logs: { id: string }[] | null;
-    })[];
-
-    const userIds = regsData.map((r) => r.user_id).filter((id): id is string => !!id);
-    const usersMap = new Map<
-      string,
-      {
-        id: string;
-        email: string;
-        first_name: string;
-        last_name: string;
-        avatar_url: string | null;
-        phone: string | null;
-      }
-    >();
-
-    if (userIds.length > 0) {
-      const { data: users, error: usersError } = await this.supabase
-        .from('users')
+    // PostgREST corta en 1000 filas por defecto: se pagina con range() y orden estable.
+    const rows: RegistrationWithDetailsRow[] = [];
+    for (let from = 0; ; from += ATTENDEES_PAGE_SIZE) {
+      const { data, error } = await this.supabase
+        .from('registrations')
         .select(
           `
           id,
-          email,
-          first_name,
-          last_name,
-          avatar_url,
-          phone
+          event_id,
+          user_id,
+          ticket_type_id,
+          ticket_phase_id,
+          coupon_id,
+          event_role,
+          status,
+          created_at,
+          updated_at,
+          custom_responses,
+          payment_proof_url,
+          users ( id, email, first_name, last_name, avatar_url, phone ),
+          ticket_types ( id, name, price ),
+          ticket_phases ( id, name, price ),
+          event_coupons ( code ),
+          scan_logs ( id, scan_type, scanned_at )
         `,
         )
-        .in('id', userIds);
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + ATTENDEES_PAGE_SIZE - 1);
 
-      if (usersError) {
-        console.error('Error fetching public profiles from users:', usersError);
-      } else if (users) {
-        const usersData = users as unknown as {
-          id: string;
-          email: string;
-          first_name: string;
-          last_name: string;
-          avatar_url: string | null;
-          phone: string | null;
-        }[];
-        usersData.forEach((u) => usersMap.set(u.id, u));
+      if (error) {
+        console.error('Error fetching registrations:', error);
+        throw error;
       }
-    }
 
-    const rows: RegistrationWithDetailsRow[] = regsData.map((r) => {
-      const user = r.user_id ? usersMap.get(r.user_id) || null : null;
-      return {
-        id: r.id,
-        event_id: r.event_id,
-        user_id: r.user_id,
-        ticket_type_id: r.ticket_type_id,
-        event_role: r.event_role,
-        status: r.status,
-        created_at: r.created_at,
-        updated_at: r.updated_at,
-        custom_responses: r.custom_responses,
-        payment_proof_url: r.payment_proof_url,
-        scan_logs: r.scan_logs,
-        users: user,
-        ticket_types: r.ticket_types,
-      } as RegistrationWithDetailsRow;
-    });
+      const page = (data ?? []) as unknown as RegistrationWithDetailsRow[];
+      rows.push(...page);
+      if (page.length < ATTENDEES_PAGE_SIZE) break;
+    }
 
     return rows.map(toDomainAttendee);
   }
@@ -311,6 +250,22 @@ export class EventsApi implements EventsRepository {
     if (!data?.length) {
       throw new DomainError(
         'No se pudo cancelar: la inscripción ya no está pendiente o no tienes permiso.',
+        'FORBIDDEN',
+      );
+    }
+  }
+
+  async confirmPendingRegistration(registrationId: string): Promise<void> {
+    const { data, error } = await this.supabase
+      .from('registrations')
+      .update({ status: 'CONFIRMED' })
+      .eq('id', registrationId)
+      .eq('status', 'PENDING')
+      .select('id');
+    if (error) throw toDomainError(error, 'event');
+    if (!data?.length) {
+      throw new DomainError(
+        'No se pudo confirmar: la inscripción ya no está pendiente o no tienes permiso.',
         'FORBIDDEN',
       );
     }

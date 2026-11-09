@@ -20,6 +20,11 @@ const pending: Attendee = {
   status: 'PENDING',
   ticketName: 'General',
   ticketPrice: 30,
+  phaseName: null,
+  phasePrice: null,
+  couponId: null,
+  couponCode: null,
+  amountDue: 30,
   registeredAt: null,
   customResponses: null,
   paymentProofUrl: null,
@@ -27,7 +32,11 @@ const pending: Attendee = {
 };
 
 describe('AttendeesPage: cancelar inscripción pendiente', () => {
-  const repo = { cancelPendingRegistration: vi.fn() };
+  const repo = {
+    cancelPendingRegistration: vi.fn(),
+    confirmPendingRegistration: vi.fn(),
+    registerManualCheckin: vi.fn(),
+  };
   const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
 
   function create() {
@@ -49,6 +58,8 @@ describe('AttendeesPage: cancelar inscripción pendiente', () => {
 
   beforeEach(() => {
     repo.cancelPendingRegistration.mockReset();
+    repo.confirmPendingRegistration.mockReset();
+    repo.registerManualCheckin.mockReset();
     role.set('SUPERADMIN');
   });
 
@@ -85,5 +96,123 @@ describe('AttendeesPage: cancelar inscripción pendiente', () => {
     const cmp = create();
     await cmp.doCancelRegistration();
     expect(repo.cancelPendingRegistration).not.toHaveBeenCalled();
+  });
+});
+
+describe('AttendeesPage: revisión de comprobantes', () => {
+  const repo = {
+    cancelPendingRegistration: vi.fn(),
+    confirmPendingRegistration: vi.fn(),
+    registerManualCheckin: vi.fn(),
+  };
+  const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
+  const withProof = (id: string, extra: Partial<Attendee> = {}): Attendee => ({
+    ...pending,
+    id,
+    paymentProofUrl: `https://x/${id}.png`,
+    ...extra,
+  });
+
+  function create(list: Attendee[]) {
+    TestBed.configureTestingModule({
+      imports: [AttendeesPage],
+      providers: [
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: AuthService, useValue: { role } },
+      ],
+    }).overrideComponent(AttendeesPage, {
+      set: { providers: [{ provide: EventsRepository, useValue: repo }] },
+    });
+    const cmp = TestBed.createComponent(AttendeesPage).componentInstance;
+    cmp.attendees.set(list);
+    return cmp;
+  }
+
+  beforeEach(() => {
+    repo.cancelPendingRegistration.mockReset();
+    repo.confirmPendingRegistration.mockReset();
+    repo.registerManualCheckin.mockReset();
+    role.set('SUPERADMIN');
+  });
+
+  it('la cola de revisión solo incluye inscritos filtrados con comprobante', () => {
+    const cmp = create([
+      withProof('a'),
+      pending,
+      withProof('b', { status: 'CONFIRMED' }),
+      withProof('c'),
+    ]);
+    cmp.setFilter('status', 'PENDING');
+    cmp.openProof(cmp.attendees()[0]);
+    expect(cmp.proofQueue()).toEqual(['a', 'c']);
+    expect(cmp.proofPosition()).toBe(1);
+    cmp.stepProof(1);
+    expect(cmp.proofAttendee()?.id).toBe('c');
+    cmp.stepProof(1);
+    expect(cmp.proofAttendee()?.id).toBe('c');
+    cmp.stepProof(-1);
+    expect(cmp.proofAttendee()?.id).toBe('a');
+  });
+
+  it('confirmar el pago actualiza la lista sin sacar al inscrito de la cola', async () => {
+    repo.confirmPendingRegistration.mockResolvedValue(undefined);
+    const cmp = create([withProof('a'), withProof('c')]);
+    cmp.setFilter('status', 'PENDING');
+    cmp.openProof(cmp.attendees()[0]);
+    await cmp.confirmPayment(cmp.attendees()[0]);
+    expect(repo.confirmPendingRegistration).toHaveBeenCalledWith('a');
+    expect(cmp.attendees()[0].status).toBe('CONFIRMED');
+    expect(cmp.proofAttendee()?.status).toBe('CONFIRMED');
+    expect(cmp.proofQueue()).toEqual(['a', 'c']);
+  });
+
+  it('un STAFF no confirma ni cancela desde el visor', async () => {
+    role.set('STAFF');
+    const cmp = create([withProof('a')]);
+    await cmp.confirmPayment(cmp.attendees()[0]);
+    await cmp.cancelFromProof(cmp.attendees()[0]);
+    expect(repo.confirmPendingRegistration).not.toHaveBeenCalled();
+    expect(repo.cancelPendingRegistration).not.toHaveBeenCalled();
+  });
+
+  it('muestra el error del servidor y conserva el estado', async () => {
+    repo.confirmPendingRegistration.mockRejectedValue(new DomainError('Sin permiso', 'FORBIDDEN'));
+    const cmp = create([withProof('a')]);
+    await cmp.confirmPayment(cmp.attendees()[0]);
+    expect(cmp.proofError()).toBe('Sin permiso');
+    expect(cmp.attendees()[0].status).toBe('PENDING');
+    expect(cmp.proofBusy()).toBe(false);
+  });
+
+  it('cancelar desde el visor libera la inscripción', async () => {
+    repo.cancelPendingRegistration.mockResolvedValue(undefined);
+    const cmp = create([withProof('a')]);
+    await cmp.cancelFromProof(cmp.attendees()[0]);
+    expect(cmp.attendees()[0].status).toBe('CANCELLED');
+  });
+
+  it('el check-in manual se bloquea si la inscripción no está confirmada', async () => {
+    const cmp = create([pending]);
+    cmp.selectedAttendee.set(pending);
+    await cmp.doManualCheckin();
+    expect(repo.registerManualCheckin).not.toHaveBeenCalled();
+  });
+
+  it('avisa si el check-in falla y no marca asistencia', async () => {
+    repo.registerManualCheckin.mockResolvedValue(false);
+    const confirmed = { ...pending, status: 'CONFIRMED' };
+    const cmp = create([confirmed]);
+    cmp.selectedAttendee.set(confirmed);
+    await cmp.doManualCheckin();
+    expect(cmp.actionError()).toContain('check-in');
+    expect(cmp.attendees()[0].checkedIn).toBe(false);
+  });
+
+  it('cambiar un filtro vuelve a la primera página', () => {
+    const cmp = create([pending]);
+    cmp.first.set(50);
+    cmp.setFilter('status', 'PENDING');
+    expect(cmp.first()).toBe(0);
   });
 });
