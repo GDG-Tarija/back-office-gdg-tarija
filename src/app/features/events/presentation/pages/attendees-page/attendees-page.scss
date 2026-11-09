@@ -47,6 +47,29 @@
     }
   }
 
+  // Columna "Acciones" fija a la derecha: fondo opaco y por encima del resto para que no se
+  // transparente ni se encime con las columnas que pasan por debajo al desplazar.
+  .p-datatable .attendee-actions-cell {
+    background: var(--p-datatable-header-cell-background, #fff) !important;
+    z-index: 2;
+    box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.12);
+  }
+
+  .p-datatable .p-datatable-tbody > tr > td.attendee-actions-cell {
+    background: #fff !important;
+  }
+
+  .p-datatable-striped .p-datatable-tbody > tr:nth-child(even) > td.attendee-actions-cell {
+    background: #f8f9fa !important;
+  }
+
+  html[data-theme='dark'] .p-datatable {
+    .attendee-actions-cell,
+    .p-datatable-tbody > tr > td.attendee-actions-cell {
+      background: #1f1f1f !important;
+    }
+  }
+
   // Force scroll strictly inside the PrimeNG table wrapper
   .p-datatable-wrapper {
     overflow-x: auto !important;

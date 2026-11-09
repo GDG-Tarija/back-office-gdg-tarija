@@ -341,19 +341,18 @@
                 <th pSortableColumn="registeredAt" class="dark:text-neutral-300">
                   Registro <p-sortIcon field="registeredAt"></p-sortIcon>
                 </th>
-                <th
-                  pFrozenColumn
-                  alignFrozen="right"
-                  class="dark:text-neutral-300 font-semibold text-center w-24"
-                >
-                  Acciones
-                </th>
-
                 @for (key of customResponseKeys(); track key) {
                   <th class="dark:text-neutral-300 font-semibold">
                     {{ formatResponseKey(key) }}
                   </th>
                 }
+                <th
+                  pFrozenColumn
+                  alignFrozen="right"
+                  class="dark:text-neutral-300 font-semibold text-center w-24 attendee-actions-cell"
+                >
+                  Acciones
+                </th>
               </tr>
             </ng-template>
 
@@ -561,19 +560,6 @@
                   {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
                 </td>
 
-                <!-- Celda de botón de detalle/acciones -->
-                <td pFrozenColumn alignFrozen="right" class="text-center">
-                  <button
-                    type="button"
-                    (click)="openAttendeeDetail(attendee)"
-                    [attr.aria-label]="'Ver detalle y asistencia de ' + fullName(attendee)"
-                    class="inline-flex items-center justify-center size-8 rounded-full text-google-blue bg-google-blue-light/40 hover:bg-google-blue-light/70 dark:bg-google-blue/20 dark:hover:bg-google-blue/30 transition-all shadow-xs cursor-pointer"
-                    title="Ver historial, sesiones y asistencia"
-                  >
-                    <span class="material-symbols-rounded text-base">history</span>
-                  </button>
-                </td>
-
                 <!-- Celdas dinámicas de respuestas de formulario -->
                 @for (key of customResponseKeys(); track key) {
                   <td class="text-xs text-text-primary dark:text-neutral-200 font-medium">
@@ -603,6 +589,19 @@
                     }
                   </td>
                 }
+
+                <!-- Acciones: última columna, fija a la derecha -->
+                <td pFrozenColumn alignFrozen="right" class="text-center attendee-actions-cell">
+                  <button
+                    type="button"
+                    (click)="openAttendeeDetail(attendee)"
+                    [attr.aria-label]="'Ver detalle y asistencia de ' + fullName(attendee)"
+                    class="inline-flex items-center justify-center size-8 rounded-full text-google-blue bg-google-blue-light/40 hover:bg-google-blue-light/70 dark:bg-google-blue/20 dark:hover:bg-google-blue/30 transition-all shadow-xs cursor-pointer"
+                    title="Ver historial, sesiones y asistencia"
+                  >
+                    <span class="material-symbols-rounded text-base">history</span>
+                  </button>
+                </td>
               </tr>
             </ng-template>
 
