@@ -62,6 +62,9 @@ Marcar cada punto con un usuario SUPERADMIN, salvo donde se indique.
 - [ ] Abrir `/e/<slug>` en la app pública: se ven datos, paquetes, agenda e imágenes.
 - [ ] Registrarse como asistente con un paquete gratis y con el formulario; repetir con cupón SPEAKER (queda CONFIRMED con rol SPEAKER) y con un cupón agotado (debe rechazar). Probar paquete de pago con comprobante (queda PENDING).
 - [ ] En `/events/:id/attendees` aparece la inscripción.
+- [ ] Con un paquete con fases (p. ej. Preventa Bs 15 → Normal Bs 20), inscribir a dos personas de modo que caigan en fases distintas: la columna **Entrada** muestra "Paquete · Fase" y el monto de **su** fase (no el del paquete). Una inscripción con cupón muestra "Cupón · Bs 0".
+- [ ] En esa lista: los filtros (estado, rol, entrada/fase, check-in, comprobante) y el buscador actúan sobre todos los inscritos y "Mostrando N de M" es coherente; las tarjetas de estado filtran al hacer clic; la columna **Acciones** queda fija a la derecha al hacer scroll horizontal.
+- [ ] **Revisar un pago**: "Ver pago" abre el comprobante en un diálogo (sin pestaña nueva) con nombre, paquete/fase, monto esperado y zoom; ← / → pasan al siguiente comprobante de la lista filtrada y Esc cierra. Como SUPERADMIN, "Confirmar pago" y "Cancelar inscripción" piden confirmación; como STAFF no aparecen. Un PDF o una imagen que no carga ofrecen "Abrir en pestaña" y "Descargar".
 - [ ] Como STAFF asignado: ve solo su evento y hace check-in; no puede abrir `/events/new` ni editar; en un evento no asignado no ve inscritos.
 - [ ] Intentar **eliminar** el evento con inscritos: se bloquea; probar también eliminar una sesión con inscritos. Despublicar y confirmar que `/e/<slug>` deja de estar disponible.
 - [ ] Eliminar un borrador sin inscritos: desaparece del listado.
@@ -71,3 +74,13 @@ Marcar cada punto con un usuario SUPERADMIN, salvo donde se indique.
 La migración `20261024155150_close_coupon_read_leak.sql` (cierra la lectura abierta de cupones) está **sin aplicar en producción** (PR #4, en borrador); solo debe salir después de desplegar el checkout público que usa el RPC `validate_coupon`. En tu Supabase local ya está aplicada.
 
 Las pruebas de este checklist se hacen contra el **Supabase local** (`npm run db:start`), nunca contra producción. Ver `docs/entornos-supabase.md`.
+
+## Revisar pagos en la lista de asistentes
+
+Lo que ve el staff al revisar un pago pendiente (`/events/:id/attendees`):
+
+- **Entrada**: paquete y, si el paquete vende por fases, la **fase en la que quedó inscrita la persona** (la asigna el servidor al inscribirse) con el monto de esa fase. Las inscripciones anteriores a las fases, o de paquetes sin fases, muestran el precio del paquete. Con cupón de asistente (descuento total) se muestra "Cupón · Bs 0". El mismo dato (fase, monto a pagar, cupón) va en el CSV y el Excel, que exportan lo que muestran los filtros.
+- **Comprobante**: "Ver pago" abre un diálogo con la imagen grande (ajustar, acercar/alejar), a su lado el nombre, el paquete/fase, la fecha de inscripción y el **monto esperado** para compararlo con el comprobante. "Abrir en pestaña" y "Descargar" son secundarios; los PDF u otros tipos solo ofrecen el enlace.
+- **Acciones (solo SUPERADMIN)**: "Confirmar pago" (pasa PENDING → CONFIRMED) y "Cancelar inscripción" (libera el cupo de la fase); ambas piden confirmación y solo operan sobre inscripciones PENDING. STAFF solo ve el comprobante.
+- **Varios comprobantes**: "Anterior/Siguiente" (o las flechas del teclado) recorren los comprobantes de la lista tal como estaba filtrada al abrir el diálogo; filtrar por "Pendiente" + "Con comprobante" permite revisarlos todos de corrido.
+- El check-in manual, la entrega de refrigerio y el ingreso a sesiones solo se permiten en inscripciones **confirmadas**.

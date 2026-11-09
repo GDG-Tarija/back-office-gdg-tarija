@@ -109,10 +109,10 @@
           </div>
           <div class="flex flex-col min-w-0">
             <span class="text-[11px] text-text-secondary dark:text-neutral-400 font-medium"
-              >Inscritos</span
+              >Inscritos activos</span
             >
             <span class="text-xs font-bold text-text-primary dark:text-neutral-200">
-              {{ attendees().length }} / {{ event()?.capacity }}
+              {{ stats().active }} / {{ event()?.capacity ?? '∞' }}
             </span>
           </div>
         </div>
@@ -122,43 +122,174 @@
     <!-- Attendees List Section -->
     <div class="space-y-4">
       <div
-        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-neutral-900 p-4 rounded-3xl border border-black/5 dark:border-white/5 shadow-xs"
+        class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between bg-white dark:bg-neutral-900 p-4 rounded-3xl border border-black/5 dark:border-white/5 shadow-xs"
       >
-        <!-- Buscador alineado a la izquierda -->
-        <div class="relative w-full sm:w-80">
-          <span
-            class="material-symbols-rounded absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none"
-            >search</span
+        <div class="flex flex-col gap-3 w-full">
+          <!-- KPIs: un clic filtra por estado -->
+          <div
+            class="grid grid-cols-2 sm:grid-cols-4 gap-2"
+            role="group"
+            aria-label="Resumen por estado"
           >
-          <input
-            type="text"
-            pInputText
-            placeholder="Buscar por ID, nombre, correo..."
-            class="w-full !pl-10 pr-4 text-sm !rounded-xl"
-            (input)="dtAttendees.filterGlobal($any($event.target).value, 'contains')"
-          />
+            @for (
+              kpi of [
+                { label: 'Confirmados', value: stats().confirmed, status: 'CONFIRMED' },
+                { label: 'Pendientes de pago', value: stats().pending, status: 'PENDING' },
+                { label: 'Cancelados', value: stats().cancelled, status: 'CANCELLED' },
+                { label: 'Con check-in', value: stats().checkedIn, status: '' },
+              ];
+              track kpi.label
+            ) {
+              <button
+                type="button"
+                (click)="
+                  kpi.status
+                    ? setFilter('status', filters().status === kpi.status ? '' : kpi.status)
+                    : setFilter(
+                        'checkin',
+                        filters().checkin === 'CHECKED_IN' ? 'ALL' : 'CHECKED_IN'
+                      )
+                "
+                class="flex flex-col items-start rounded-2xl border px-3 py-2 text-left transition-colors cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                [class]="
+                  (kpi.status && filters().status === kpi.status) ||
+                  (!kpi.status && filters().checkin === 'CHECKED_IN')
+                    ? 'border-google-blue bg-google-blue-light/30 dark:bg-google-blue/15'
+                    : 'border-black/10 dark:border-white/10'
+                "
+                [attr.aria-pressed]="
+                  (kpi.status && filters().status === kpi.status) ||
+                  (!kpi.status && filters().checkin === 'CHECKED_IN')
+                "
+              >
+                <span class="text-lg font-extrabold text-text-primary dark:text-neutral-100">{{
+                  kpi.value
+                }}</span>
+                <span class="text-[11px] font-medium text-text-secondary dark:text-neutral-400">
+                  {{ kpi.label }}
+                  @if (!kpi.status && stats().confirmed > 0) {
+                    ({{ stats().checkinRate }}%)
+                  }
+                </span>
+              </button>
+            }
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="relative w-full sm:w-72">
+              <span
+                class="material-symbols-rounded absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none"
+                aria-hidden="true"
+                >search</span
+              >
+              <input
+                type="search"
+                pInputText
+                placeholder="Buscar por nombre, correo, ID..."
+                aria-label="Buscar inscritos"
+                class="w-full !pl-10 pr-4 text-sm !rounded-xl"
+                [value]="filters().search"
+                (input)="setFilter('search', $any($event.target).value)"
+              />
+            </div>
+            <p-select
+              [options]="statusOptions"
+              [ngModel]="filters().status"
+              (ngModelChange)="setFilter('status', $event)"
+              optionLabel="label"
+              optionValue="value"
+              ariaLabel="Filtrar por estado"
+              styleClass="!text-sm"
+            />
+            <p-select
+              [options]="roleOptions"
+              [ngModel]="filters().role"
+              (ngModelChange)="setFilter('role', $event)"
+              optionLabel="label"
+              optionValue="value"
+              ariaLabel="Filtrar por rol"
+              styleClass="!text-sm"
+            />
+            <p-select
+              [options]="entryOptions()"
+              [ngModel]="filters().entry"
+              (ngModelChange)="setFilter('entry', $event)"
+              optionLabel="label"
+              optionValue="value"
+              ariaLabel="Filtrar por paquete y fase"
+              styleClass="!text-sm"
+            />
+            <p-select
+              [options]="checkinOptions"
+              [ngModel]="filters().checkin"
+              (ngModelChange)="setFilter('checkin', $event)"
+              optionLabel="label"
+              optionValue="value"
+              ariaLabel="Filtrar por check-in"
+              styleClass="!text-sm"
+            />
+            <p-select
+              [options]="proofOptions"
+              [ngModel]="filters().proof"
+              (ngModelChange)="setFilter('proof', $event)"
+              optionLabel="label"
+              optionValue="value"
+              ariaLabel="Filtrar por comprobante"
+              styleClass="!text-sm"
+            />
+            @if (filtersActive()) {
+              <button
+                type="button"
+                (click)="clearFilters()"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full text-google-blue hover:bg-google-blue-light/40 cursor-pointer"
+              >
+                <span class="material-symbols-rounded text-base">filter_alt_off</span> Limpiar
+                filtros
+              </button>
+            }
+          </div>
+          <p class="text-xs text-text-secondary dark:text-neutral-400" aria-live="polite">
+            Mostrando {{ filteredAttendees().length }} de {{ attendees().length }} inscritos
+          </p>
         </div>
 
         <!-- Botones de exportación -->
-        <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+        <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end shrink-0">
+          <button
+            type="button"
+            (click)="reload()"
+            [disabled]="loading()"
+            class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+          >
+            <span class="material-symbols-rounded text-base">refresh</span>
+            <span>Actualizar</span>
+          </button>
           <button
             type="button"
             (click)="exportToCSV()"
-            [disabled]="attendees().length === 0"
+            [disabled]="filteredAttendees().length === 0"
             class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
           >
             <span class="material-symbols-rounded text-base">download</span>
-            <span>Exportar CSV</span>
+            <span
+              >Exportar CSV{{
+                filtersActive() ? ' (' + filteredAttendees().length + ')' : ''
+              }}</span
+            >
           </button>
 
           <button
             type="button"
             (click)="exportToExcel()"
-            [disabled]="attendees().length === 0"
+            [disabled]="filteredAttendees().length === 0"
             class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-google-green text-white hover:bg-green-600 disabled:opacity-50 transition-colors shadow-xs"
           >
             <span class="material-symbols-rounded text-base">table_view</span>
-            <span>Exportar Excel</span>
+            <span
+              >Exportar Excel{{
+                filtersActive() ? ' (' + filteredAttendees().length + ')' : ''
+              }}</span
+            >
           </button>
         </div>
       </div>
@@ -170,25 +301,16 @@
         <div class="overflow-x-auto w-full max-w-full block">
           <p-table
             #dtAttendees
-            [value]="attendees()"
+            [value]="filteredAttendees()"
             dataKey="id"
             [scrollable]="true"
             sortField="registeredAt"
             [sortOrder]="-1"
             [paginator]="true"
             [rows]="25"
+            [first]="first()"
+            (onPage)="first.set($event.first)"
             [rowsPerPageOptions]="[25, 50, 100]"
-            [globalFilterFields]="[
-              'id',
-              'userId',
-              'firstName',
-              'lastName',
-              'email',
-              'phone',
-              'role',
-              'status',
-              'ticketName',
-            ]"
             styleClass="p-datatable-striped"
             [tableStyle]="{ 'min-width': '95rem' }"
           >
@@ -219,7 +341,13 @@
                 <th pSortableColumn="registeredAt" class="dark:text-neutral-300">
                   Registro <p-sortIcon field="registeredAt"></p-sortIcon>
                 </th>
-                <th class="dark:text-neutral-300 font-semibold text-center">Acciones</th>
+                <th
+                  pFrozenColumn
+                  alignFrozen="right"
+                  class="dark:text-neutral-300 font-semibold text-center w-24"
+                >
+                  Acciones
+                </th>
 
                 @for (key of customResponseKeys(); track key) {
                   <th class="dark:text-neutral-300 font-semibold">
@@ -277,7 +405,7 @@
                             attendee.role === 'ATTENDEE',
                         }"
                       >
-                        {{ attendee.firstName[0] }}{{ attendee.lastName[0] }}
+                        {{ initials(attendee) }}
                       </div>
                     }
                     <div class="flex flex-col min-w-0">
@@ -349,14 +477,16 @@
                 <td>
                   <div class="flex flex-col">
                     <span class="font-semibold text-text-primary dark:text-neutral-200 text-sm">
-                      {{ attendee.ticketName }}
+                      {{ entryLabel(attendee) }}
                     </span>
                     <span class="text-xs text-text-secondary dark:text-neutral-400 mt-0.5">
-                      {{
-                        attendee.ticketPrice === 0
-                          ? 'Gratuito'
-                          : (attendee.ticketPrice | currency: 'BOB ' : 'symbol' : '1.0-2')
-                      }}
+                      @if (attendee.couponId) {
+                        Cupón{{ attendee.couponCode ? ' ' + attendee.couponCode : '' }} · Bs 0
+                      } @else if (attendee.amountDue === 0) {
+                        Gratuito
+                      } @else {
+                        {{ attendee.amountDue | currency: 'BOB ' : 'symbol' : '1.0-2' }}
+                      }
                     </span>
                   </div>
                 </td>
@@ -397,25 +527,32 @@
                   @if (attendee.paymentProofUrl) {
                     <button
                       type="button"
-                      (click)="openProof(attendee.paymentProofUrl)"
+                      (click)="openProof(attendee)"
+                      [attr.aria-label]="'Ver comprobante de pago de ' + fullName(attendee)"
                       class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-google-green bg-google-green-light/40 hover:bg-google-green-light/70 dark:bg-google-green/15 dark:hover:bg-google-green/25 rounded-full transition-all"
                     >
                       <span class="material-symbols-rounded text-xs">image</span>
-                      <span>{{
-                        isImageProof(attendee.paymentProofUrl) ? 'Ver Pago' : 'Descargar'
-                      }}</span>
+                      <span>Ver pago</span>
                     </button>
-                  } @else if (attendee.ticketPrice > 0) {
+                  } @else if (attendee.status === 'CANCELLED') {
+                    <span class="text-xs text-text-secondary dark:text-neutral-400">—</span>
+                  } @else if (expectsProof(attendee)) {
                     <span
                       class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-google-red bg-google-red-light/40 dark:bg-google-red/20 rounded-full font-bold"
                     >
-                      <span class="material-symbols-rounded text-xs">error</span> Sin Pago
+                      <span class="material-symbols-rounded text-xs">error</span> Sin comprobante
                     </span>
                   } @else {
                     <span
                       class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-full font-bold"
                     >
-                      Gratuito
+                      {{
+                        attendee.couponId
+                          ? 'Cupón'
+                          : attendee.amountDue === 0
+                            ? 'Gratuito'
+                            : 'Invitación'
+                      }}
                     </span>
                   }
                 </td>
@@ -425,10 +562,11 @@
                 </td>
 
                 <!-- Celda de botón de detalle/acciones -->
-                <td class="text-center">
+                <td pFrozenColumn alignFrozen="right" class="text-center">
                   <button
                     type="button"
                     (click)="openAttendeeDetail(attendee)"
+                    [attr.aria-label]="'Ver detalle y asistencia de ' + fullName(attendee)"
                     class="inline-flex items-center justify-center size-8 rounded-full text-google-blue bg-google-blue-light/40 hover:bg-google-blue-light/70 dark:bg-google-blue/20 dark:hover:bg-google-blue/30 transition-all shadow-xs cursor-pointer"
                     title="Ver historial, sesiones y asistencia"
                   >
@@ -443,6 +581,7 @@
                       <a
                         [href]="attendee.customResponses?.[key]"
                         target="_blank"
+                        rel="noopener noreferrer"
                         class="inline-flex items-center gap-1 px-3 py-1 text-xs text-google-blue bg-google-blue-light/30 hover:bg-google-blue-light/60 dark:bg-google-blue/15 dark:hover:bg-google-blue/25 rounded-full font-bold transition-all"
                       >
                         <span class="material-symbols-rounded text-xs">open_in_new</span> Ver Enlace
@@ -479,10 +618,25 @@
                       class="material-symbols-rounded text-5xl text-neutral-300 dark:text-neutral-600"
                       >group</span
                     >
-                    <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
-                      >No hay asistentes inscritos</span
-                    >
-                    <span class="text-xs max-w-sm">Nadie se ha registrado a este evento aún.</span>
+                    @if (attendees().length === 0) {
+                      <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
+                        >No hay asistentes inscritos</span
+                      >
+                      <span class="text-xs max-w-sm"
+                        >Nadie se ha registrado a este evento aún.</span
+                      >
+                    } @else {
+                      <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
+                        >Ningún inscrito coincide con los filtros</span
+                      >
+                      <button
+                        type="button"
+                        (click)="clearFilters()"
+                        class="px-4 py-1.5 text-xs font-semibold text-google-blue border border-google-blue/30 rounded-full hover:bg-google-blue-light/40 cursor-pointer"
+                      >
+                        Limpiar filtros
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -520,7 +674,7 @@
             <div
               class="flex size-12 items-center justify-center rounded-full text-base font-bold bg-google-blue-light text-google-blue dark:bg-google-blue/20 shrink-0"
             >
-              {{ attendee.firstName[0] }}{{ attendee.lastName[0] }}
+              {{ initials(attendee) }}
             </div>
           }
           <div class="flex flex-col min-w-0 flex-1">
@@ -539,11 +693,43 @@
               <span
                 class="text-[11px] font-semibold text-text-secondary dark:text-neutral-400 bg-white dark:bg-neutral-800 px-2 py-0.5 rounded-md border border-black/5 dark:border-white/5"
               >
-                {{ attendee.ticketName }}
+                {{ entryLabel(attendee) }} ·
+                {{
+                  attendee.couponId
+                    ? 'Cupón'
+                    : attendee.amountDue === 0
+                      ? 'Gratuito'
+                      : (attendee.amountDue | currency: 'BOB ' : 'symbol' : '1.0-2')
+                }}
               </span>
+              @if (attendee.paymentProofUrl) {
+                <button
+                  type="button"
+                  (click)="openProof(attendee)"
+                  class="text-[11px] font-semibold text-google-blue hover:underline cursor-pointer"
+                >
+                  Ver comprobante
+                </button>
+              }
             </div>
           </div>
         </div>
+
+        @if (!canCheckin(attendee)) {
+          <p
+            class="rounded-2xl border border-google-yellow/40 bg-google-yellow-light/30 p-3 text-xs font-medium text-text-primary dark:text-neutral-200"
+            role="status"
+          >
+            {{
+              attendee.status === 'CANCELLED'
+                ? 'Inscripción cancelada: no se puede registrar asistencia.'
+                : 'El pago aún no está confirmado: no se puede registrar asistencia.'
+            }}
+          </p>
+        }
+        @if (actionError(); as err) {
+          <p class="text-xs font-medium text-google-red" role="alert">{{ err }}</p>
+        }
 
         @if (canCancel(attendee)) {
           <div
@@ -642,7 +828,7 @@
                 <button
                   type="button"
                   (click)="doManualCheckin()"
-                  [disabled]="actionLoading()"
+                  [disabled]="actionLoading() || !canCheckin(attendee)"
                   class="px-3 py-1.5 text-xs font-semibold bg-google-green text-white hover:bg-green-600 rounded-full shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
                 >
                   Marcar Check-in
@@ -684,7 +870,7 @@
                 <button
                   type="button"
                   (click)="doManualRefrigerio()"
-                  [disabled]="actionLoading()"
+                  [disabled]="actionLoading() || !canCheckin(attendee)"
                   class="px-3 py-1.5 text-xs font-semibold bg-google-yellow text-neutral-900 hover:bg-yellow-500 rounded-full shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
                 >
                   Entregar
@@ -700,7 +886,7 @@
             class="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-neutral-400 flex items-center gap-1.5"
           >
             <span class="material-symbols-rounded text-base text-google-blue">view_agenda</span>
-            Sesiones Inscritas (`inscripciones_sessions`)
+            Sesiones del evento
           </h3>
 
           @if (loadingSessions()) {
@@ -752,7 +938,7 @@
                       <button
                         type="button"
                         (click)="doManualSessionCheckin(session)"
-                        [disabled]="actionLoading()"
+                        [disabled]="actionLoading() || !canCheckin(attendee)"
                         class="px-3 py-1 text-xs font-semibold text-google-blue border border-google-blue/30 hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 rounded-full transition-all disabled:opacity-50 cursor-pointer"
                       >
                         Marcar Ingreso
@@ -777,4 +963,18 @@
       </button>
     </ng-template>
   </p-dialog>
+
+  <app-payment-proof-dialog
+    [attendee]="proofAttendee()"
+    [position]="proofPosition()"
+    [total]="proofQueue().length"
+    [canManage]="isSuperadmin()"
+    [busy]="proofBusy()"
+    [error]="proofError()"
+    (closed)="closeProof()"
+    (previous)="stepProof(-1)"
+    (next)="stepProof(1)"
+    (confirmPayment)="confirmPayment($event)"
+    (cancelRegistration)="cancelFromProof($event)"
+  />
 </div>

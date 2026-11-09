@@ -11,6 +11,7 @@ export abstract class EventsRepository {
   abstract isSlugAvailable(slug: string, excludeEventId?: string): Promise<boolean>;
   abstract countRegistrations(eventId: string): Promise<number>;
   abstract getAttendees(eventId: string): Promise<Attendee[]>;
+  abstract confirmPendingRegistration(registrationId: string): Promise<void>;
   abstract getAttendeeSessions(
     eventId: string,
     registrationId: string,
