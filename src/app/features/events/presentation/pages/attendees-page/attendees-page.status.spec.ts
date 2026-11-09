@@ -10,6 +10,7 @@ import { DomainError } from '../../../domain/domain-error';
 import { Attendee, Event } from '../../../domain/event.model';
 import { EventsRepository } from '../../../domain/events.repository';
 import { RegistrationStatus } from '../../../domain/registration-status';
+import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
 import { RegistrationsRepository } from '../../../domain/registrations.repository';
 import { AttendeesPage } from './attendees-page';
 import { RegistrationStatusController } from './registration-status-controller';
@@ -56,11 +57,9 @@ describe('AttendeesPage — estado de inscripción', () => {
     getEventById: vi.fn(),
     getAttendees: vi.fn(),
     getAttendeeSessions: vi.fn(),
-    registerManualCheckin: vi.fn(),
-    registerManualRefrigerio: vi.fn(),
-    registerManualSessionCheckin: vi.fn(),
   };
   const registrationsRepo = { updateStatus: vi.fn() };
+  const checkinRepo = { registerScan: vi.fn() };
   let fixture: ComponentFixture<AttendeesPage>;
   let page: AttendeesPage;
   let lastConfirm: Confirmation | null;
@@ -107,6 +106,7 @@ describe('AttendeesPage — estado de inscripción', () => {
         providers: [
           { provide: EventsRepository, useValue: eventsRepo },
           { provide: RegistrationsRepository, useValue: registrationsRepo },
+          { provide: CheckinRepository, useValue: checkinRepo },
           ConfirmationService,
           MessageService,
           RegistrationStatusController,

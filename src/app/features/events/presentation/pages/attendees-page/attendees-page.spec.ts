@@ -5,14 +5,16 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { DomainError } from '../../../domain/domain-error';
-import { Attendee } from '../../../domain/event.model';
+import { Attendee, Event } from '../../../domain/event.model';
 import { EventsRepository } from '../../../domain/events.repository';
 import { RegistrationStatus } from '../../../domain/registration-status';
+import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
 import { RegistrationsRepository } from '../../../domain/registrations.repository';
 import { AttendeesPage } from './attendees-page';
 import { RegistrationStatusController } from './registration-status-controller';
 
 const registrationsRepo = { updateStatus: vi.fn() };
+const checkinRepo = { registerScan: vi.fn() };
 let lastConfirm: Confirmation | null = null;
 
 /** Providers de la página con repos falsos; la confirmación de anular se captura en `lastConfirm`. */
@@ -20,6 +22,7 @@ function pageProviders(repo: object) {
   return [
     { provide: EventsRepository, useValue: repo },
     { provide: RegistrationsRepository, useValue: registrationsRepo },
+    { provide: CheckinRepository, useValue: checkinRepo },
     ConfirmationService,
     MessageService,
     RegistrationStatusController,
@@ -58,9 +61,7 @@ const pending: Attendee = {
 };
 
 describe('AttendeesPage: cambio de estado desde el detalle', () => {
-  const repo = {
-    registerManualCheckin: vi.fn(),
-  };
+  const repo = {};
   const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
 
   function create() {
@@ -69,7 +70,7 @@ describe('AttendeesPage: cambio de estado desde el detalle', () => {
       providers: [
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } },
         { provide: Router, useValue: { navigate: vi.fn() } },
-        { provide: AuthService, useValue: { role } },
+        { provide: AuthService, useValue: { role, user: signal(null) } },
       ],
     }).overrideComponent(AttendeesPage, {
       set: { providers: pageProviders(repo) },
@@ -88,7 +89,7 @@ describe('AttendeesPage: cambio de estado desde el detalle', () => {
 
   beforeEach(() => {
     resetStatusMocks();
-    repo.registerManualCheckin.mockReset();
+    checkinRepo.registerScan.mockReset();
     role.set('SUPERADMIN');
   });
 
@@ -119,9 +120,7 @@ describe('AttendeesPage: cambio de estado desde el detalle', () => {
 });
 
 describe('AttendeesPage: revisión de comprobantes', () => {
-  const repo = {
-    registerManualCheckin: vi.fn(),
-  };
+  const repo = {};
   const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
   const withProof = (id: string, extra: Partial<Attendee> = {}): Attendee => ({
     ...pending,
@@ -136,7 +135,7 @@ describe('AttendeesPage: revisión de comprobantes', () => {
       providers: [
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } },
         { provide: Router, useValue: { navigate: vi.fn() } },
-        { provide: AuthService, useValue: { role } },
+        { provide: AuthService, useValue: { role, user: signal(null) } },
       ],
     }).overrideComponent(AttendeesPage, {
       set: { providers: pageProviders(repo) },
@@ -154,7 +153,7 @@ describe('AttendeesPage: revisión de comprobantes', () => {
 
   beforeEach(() => {
     resetStatusMocks();
-    repo.registerManualCheckin.mockReset();
+    checkinRepo.registerScan.mockReset();
     role.set('SUPERADMIN');
   });
 
@@ -217,17 +216,51 @@ describe('AttendeesPage: revisión de comprobantes', () => {
     const cmp = create([pending]);
     cmp.selectedAttendee.set(pending);
     await cmp.doManualCheckin();
-    expect(repo.registerManualCheckin).not.toHaveBeenCalled();
+    expect(checkinRepo.registerScan).not.toHaveBeenCalled();
   });
 
-  it('avisa si el check-in falla y no marca asistencia', async () => {
-    repo.registerManualCheckin.mockResolvedValue(false);
+  it('muestra el mensaje del flujo unificado si el check-in es rechazado y no marca asistencia', async () => {
+    checkinRepo.registerScan.mockResolvedValue({
+      success: false,
+      message: 'La inscripción está anulada: no puede registrar asistencia.',
+    });
     const confirmed = { ...pending, status: 'CONFIRMED' };
     const cmp = create([confirmed]);
     cmp.selectedAttendee.set(confirmed);
+    cmp.event.set({ id: 'e1' } as Event);
+    await cmp.doManualCheckin();
+    expect(cmp.actionError()).toContain('anulada');
+    expect(cmp.attendees()[0].checkedIn).toBe(false);
+  });
+
+  it('avisa si el check-in lanza un error inesperado', async () => {
+    checkinRepo.registerScan.mockRejectedValue(new Error('network'));
+    const confirmed = { ...pending, status: 'CONFIRMED' };
+    const cmp = create([confirmed]);
+    cmp.selectedAttendee.set(confirmed);
+    cmp.event.set({ id: 'e1' } as Event);
     await cmp.doManualCheckin();
     expect(cmp.actionError()).toContain('check-in');
     expect(cmp.attendees()[0].checkedIn).toBe(false);
+  });
+
+  it('registra el check-in con registerScan y actualiza lista y detalle', async () => {
+    const scannedAt = new Date('2026-11-02T09:00:00Z');
+    checkinRepo.registerScan.mockResolvedValue({ success: true, message: 'ok', scannedAt });
+    const confirmed = { ...pending, status: 'CONFIRMED' };
+    const cmp = create([confirmed]);
+    cmp.selectedAttendee.set(confirmed);
+    cmp.event.set({ id: 'e1' } as Event);
+    await cmp.doManualCheckin();
+    expect(checkinRepo.registerScan).toHaveBeenCalledWith(
+      confirmed.id,
+      'e1',
+      'checkin',
+      null,
+      null,
+    );
+    expect(cmp.attendees()[0].checkedIn).toBe(true);
+    expect(cmp.attendees()[0].checkedInAt).toEqual(scannedAt);
   });
 
   it('cambiar un filtro vuelve a la primera página', () => {

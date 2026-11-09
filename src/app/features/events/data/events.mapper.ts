@@ -137,5 +137,6 @@ export function toDomainAttendee(row: RegistrationWithDetailsRow): Attendee {
     checkedInAt: checkinLog?.scanned_at ? new Date(checkinLog.scanned_at) : null,
     refrigerioDelivered: !!refrigerioLog,
     refrigerioDeliveredAt: refrigerioLog?.scanned_at ? new Date(refrigerioLog.scanned_at) : null,
+    scanTypes: scanLogs?.map((log) => log.scan_type) ?? [],
   };
 }

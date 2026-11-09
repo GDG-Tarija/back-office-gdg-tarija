@@ -44,6 +44,17 @@ import {
   filterAttendees,
   hasActiveFilters,
 } from '../../../domain/attendee-payment';
+import {
+  formatCustomResponseLabel,
+  getAttendeeRoleSeverity,
+  getAttendeeStatusSeverity,
+  translateAttendeeRole,
+  translateAttendeeStatus,
+} from '../../../domain/attendee-search';
+import { ScanMode, ScanResult } from '../../../../checkin/domain/checkin.model';
+import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
+import { CheckinApi } from '../../../../checkin/data/checkin.api';
+import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { PaymentProofDialog } from '../../components/payment-proof-dialog/payment-proof-dialog';
 
 @Component({
@@ -71,6 +82,7 @@ import { PaymentProofDialog } from '../../components/payment-proof-dialog/paymen
   providers: [
     { provide: EventsRepository, useClass: EventsApi },
     { provide: RegistrationsRepository, useClass: RegistrationsApi },
+    { provide: CheckinRepository, useClass: CheckinApi },
     ConfirmationService,
     MessageService,
     RegistrationStatusController,
@@ -82,6 +94,8 @@ export class AttendeesPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly eventsRepo = inject(EventsRepository);
+  private readonly checkinRepo = inject(CheckinRepository);
+  private readonly auth = inject(AuthService);
 
   readonly event = signal<Event | null>(null);
   readonly attendees = signal<Attendee[]>([]);
@@ -308,111 +322,23 @@ export class AttendeesPage implements OnInit {
   }
 
   getRoleSeverity(role: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (role?.toUpperCase()) {
-      case 'ORGANIZER':
-      case 'STAFF':
-        return 'danger';
-      case 'SPEAKER':
-        return 'warn';
-      case 'VOLUNTEER':
-        return 'info';
-      default:
-        return 'secondary';
-    }
+    return getAttendeeRoleSeverity(role);
   }
 
   getStatusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (status?.toUpperCase()) {
-      case 'CONFIRMED':
-        return 'success';
-      case 'PENDING':
-        return 'warn';
-      case 'CANCELLED':
-        return 'danger';
-      default:
-        return 'secondary';
-    }
+    return getAttendeeStatusSeverity(status);
   }
 
   translateRole(role: string): string {
-    switch (role?.toUpperCase()) {
-      case 'ORGANIZER':
-      case 'STAFF':
-        return 'Staff';
-      case 'SPEAKER':
-        return 'Expositor';
-      case 'VOLUNTEER':
-        return 'Voluntario';
-      case 'ATTENDEE':
-        return 'Asistente';
-      default:
-        return role || 'Asistente';
-    }
+    return translateAttendeeRole(role);
   }
 
   translateStatus(status: string): string {
-    switch (status?.toUpperCase()) {
-      case 'CONFIRMED':
-        return 'Confirmado';
-      case 'PENDING':
-        return 'Pendiente';
-      case 'CANCELLED':
-        return 'Cancelado';
-      default:
-        return status || 'Desconocido';
-    }
+    return translateAttendeeStatus(status);
   }
 
   formatResponseKey(key: string | number | symbol): string {
-    const keyStr = String(key);
-    const lowerKey = keyStr.toLowerCase();
-
-    const commonKeys: Record<string, string> = {
-      t_shirt_size: 'Talla de polera',
-      tshirt: 'Talla de polera',
-      tshirt_size: 'Talla de polera',
-      polera: 'Talla de polera',
-      camiseta: 'Talla de camiseta',
-      occupation: 'Ocupación',
-      organization: 'Institución / Organización',
-      university: 'Universidad / Colegio',
-      company: 'Empresa',
-      dietary: 'Requerimientos alimentarios',
-      food_restrictions: 'Restricciones alimenticias',
-      city: 'Ciudad de residencia',
-      experience: 'Nivel de experiencia',
-      interest: 'Área de interés',
-      how_did_you_know: '¿Cómo te enteraste?',
-      how_heard: '¿Cómo te enteraste?',
-      first_time: '¿Es tu primera vez?',
-      github: 'Usuario de GitHub',
-      linkedin: 'Perfil de LinkedIn',
-      has_laptop: '¿Cuentas con una laptop?',
-      discovery_source: '¿Cómo se enteró del evento?',
-      experience_level: 'Nivel de experiencia',
-      dietary_restrictions: 'Restricciones alimentarias',
-      additional_notes: '¿Tiene alguna consulta o duda?',
-    };
-
-    const translation = commonKeys[lowerKey];
-    if (translation) {
-      return translation;
-    }
-
-    // Detección genérica de preguntas sobre computadora/laptop
-    if (
-      lowerKey.includes('compu') ||
-      lowerKey.includes('laptop') ||
-      lowerKey.includes('computer')
-    ) {
-      return '¿Llevará computadora?';
-    }
-
-    return keyStr
-      .replace(/[-_]/g, ' ')
-      .replace(/([A-Z])/g, ' $1')
-      .trim()
-      .replace(/^\w/, (c) => c.toUpperCase());
+    return formatCustomResponseLabel(key);
   }
 
   hasCustomResponses(attendee: Attendee): boolean {
@@ -741,24 +667,52 @@ export class AttendeesPage implements OnInit {
     return attendee.status?.toUpperCase() === 'CONFIRMED';
   }
 
-  async doManualCheckin(): Promise<void> {
-    const attendee = this.selectedAttendee();
-    if (!attendee || !this.canCheckin(attendee) || attendee.checkedIn) return;
+  /** Mismo flujo (verificación + registro) que el escaneo de QR y el modo manual de /checkin. */
+  private async registerScan(
+    attendee: Attendee,
+    mode: ScanMode,
+    sessionId: string | null,
+    fallbackError: string,
+  ): Promise<ScanResult | null> {
+    const eventId = this.event()?.id;
+    if (!eventId) return null;
 
     this.actionLoading.set(true);
     this.actionError.set(null);
     try {
-      const success = await this.eventsRepo.registerManualCheckin(attendee.id);
-      if (success) {
-        this.patchAttendee(attendee.id, { checkedIn: true, checkedInAt: new Date() });
-      } else {
-        this.actionError.set('No se pudo registrar el check-in. Intenta de nuevo.');
-      }
+      const result = await this.checkinRepo.registerScan(
+        attendee.id,
+        eventId,
+        mode,
+        sessionId,
+        this.auth.user()?.id || null,
+      );
+      if (!result.success) this.actionError.set(result.message);
+      return result;
     } catch (err) {
-      console.error('Error in manual checkin:', err);
-      this.actionError.set('No se pudo registrar el check-in. Intenta de nuevo.');
+      console.error(`Error in manual ${mode}:`, err);
+      this.actionError.set(fallbackError);
+      return null;
     } finally {
       this.actionLoading.set(false);
+    }
+  }
+
+  async doManualCheckin(): Promise<void> {
+    const attendee = this.selectedAttendee();
+    if (!attendee || !this.canCheckin(attendee) || attendee.checkedIn) return;
+
+    const result = await this.registerScan(
+      attendee,
+      'checkin',
+      null,
+      'No se pudo registrar el check-in. Intenta de nuevo.',
+    );
+    if (result?.success) {
+      this.patchAttendee(attendee.id, {
+        checkedIn: true,
+        checkedInAt: result.scannedAt || new Date(),
+      });
     }
   }
 
@@ -766,23 +720,17 @@ export class AttendeesPage implements OnInit {
     const attendee = this.selectedAttendee();
     if (!attendee || !this.canCheckin(attendee) || attendee.refrigerioDelivered) return;
 
-    this.actionLoading.set(true);
-    this.actionError.set(null);
-    try {
-      const success = await this.eventsRepo.registerManualRefrigerio(attendee.id);
-      if (success) {
-        this.patchAttendee(attendee.id, {
-          refrigerioDelivered: true,
-          refrigerioDeliveredAt: new Date(),
-        });
-      } else {
-        this.actionError.set('No se pudo registrar la entrega. Intenta de nuevo.');
-      }
-    } catch (err) {
-      console.error('Error in manual refrigerio:', err);
-      this.actionError.set('No se pudo registrar la entrega. Intenta de nuevo.');
-    } finally {
-      this.actionLoading.set(false);
+    const result = await this.registerScan(
+      attendee,
+      'refrigerio',
+      null,
+      'No se pudo registrar la entrega. Intenta de nuevo.',
+    );
+    if (result?.success) {
+      this.patchAttendee(attendee.id, {
+        refrigerioDelivered: true,
+        refrigerioDeliveredAt: result.scannedAt || new Date(),
+      });
     }
   }
 
@@ -790,28 +738,19 @@ export class AttendeesPage implements OnInit {
     const attendee = this.selectedAttendee();
     if (!attendee || !this.canCheckin(attendee) || session.asistio) return;
 
-    this.actionLoading.set(true);
-    this.actionError.set(null);
-    try {
-      const success = await this.eventsRepo.registerManualSessionCheckin(
-        attendee.id,
-        session.sessionId,
-        attendee.userId,
+    const result = await this.registerScan(
+      attendee,
+      'session',
+      session.sessionId,
+      'No se pudo registrar el ingreso a la sesión.',
+    );
+    if (result?.success) {
+      const now = result.scannedAt || new Date();
+      this.attendeeSessions.update((list) =>
+        list.map((s) =>
+          s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
+        ),
       );
-
-      if (success) {
-        const now = new Date();
-        this.attendeeSessions.update((list) =>
-          list.map((s) =>
-            s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
-          ),
-        );
-      }
-    } catch (err) {
-      console.error('Error in manual session checkin:', err);
-      this.actionError.set('No se pudo registrar el ingreso a la sesión.');
-    } finally {
-      this.actionLoading.set(false);
     }
   }
 }

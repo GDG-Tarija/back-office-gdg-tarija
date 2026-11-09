@@ -1,8 +1,9 @@
 import { Session, ScanResult, ScanMode } from './checkin.model';
-import { Event } from '../../events/domain/event.model';
+import { Attendee, Event } from '../../events/domain/event.model';
 
 export abstract class CheckinRepository {
   abstract getEvents(): Promise<Event[]>;
+  abstract getAttendees(eventId: string): Promise<Attendee[]>;
   abstract getSessions(eventId: string): Promise<Session[]>;
   abstract getCheckinStats(eventId: string): Promise<{
     checkedInCount: number;
