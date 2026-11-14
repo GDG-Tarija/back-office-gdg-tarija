@@ -23,7 +23,7 @@ export class EventsApi implements EventsRepository {
 
     if (error) {
       console.error('Error fetching events:', error);
-      throw error;
+      throw toDomainError(error, 'event');
     }
 
     return (data || []).map(toDomainEvent);
@@ -38,7 +38,7 @@ export class EventsApi implements EventsRepository {
 
     if (error) {
       console.error('Error fetching event by id:', error);
-      throw error;
+      throw toDomainError(error, 'event');
     }
 
     return data ? toDomainEvent(data) : null;
@@ -139,7 +139,7 @@ export class EventsApi implements EventsRepository {
 
       if (error) {
         console.error('Error fetching registrations:', error);
-        throw error;
+        throw toDomainError(error, 'registration');
       }
 
       const page = (data ?? []) as unknown as RegistrationWithDetailsRow[];

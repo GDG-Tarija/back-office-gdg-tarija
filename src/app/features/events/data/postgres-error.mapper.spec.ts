@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DomainError } from '../domain/domain-error';
-import { toDomainError } from './postgres-error.mapper';
+import { errorField, toDomainError, toUserMessage } from './postgres-error.mapper';
 
 describe('toDomainError', () => {
   it('mapea 23505 a mensaje de duplicado por contexto', () => {
@@ -22,9 +22,11 @@ describe('toDomainError', () => {
   it('mapea permisos RLS', () => {
     expect(toDomainError({ code: '42501' }, 'track').code).toBe('FORBIDDEN');
   });
-  it('conserva el mensaje en errores desconocidos y usa uno por defecto si falta', () => {
-    expect(toDomainError({ code: 'XX', message: 'boom' }, 'event').message).toBe('boom');
-    expect(toDomainError({}, 'event').message).toContain('inesperado');
+  it('nunca expone el mensaje crudo en errores desconocidos', () => {
+    const e = toDomainError({ code: 'XX', message: 'boom: relation "x" does not exist' }, 'event');
+    expect(e.message).toContain('inesperado');
+    expect(e.message).not.toContain('boom');
+    expect(toDomainError({}, 'event').code).toBe('UNKNOWN');
   });
 });
 
@@ -49,5 +51,86 @@ describe('toDomainError (fases y cupo)', () => {
     expect(e.code).toBe('HAS_REGISTRATIONS');
     expect(e.message).toContain('Preventa');
     expect(toDomainError({ code: '23001' }, 'ticket_phase').message).toContain('fase');
+  });
+});
+
+describe('toDomainError (otros códigos)', () => {
+  it('23503 distingue borrar con dependientes de guardar con referencia rota', () => {
+    const del = toDomainError(
+      { code: '23503', message: 'update or delete on table "events" violates foreign key' },
+      'event',
+    );
+    expect(del.code).toBe('HAS_REGISTRATIONS');
+    const save = toDomainError(
+      { code: '23503', message: 'insert or update on table "sessions" violates foreign key' },
+      'session',
+    );
+    expect(save.code).toBe('REFERENCED');
+    expect(save.message).not.toContain('No se puede eliminar');
+  });
+  it('mapea 23514, 22P02, 22001 y 23502 a INVALID en español', () => {
+    for (const code of ['23514', '22P02', '22001', '23502']) {
+      const e = toDomainError({ code, message: 'violates check constraint "x"' }, 'event');
+      expect(e.code).toBe('INVALID');
+      expect(e.message).not.toMatch(/violates|constraint/);
+    }
+    expect(toDomainError({ code: '22001' }, 'event').message).toContain('largo');
+  });
+  it('mapea PGRST116, sesión vencida y otros PGRST', () => {
+    expect(toDomainError({ code: 'PGRST116' }, 'event').code).toBe('NOT_FOUND');
+    expect(toDomainError({ code: 'PGRST301' }, 'event').message).toContain('sesión');
+    const other = toDomainError({ code: 'PGRST999', message: 'JSON object requested' }, 'event');
+    expect(other.message).not.toContain('JSON');
+  });
+  it('mapea errores de red', () => {
+    const e = toDomainError({ message: 'TypeError: Failed to fetch' }, 'event');
+    expect(e.code).toBe('NETWORK');
+    expect(e.message).toContain('No hay conexión');
+  });
+  it('mapea errores de Storage por estado o texto', () => {
+    expect(toDomainError({ statusCode: '413', message: 'x' }, 'asset').message).toContain(
+      'demasiado grande',
+    );
+    expect(
+      toDomainError({ message: 'mime type image/gif is not supported' }, 'asset').message,
+    ).toContain('JPG');
+    expect(
+      toDomainError(
+        { statusCode: '403', message: 'new row violates row-level security policy' },
+        'asset',
+      ).code,
+    ).toBe('INVALID');
+    expect(
+      toDomainError({ statusCode: '409', message: 'The resource already exists' }, 'asset').message,
+    ).toContain('Ya existe');
+  });
+});
+
+describe('toUserMessage', () => {
+  it('devuelve el mensaje de un DomainError conocido', () => {
+    expect(toUserMessage(toDomainError({ code: '42501' }, 'track'), 'Falló.')).toContain(
+      'permisos',
+    );
+  });
+  it('traduce errores crudos de Postgres', () => {
+    expect(
+      toUserMessage({ code: '23505', message: 'duplicate key' }, 'Falló.', 'coupon'),
+    ).toContain('cupón');
+  });
+  it('usa el fallback para errores desconocidos y nunca el texto crudo', () => {
+    expect(toUserMessage(new Error('TypeError: x is undefined'), 'No se pudo guardar.')).toBe(
+      'No se pudo guardar.',
+    );
+    expect(toUserMessage('algo', 'No se pudo guardar.')).toBe('No se pudo guardar.');
+  });
+  it('detecta red en Error nativo', () => {
+    expect(toUserMessage(new TypeError('Failed to fetch'), 'x')).toContain('No hay conexión');
+  });
+});
+
+describe('errorField', () => {
+  it('devuelve el campo de un DomainError', () => {
+    expect(errorField(toDomainError({ code: '23505' }, 'event'))).toBe('slug');
+    expect(errorField(new Error('x'))).toBeNull();
   });
 });

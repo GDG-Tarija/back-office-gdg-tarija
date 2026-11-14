@@ -5,6 +5,8 @@ export type DomainErrorCode =
   | 'FORBIDDEN'
   | 'INVALID'
   | 'SOLD_OUT'
+  | 'NETWORK'
+  | 'NOT_FOUND'
   | 'UNKNOWN';
 
 /** Error con mensaje legible para el usuario, independiente de Postgres. */

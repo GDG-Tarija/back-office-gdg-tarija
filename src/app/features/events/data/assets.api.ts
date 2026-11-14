@@ -16,7 +16,7 @@ export class AssetsApi implements AssetsRepository {
       cacheControl: '3600',
       upsert: false,
     });
-    if (error) throw toDomainError({ message: error.message }, 'asset');
+    if (error) throw toDomainError(error, 'asset');
     return bucket.getPublicUrl(path).data.publicUrl;
   }
 
@@ -24,6 +24,6 @@ export class AssetsApi implements AssetsRepository {
     const path = /^https?:\/\//.test(pathOrUrl) ? extractAssetPath(pathOrUrl) : pathOrUrl;
     if (!path) return;
     const { error } = await this.supabase.storage.from(ASSETS_BUCKET).remove([path]);
-    if (error) throw toDomainError({ message: error.message }, 'asset');
+    if (error) throw toDomainError(error, 'asset');
   }
 }
