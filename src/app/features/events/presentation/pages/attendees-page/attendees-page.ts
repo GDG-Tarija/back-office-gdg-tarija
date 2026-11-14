@@ -554,7 +554,7 @@ export class AttendeesPage implements OnInit {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      this.feedback.success(`CSV descargado: ${list.length} inscritos.`);
+      this.feedback.success(`CSV descargado: ${list.length} inscritas.`);
     } catch (err) {
       console.error('Error al exportar a CSV:', err);
       this.feedback.error('No se pudo generar el CSV. Inténtalo de nuevo.');
@@ -571,7 +571,7 @@ export class AttendeesPage implements OnInit {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Asistentes');
       XLSX.writeFile(workbook, this.exportName('xlsx'));
-      this.feedback.success(`Excel descargado: ${list.length} inscritos.`);
+      this.feedback.success(`Excel descargado: ${list.length} inscritas.`);
     } catch (err) {
       console.error('Error al exportar a Excel:', err);
       this.feedback.error('No se pudo generar el Excel. Inténtalo de nuevo.');
