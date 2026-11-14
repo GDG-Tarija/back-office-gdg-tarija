@@ -199,6 +199,7 @@
 
 @if (deleteOpen() && ws.event(); as e) {
   <app-dialog-frame
+    #frame
     title="Eliminar evento"
     icon="delete"
     initialSize="sm"
@@ -229,7 +230,7 @@
       <button
         type="button"
         class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
-        (click)="closeDelete()"
+        (click)="frame.requestClose()"
       >
         Cancelar
       </button>

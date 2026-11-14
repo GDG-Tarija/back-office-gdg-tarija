@@ -101,13 +101,16 @@ export class FormFieldsBuilder {
       const m = /^fields\[(\d+)\]\.(label|key|options|type)$/.exec(issue.field);
       const f = m ? fields[Number(m[1])] : undefined;
       if (!m || !f) return [];
-      const id =
+      // La clave se genera sola desde la etiqueta: no se reclama mientras ambas están vacías.
+      if (m[2] === 'key' && !f.key && !f.label.trim()) return [];
+      const n = Number(m[1]) + 1;
+      const ref =
         m[2] === 'options'
-          ? `ff-opt-${f.uid}-0`
+          ? { id: `ff-opt-${f.uid}-0`, label: `Opciones del campo ${n}` }
           : m[2] === 'key'
-            ? `ff-key-${f.uid}`
-            : `ff-label-${f.uid}`;
-      return [{ id, label: `Campo ${Number(m[1]) + 1}`, message: issue.message }];
+            ? { id: `ff-key-${f.uid}`, label: `Clave del campo ${n}` }
+            : { id: `ff-label-${f.uid}`, label: `Etiqueta del campo ${n}` };
+      return [{ ...ref, message: issue.message }];
     });
   });
   readonly preview = computed(() => toFormFields(this.fields()));

@@ -266,9 +266,10 @@ export class EventBasicsForm implements OnInit, OnDestroy {
   async requestSave(): Promise<EventInput | null> {
     this.submitted.set(true);
     await this.recheckSlug();
-    const items = this.summary();
-    if (items.length) {
-      focusField(items[0].id);
+    // Solo bloquea lo que se puede validar aquí: el error del servidor se limpia al reintentar.
+    const blocking = buildErrorSummary(this.validation().errors, FIELD_REFS);
+    if (blocking.length) {
+      focusField(blocking[0].id);
       return null;
     }
     return formValueToEventInput(this.model(), this.event()?.formFields ?? []);

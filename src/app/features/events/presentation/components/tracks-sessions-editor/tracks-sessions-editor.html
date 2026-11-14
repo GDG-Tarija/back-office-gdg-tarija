@@ -239,6 +239,7 @@
 
 @if (trackDialogOpen()) {
   <app-dialog-frame
+    #frame
     [title]="editingTrack() ? 'Editar track' : 'Nuevo track'"
     icon="route"
     initialSize="sm"
@@ -293,7 +294,7 @@
       <button
         type="button"
         class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
-        (click)="closeTrackDialog()"
+        (click)="frame.requestClose()"
       >
         Cancelar
       </button>
@@ -344,6 +345,7 @@
 
 @if (sessionDialogOpen()) {
   <app-dialog-frame
+    #frame
     [title]="editingSession() ? 'Editar sesión' : 'Nueva sesión'"
     icon="event_note"
     initialSize="lg"
@@ -460,6 +462,7 @@
           </legend>
           <div class="flex flex-wrap gap-2">
             <p-datepicker
+              [showOnFocus]="false"
               class="min-w-40 flex-1"
               inputId="se-date"
               ariaLabel="Fecha de la sesión"
@@ -474,12 +477,14 @@
               (ngModelChange)="setSessionDate($event)"
             />
             <p-datepicker
+              [showOnFocus]="false"
               class="w-32"
               inputId="se-start"
               ariaLabel="Hora de inicio"
               placeholder="hh:mm"
               appendTo="body"
               [timeOnly]="true"
+              [showIcon]="true"
               hourFormat="24"
               [fluid]="true"
               [ngModel]="sessionStart()"
@@ -488,12 +493,14 @@
               (ngModelChange)="setSessionTime('startTime', $event)"
             />
             <p-datepicker
+              [showOnFocus]="false"
               class="w-32"
               inputId="se-end"
               ariaLabel="Hora de fin"
               placeholder="hh:mm"
               appendTo="body"
               [timeOnly]="true"
+              [showIcon]="true"
               hourFormat="24"
               [fluid]="true"
               [ngModel]="sessionEnd()"
@@ -570,7 +577,7 @@
       <button
         type="button"
         class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
-        (click)="closeSessionDialog()"
+        (click)="frame.requestClose()"
       >
         Cancelar
       </button>
