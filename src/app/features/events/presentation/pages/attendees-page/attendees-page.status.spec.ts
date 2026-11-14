@@ -233,6 +233,19 @@ describe('AttendeesPage — estado de inscripción', () => {
     expect(lastConfirm).toBeNull();
   });
 
+  it('escribe los filtros en la URL sin añadir historial', () => {
+    const router = TestBed.inject(Router);
+    page.setFilter('status', 'PENDING');
+    page.setFilter('proof', 'WITH_PROOF');
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        replaceUrl: true,
+        queryParams: expect.objectContaining({ estado: 'pendiente', comprobante: 'con' }),
+      }),
+    );
+  });
+
   it('filtra por estado con conteos y mantiene la lista completa para exportar', async () => {
     expect(page.statusOptions().map((o) => o.label)).toEqual([
       'Todos los estados (3)',

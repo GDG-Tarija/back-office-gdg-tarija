@@ -330,6 +330,7 @@
                 <p-tag
                   [value]="statusLabel(attendee.status)"
                   [severity]="statusSeverity(attendee.status)"
+                  styleClass="whitespace-nowrap"
                 />
               </div>
               <div class="flex flex-wrap items-center gap-2">
@@ -462,6 +463,7 @@
                 <p-tag
                   [value]="statusLabel(attendee.status)"
                   [severity]="statusSeverity(attendee.status)"
+                  styleClass="whitespace-nowrap"
                 />
               </td>
               <td class="text-sm">
@@ -596,6 +598,7 @@
   [style]="{ width: '90vw', 'max-width': '650px' }"
   [draggable]="false"
   [resizable]="false"
+  styleClass="[&_.p-dialog-header]:!p-5 [&_.p-dialog-content]:!px-5 [&_.p-dialog-footer]:!p-5"
 >
   @if (selectedAttendee(); as attendee) {
     <div class="space-y-6 py-2">

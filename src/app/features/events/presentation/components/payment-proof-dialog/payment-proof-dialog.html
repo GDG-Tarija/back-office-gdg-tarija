@@ -10,7 +10,7 @@
   [focusTrap]="true"
   [style]="{ width: '96vw', 'max-width': '70rem' }"
   [breakpoints]="{ '768px': '100vw' }"
-  styleClass="max-md:!h-dvh max-md:!max-h-dvh max-md:!rounded-none"
+  styleClass="max-md:!h-dvh max-md:!max-h-dvh max-md:!rounded-none [&_.p-dialog-header]:!p-4 [&_.p-dialog-footer]:!p-4"
   [contentStyle]="{ padding: '0' }"
 >
   @if (attendee(); as a) {
@@ -244,73 +244,75 @@
     </div>
   }
   <ng-template pTemplate="footer">
-    @if (attendee(); as a) {
-      @if (error(); as err) {
-        <p class="mb-2 text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
-      }
-      @if (canAct()) {
-        @if (pendingAction(); as action) {
-          <div class="flex flex-col gap-3" role="alertdialog" aria-label="Confirmar acción">
-            <p class="text-sm font-semibold text-text-primary dark:text-neutral-100">
-              @if (action === 'confirm') {
-                ¿Confirmar el pago de {{ name() }} por {{ a.amountDue | bs }}? Verifica que el monto
-                del comprobante coincida.
-              } @else {
-                ¿Anular la inscripción de {{ name() }}? Libera su cupo y puedes restaurarla después
-                cambiando el estado.
-              }
-            </p>
+    <div class="w-full text-left">
+      @if (attendee(); as a) {
+        @if (error(); as err) {
+          <p class="mb-2 text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
+        }
+        @if (canAct()) {
+          @if (pendingAction(); as action) {
+            <div class="flex flex-col gap-3" role="alertdialog" aria-label="Confirmar acción">
+              <p class="text-sm font-semibold text-text-primary dark:text-neutral-100">
+                @if (action === 'confirm') {
+                  ¿Confirmar el pago de {{ name() }} por {{ a.amountDue | bs }}? Verifica que el
+                  monto del comprobante coincida.
+                } @else {
+                  ¿Anular la inscripción de {{ name() }}? Libera su cupo y puedes restaurarla
+                  después cambiando el estado.
+                }
+              </p>
+              <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  (click)="dismissAction()"
+                  [disabled]="busy()"
+                  class="inline-flex min-h-11 items-center justify-center rounded-full border border-black/15 px-5 text-sm font-semibold text-text-primary hover:bg-neutral-100 disabled:opacity-50 dark:border-white/20 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                >
+                  Volver
+                </button>
+                <button
+                  type="button"
+                  (click)="runAction()"
+                  [disabled]="busy()"
+                  class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+                  [class]="
+                    action === 'confirm'
+                      ? 'bg-action text-on-action hover:bg-action-hover'
+                      : 'bg-error-text text-white hover:opacity-90'
+                  "
+                >
+                  {{ action === 'confirm' ? 'Sí, confirmar pago' : 'Sí, anular' }}
+                </button>
+              </div>
+            </div>
+          } @else {
             <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                (click)="dismissAction()"
+                (click)="startAction('cancel')"
                 [disabled]="busy()"
-                class="inline-flex min-h-11 items-center justify-center rounded-full border border-black/15 px-5 text-sm font-semibold text-text-primary hover:bg-neutral-100 disabled:opacity-50 dark:border-white/20 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-danger-text px-5 text-sm font-semibold text-danger-text hover:bg-error-bg disabled:opacity-50"
               >
-                Volver
+                <span class="material-symbols-rounded text-lg" aria-hidden="true">block</span>
+                Anular
               </button>
               <button
                 type="button"
-                (click)="runAction()"
+                (click)="startAction('confirm')"
                 [disabled]="busy()"
-                class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
-                [class]="
-                  action === 'confirm'
-                    ? 'bg-action text-on-action hover:bg-action-hover'
-                    : 'bg-error-text text-white hover:opacity-90'
-                "
+                class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-action px-5 text-sm font-semibold text-on-action hover:bg-action-hover disabled:opacity-50"
               >
-                {{ action === 'confirm' ? 'Sí, confirmar pago' : 'Sí, anular' }}
+                <span class="material-symbols-rounded text-lg" aria-hidden="true">task_alt</span>
+                Confirmar pago
               </button>
             </div>
-          </div>
+          }
         } @else {
-          <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              (click)="startAction('cancel')"
-              [disabled]="busy()"
-              class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-danger-text px-5 text-sm font-semibold text-danger-text hover:bg-error-bg disabled:opacity-50"
-            >
-              <span class="material-symbols-rounded text-lg" aria-hidden="true">block</span>
-              Anular
-            </button>
-            <button
-              type="button"
-              (click)="startAction('confirm')"
-              [disabled]="busy()"
-              class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-action px-5 text-sm font-semibold text-on-action hover:bg-action-hover disabled:opacity-50"
-            >
-              <span class="material-symbols-rounded text-lg" aria-hidden="true">task_alt</span>
-              Confirmar pago
-            </button>
-          </div>
+          <p class="text-sm text-text-secondary dark:text-neutral-300">
+            Esta inscripción está {{ statusLabel().toLowerCase() }}.
+          </p>
         }
-      } @else {
-        <p class="text-sm text-text-secondary dark:text-neutral-300">
-          Esta inscripción está {{ statusLabel().toLowerCase() }}.
-        </p>
       }
-    }
+    </div>
   </ng-template>
 </p-dialog>
