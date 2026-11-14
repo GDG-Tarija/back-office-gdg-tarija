@@ -122,6 +122,7 @@ export function countByStatus(regs: DashboardRegistration[], status: string): nu
   return regs.filter((r) => r.status.toUpperCase() === status).length;
 }
 
+/** Mismo criterio que el filtro de Asistentes `?estado=pendiente&comprobante=con`: sin mirar rol ni monto. */
 export function proofsToReview(
   events: DashboardEvent[],
   regs: DashboardRegistration[],
@@ -129,9 +130,7 @@ export function proofsToReview(
   const titles = new Map(events.map((e) => [e.id, e.title]));
   const counts = new Map<string, number>();
   for (const r of regs) {
-    if (r.status.toUpperCase() !== 'PENDING' || !isAttendee(r) || r.amountDue <= 0 || !r.hasProof) {
-      continue;
-    }
+    if (r.status.toUpperCase() !== 'PENDING' || !r.hasProof) continue;
     counts.set(r.eventId, (counts.get(r.eventId) ?? 0) + 1);
   }
   return [...counts.entries()]

@@ -1,3 +1,6 @@
+import { registerLocaleData } from '@angular/common';
+import localeEsBo from '@angular/common/locales/es-BO';
+
 import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
@@ -6,6 +9,8 @@ import { AssetsRepository } from '../../../domain/assets.repository';
 import { TicketType } from '../../../domain/ticket-type.model';
 import { TicketTypesRepository } from '../../../domain/ticket-types.repository';
 import { TicketTypesEditor } from './ticket-types-editor';
+
+registerLocaleData(localeEsBo, 'es-BO');
 
 const base: TicketType = {
   id: 't1',

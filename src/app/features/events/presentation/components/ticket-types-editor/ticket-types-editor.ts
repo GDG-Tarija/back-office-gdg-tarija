@@ -24,6 +24,7 @@ import {
   buildErrorSummary,
 } from '../../../../../shared/utils/error-summary';
 import { focusField } from '../../../../../shared/utils/focus';
+import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
 import { DialogFrame } from '../../../../../shared/components/dialog-frame/dialog-frame';
 import { errorField, toUserMessage } from '../../../data/postgres-error.mapper';
 import { AssetCleanupTracker } from '../../../domain/asset-cleanup';
@@ -56,7 +57,15 @@ import { ImageUploader } from '../image-uploader/image-uploader';
 @Component({
   selector: 'app-ticket-types-editor',
   standalone: true,
-  imports: [FormField, InputTextModule, TooltipModule, DialogFrame, ErrorSummary, ImageUploader],
+  imports: [
+    BsPipe,
+    FormField,
+    InputTextModule,
+    TooltipModule,
+    DialogFrame,
+    ErrorSummary,
+    ImageUploader,
+  ],
   templateUrl: './ticket-types-editor.html',
 })
 export class TicketTypesEditor implements OnInit, OnDestroy {

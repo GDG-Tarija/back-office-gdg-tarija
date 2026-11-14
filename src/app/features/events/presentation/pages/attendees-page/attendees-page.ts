@@ -198,6 +198,14 @@ export class AttendeesPage implements OnInit {
     });
   }
 
+  /** Un `?entrada=` que no existe en este evento dejaría la lista vacía sin explicación. */
+  private dropUnknownEntryFilter(): void {
+    const filters = this.filters();
+    if (!filters.entry) return;
+    if (this.entryOptions().some((o) => o.value === filters.entry)) return;
+    this.applyFilters({ ...filters, entry: '' });
+  }
+
   private advancedFilterCount(f: AttendeeFilters): number {
     return [f.role !== '', f.entry !== '', f.checkin !== 'ALL', f.proof !== 'ALL'].filter(Boolean)
       .length;
@@ -303,6 +311,7 @@ export class AttendeesPage implements OnInit {
 
       this.event.set(eventData);
       this.attendees.set(attendeesData);
+      this.dropUnknownEntryFilter();
     } catch (err) {
       console.error(err);
       if (token === this.loadToken) {
