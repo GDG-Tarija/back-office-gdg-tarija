@@ -1,21 +1,19 @@
 import { Component, OnInit, inject, signal, computed, viewChild } from '@angular/core';
-import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { PaginatorModule, PaginatorState } from 'primeng/paginator';
 import { Menu, MenuModule } from 'primeng/menu';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ToastModule } from 'primeng/toast';
-import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
+import { MenuItem } from 'primeng/api';
 
 import { EventsRepository } from '../../../domain/events.repository';
 import { RegistrationsRepository } from '../../../domain/registrations.repository';
@@ -25,16 +23,15 @@ import {
   RegistrationStatus,
   parseRegistrationStatus,
   registrationStatusLabel,
+  registrationStatusSeverity,
 } from '../../../domain/registration-status';
-import {
-  REGISTRATION_STATUS_UI_KEY,
-  RegistrationStatusController,
-} from './registration-status-controller';
+import { RegistrationStatusController } from './registration-status-controller';
 import { EventsApi } from '../../../data/events.api';
 import { Event, Attendee, AttendeeSessionItem } from '../../../domain/event.model';
 import {
   AttendeeFilters,
   EMPTY_FILTERS,
+  attendeeFiltersToParams,
   attendeeFullName,
   attendeeInitials,
   computeStats,
@@ -43,20 +40,34 @@ import {
   expectsProof,
   filterAttendees,
   hasActiveFilters,
+  parseAttendeeFilters,
 } from '../../../domain/attendee-payment';
 import {
-  formatCustomResponseLabel,
-  getAttendeeRoleSeverity,
-  getAttendeeStatusSeverity,
-  translateAttendeeRole,
-  translateAttendeeStatus,
-} from '../../../domain/attendee-search';
+  ATTENDEE_ROLE_OPTIONS,
+  attendeeRoleLabel,
+  attendeeRoleSeverity,
+} from '../../../domain/attendee-role';
+import { buildAttendeeExport, toCsv } from '../../../domain/attendee-export';
+import { formatCustomResponseLabel } from '../../../domain/attendee-search';
 import { ScanMode, ScanResult } from '../../../../checkin/domain/checkin.model';
 import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
 import { CheckinApi } from '../../../../checkin/data/checkin.api';
 import { AuthService } from '../../../../../core/auth/services/auth.service';
+import { FeedbackService } from '../../../../../core/services/feedback.service';
+import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
+import { MOBILE_QUERY, mediaQuerySignal } from '../../../../../shared/utils/media-query';
 import { EventHeader } from '../../components/event-header/event-header';
 import { PaymentProofDialog } from '../../components/payment-proof-dialog/payment-proof-dialog';
+
+/** Columnas que el organizador puede mostrar u ocultar (las demás son fijas). */
+const OPTIONAL_COLUMNS: { key: string; label: string }[] = [
+  { key: 'role', label: 'Rol' },
+  { key: 'contact', label: 'Contacto' },
+  { key: 'registeredAt', label: 'Fecha de inscripción' },
+  { key: 'id', label: 'ID de inscripción' },
+];
+
+const PAGE_SIZE = 25;
 
 @Component({
   selector: 'app-attendees-page',
@@ -67,26 +78,21 @@ import { PaymentProofDialog } from '../../components/payment-proof-dialog/paymen
     TableModule,
     ButtonModule,
     InputTextModule,
-    IconFieldModule,
-    InputIconModule,
-    ProgressSpinnerModule,
     TagModule,
     DialogModule,
     MenuModule,
-    ConfirmDialogModule,
-    ToastModule,
     SelectModule,
+    MultiSelectModule,
+    PaginatorModule,
     EventHeader,
     PaymentProofDialog,
     DatePipe,
-    CurrencyPipe,
+    BsPipe,
   ],
   providers: [
     { provide: EventsRepository, useClass: EventsApi },
     { provide: RegistrationsRepository, useClass: RegistrationsApi },
     { provide: CheckinRepository, useClass: CheckinApi },
-    ConfirmationService,
-    MessageService,
     RegistrationStatusController,
   ],
   templateUrl: './attendees-page.html',
@@ -98,12 +104,19 @@ export class AttendeesPage implements OnInit {
   private readonly eventsRepo = inject(EventsRepository);
   private readonly checkinRepo = inject(CheckinRepository);
   private readonly auth = inject(AuthService);
+  private readonly feedback = inject(FeedbackService);
+
+  /** En ≤ 768 px las filas pasan a tarjetas (mismo patrón que la lista de eventos). */
+  readonly isMobile = mediaQuerySignal(MOBILE_QUERY);
+  readonly pageSize = PAGE_SIZE;
 
   readonly event = signal<Event | null>(null);
   readonly attendees = signal<Attendee[]>([]);
+  /** Carga inicial: solo ahí se reemplaza la página por un indicador. */
   readonly loading = signal<boolean>(false);
+  /** Recarga con la lista a la vista. */
+  readonly refreshing = signal<boolean>(false);
   readonly errorMsg = signal<string | null>(null);
-  readonly copiedId = signal<string | null>(null);
   private loadToken = 0;
   private detailToken = 0;
   readonly actionError = signal<string | null>(null);
@@ -116,10 +129,23 @@ export class AttendeesPage implements OnInit {
   readonly actionLoading = signal<boolean>(false);
 
   // Filtros de la lista (se aplican sobre todos los inscritos, no solo la página visible)
-  readonly filters = signal<AttendeeFilters>({ ...EMPTY_FILTERS });
+  readonly filters = signal<AttendeeFilters>(
+    parseAttendeeFilters(this.route.snapshot.queryParamMap),
+  );
   readonly first = signal(0);
   readonly filteredAttendees = computed(() => filterAttendees(this.attendees(), this.filters()));
   readonly filtersActive = computed(() => hasActiveFilters(this.filters()));
+  readonly pageAttendees = computed(() =>
+    this.filteredAttendees().slice(this.first(), this.first() + PAGE_SIZE),
+  );
+
+  /** "Más filtros": rol, entrada, check-in y comprobante. Se abre solo si alguno está activo. */
+  readonly moreFiltersOpen = signal(this.advancedFilterCount(this.filters()) > 0);
+  readonly advancedCount = computed(() => this.advancedFilterCount(this.filters()));
+
+  readonly optionalColumns = OPTIONAL_COLUMNS;
+  readonly visibleOptional = signal<string[]>([]);
+  readonly showColumn = (key: string): boolean => this.visibleOptional().includes(key);
 
   readonly statusOptions = computed(() => {
     const stats = this.stats();
@@ -131,26 +157,22 @@ export class AttendeesPage implements OnInit {
     return [
       { label: `Todos los estados (${stats.total})`, value: '' },
       ...REGISTRATION_STATUS_OPTIONS.map((o) => ({
-        label: `${o.filterLabel} (${counts[o.value]})`,
+        label: `${o.pluralLabel} (${counts[o.value]})`,
         value: o.value as string,
       })),
     ];
   });
   readonly roleOptions = [
     { label: 'Todos los roles', value: '' },
-    { label: 'Asistente', value: 'ATTENDEE' },
-    { label: 'Expositor', value: 'SPEAKER' },
-    { label: 'Voluntario', value: 'VOLUNTEER' },
-    { label: 'Staff', value: 'STAFF' },
-    { label: 'Organizador', value: 'ORGANIZER' },
+    ...ATTENDEE_ROLE_OPTIONS.map((o) => ({ label: o.label, value: o.value as string })),
   ];
   readonly checkinOptions = [
-    { label: 'Check-in: todos', value: 'ALL' },
-    { label: 'Ya asistió', value: 'CHECKED_IN' },
-    { label: 'Aún no asistió', value: 'NOT_CHECKED_IN' },
+    { label: 'Todos', value: 'ALL' },
+    { label: 'Con check-in', value: 'CHECKED_IN' },
+    { label: 'Sin check-in', value: 'NOT_CHECKED_IN' },
   ];
   readonly proofOptions = [
-    { label: 'Comprobante: todos', value: 'ALL' },
+    { label: 'Todos', value: 'ALL' },
     { label: 'Con comprobante', value: 'WITH_PROOF' },
     { label: 'Sin comprobante', value: 'WITHOUT_PROOF' },
   ];
@@ -161,74 +183,95 @@ export class AttendeesPage implements OnInit {
       .map((key) => ({ label: key, value: key })),
   ]);
 
+  /** Claves de URL que esta página escribió y cuyo eco no debe reaplicarse (evita pisar lo que se teclea). */
+  private readonly writtenParams = new Set<string>();
+
+  constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const next = parseAttendeeFilters(params);
+      const key = JSON.stringify(attendeeFiltersToParams(next));
+      if (this.writtenParams.delete(key)) return;
+      if (key === JSON.stringify(attendeeFiltersToParams(this.filters()))) return;
+      this.filters.set(next);
+      this.first.set(0);
+      if (this.advancedFilterCount(next) > 0) this.moreFiltersOpen.set(true);
+    });
+  }
+
+  private advancedFilterCount(f: AttendeeFilters): number {
+    return [f.role !== '', f.entry !== '', f.checkin !== 'ALL', f.proof !== 'ALL'].filter(Boolean)
+      .length;
+  }
+
   setFilter<K extends keyof AttendeeFilters>(key: K, value: AttendeeFilters[K]): void {
-    this.filters.update((f) => ({ ...f, [key]: value }));
-    this.first.set(0);
+    this.applyFilters({ ...this.filters(), [key]: value });
   }
 
   clearFilters(): void {
-    this.filters.set({ ...EMPTY_FILTERS });
+    this.applyFilters({ ...EMPTY_FILTERS });
+  }
+
+  /** Filtros y URL van juntos: recargar o compartir el enlace conserva la vista. */
+  private applyFilters(next: AttendeeFilters): void {
+    this.filters.set(next);
     this.first.set(0);
+    const params = attendeeFiltersToParams(next);
+    this.writtenParams.add(JSON.stringify(params));
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: params,
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
-  copyToClipboard(id: string): void {
-    if (!navigator.clipboard) return;
-    navigator.clipboard
-      .writeText(id)
-      .then(() => {
-        this.copiedId.set(id);
-        setTimeout(() => {
-          if (this.copiedId() === id) {
-            this.copiedId.set(null);
-          }
-        }, 2000);
-      })
-      .catch(() => undefined);
+  onPage(event: PaginatorState): void {
+    this.first.set(event.first ?? 0);
   }
 
-  // KPIs sobre todos los inscritos (no cambian con los filtros); un clic en la tarjeta filtra.
+  // KPIs sobre todos los inscritos (no cambian con los filtros); un clic en el chip filtra.
   readonly stats = computed(() => computeStats(this.attendees()));
+
+  /** Chips de resumen. "Pendientes de pago" se destaca: es lo que hay que revisar. */
+  readonly summaryChips = computed(() => {
+    const stats = this.stats();
+    return [
+      ...REGISTRATION_STATUS_OPTIONS.map((o) => ({
+        label: o.pluralLabel,
+        value: { CONFIRMED: stats.confirmed, PENDING: stats.pending, CANCELLED: stats.cancelled }[
+          o.value
+        ],
+        status: o.value as string,
+        highlight: o.value === 'PENDING',
+      })),
+      { label: 'Con check-in', value: stats.checkedIn, status: '', highlight: false },
+    ];
+  });
+
+  isChipActive(chip: { status: string }): boolean {
+    return chip.status
+      ? this.filters().status === chip.status
+      : this.filters().checkin === 'CHECKED_IN';
+  }
+
+  toggleChip(chip: { status: string }): void {
+    if (chip.status) {
+      this.setFilter('status', this.filters().status === chip.status ? '' : chip.status);
+    } else {
+      this.setFilter('checkin', this.filters().checkin === 'CHECKED_IN' ? 'ALL' : 'CHECKED_IN');
+    }
+  }
 
   readonly fullName = attendeeFullName;
   readonly initials = attendeeInitials;
   readonly entryLabel = entryLabel;
   readonly expectsProof = expectsProof;
 
-  // unique custom response keys computed from all attendees
-  readonly customResponseKeys = computed<string[]>(() => {
-    const keysSet = new Set<string>();
-    this.attendees().forEach((attendee) => {
-      if (attendee.customResponses) {
-        Object.keys(attendee.customResponses).forEach((k) => keysSet.add(k));
-      }
-    });
-
-    const orderedKeys = [
-      'discovery_source',
-      'experience_level',
-      'has_laptop',
-      'dietary_restrictions',
-      'additional_notes',
-    ];
-
-    return Array.from(keysSet).sort((a, b) => {
-      const idxA = orderedKeys.indexOf(a);
-      const idxB = orderedKeys.indexOf(b);
-
-      if (idxA !== -1 && idxB !== -1) {
-        return idxA - idxB;
-      }
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.localeCompare(b);
-    });
-  });
-
   // Estado de la inscripción (issue #7): tabla y detalle usan el mismo controlador.
   readonly statusCtl = inject(RegistrationStatusController);
-  readonly statusUiKey = REGISTRATION_STATUS_UI_KEY;
   readonly statusMenuItems = signal<MenuItem[]>([]);
   private readonly statusMenu = viewChild<Menu>('statusMenu');
+  private readonly exportMenu = viewChild<Menu>('exportMenu');
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -241,7 +284,9 @@ export class AttendeesPage implements OnInit {
 
   async loadData(eventId: string): Promise<void> {
     const token = ++this.loadToken;
-    this.loading.set(true);
+    const initial = !this.event();
+    if (initial) this.loading.set(true);
+    else this.refreshing.set(true);
     this.errorMsg.set(null);
 
     try {
@@ -261,15 +306,34 @@ export class AttendeesPage implements OnInit {
     } catch (err) {
       console.error(err);
       if (token === this.loadToken) {
-        this.errorMsg.set('Ocurrió un error al cargar la información. Intente de nuevo.');
+        if (initial) {
+          this.errorMsg.set('Ocurrió un error al cargar la información. Inténtalo de nuevo.');
+        } else {
+          this.feedback.error('No se pudo actualizar la lista. Inténtalo de nuevo.');
+        }
       }
     } finally {
-      if (token === this.loadToken) this.loading.set(false);
+      if (token === this.loadToken) {
+        this.loading.set(false);
+        this.refreshing.set(false);
+      }
     }
   }
 
   statusLabel(status: string): string {
     return registrationStatusLabel(status);
+  }
+
+  statusSeverity(status: string) {
+    return registrationStatusSeverity(status);
+  }
+
+  roleLabel(role: string): string {
+    return attendeeRoleLabel(role);
+  }
+
+  roleSeverity(role: string) {
+    return attendeeRoleSeverity(role);
   }
 
   isCurrentStatus(attendee: Attendee, status: RegistrationStatus): boolean {
@@ -280,7 +344,7 @@ export class AttendeesPage implements OnInit {
     if (!this.statusCtl.canEdit()) return;
     this.statusMenuItems.set([
       {
-        label: 'Cambiar estado',
+        label: `Inscripción de ${this.fullName(attendee)}`,
         items: this.statusCtl.options.map((o) => ({
           label: o.actionLabel,
           disabled: this.isCurrentStatus(attendee, o.value),
@@ -297,7 +361,7 @@ export class AttendeesPage implements OnInit {
     attendee: Attendee,
     status: RegistrationStatus,
     options?: { skipConfirmation?: boolean },
-  ): Promise<void> {
+  ): Promise<boolean> {
     const current = this.attendees().find((a) => a.id === attendee.id) ?? attendee;
     const saved = await this.statusCtl.change(
       {
@@ -309,9 +373,10 @@ export class AttendeesPage implements OnInit {
       status,
       options,
     );
-    if (!saved) return;
+    if (!saved) return false;
 
     this.patchAttendee(saved.id, { status: saved.status });
+    return true;
   }
 
   reload(): void {
@@ -323,28 +388,17 @@ export class AttendeesPage implements OnInit {
     this.router.navigate(['/events']);
   }
 
-  getRoleSeverity(role: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    return getAttendeeRoleSeverity(role);
+  /** Etiqueta del formulario del evento; si el campo ya no existe, una versión legible de la clave. */
+  responseLabel(key: string): string {
+    return (
+      this.event()?.formFields.find((f) => f.key === key)?.label ?? formatCustomResponseLabel(key)
+    );
   }
 
-  getStatusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    return getAttendeeStatusSeverity(status);
-  }
-
-  translateRole(role: string): string {
-    return translateAttendeeRole(role);
-  }
-
-  translateStatus(status: string): string {
-    return translateAttendeeStatus(status);
-  }
-
-  formatResponseKey(key: string | number | symbol): string {
-    return formatCustomResponseLabel(key);
-  }
-
-  hasCustomResponses(attendee: Attendee): boolean {
-    return !!attendee.customResponses && Object.keys(attendee.customResponses).length > 0;
+  responseEntries(attendee: Attendee): { key: string; label: string; value: unknown }[] {
+    return Object.entries(attendee.customResponses ?? {})
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+      .map(([key, value]) => ({ key, label: this.responseLabel(key), value }));
   }
 
   // Revisión de comprobantes: cola fija de ids al abrir (sigue estable aunque cambien los filtros)
@@ -354,6 +408,10 @@ export class AttendeesPage implements OnInit {
     const id = this.proofId();
     return !!id && this.statusCtl.isSaving(id);
   });
+  readonly proofError = computed(() => {
+    const err = this.statusCtl.lastError();
+    return err && err.id === this.proofId() ? err.message : null;
+  });
   readonly proofAttendee = computed(() => {
     const id = this.proofId();
     return id ? (this.attendees().find((a) => a.id === id) ?? null) : null;
@@ -362,6 +420,11 @@ export class AttendeesPage implements OnInit {
     const id = this.proofId();
     return id ? this.proofQueue().indexOf(id) + 1 : 0;
   });
+  readonly pendingWithProof = computed(() =>
+    this.attendees().filter(
+      (a) => !!a.paymentProofUrl && parseRegistrationStatus(a.status) === 'PENDING',
+    ),
+  );
 
   openProof(attendee: Attendee): void {
     if (!attendee.paymentProofUrl) return;
@@ -370,6 +433,14 @@ export class AttendeesPage implements OnInit {
       .map((a) => a.id);
     this.proofQueue.set(queue.includes(attendee.id) ? queue : [attendee.id]);
     this.proofId.set(attendee.id);
+  }
+
+  /** Cola de comprobantes de pagos pendientes, independiente de los filtros de la lista. */
+  openPendingReview(): void {
+    const queue = this.pendingWithProof().map((a) => a.id);
+    if (queue.length === 0) return;
+    this.proofQueue.set(queue);
+    this.proofId.set(queue[0]);
   }
 
   closeProof(): void {
@@ -383,14 +454,31 @@ export class AttendeesPage implements OnInit {
     this.proofId.set(next);
   }
 
+  /** Pasa al siguiente comprobante pendiente de la cola; si no queda ninguno, cierra el visor. */
+  private advanceProof(currentId: string): void {
+    const queue = this.proofQueue();
+    const index = queue.indexOf(currentId);
+    const isPending = (id: string) =>
+      parseRegistrationStatus(this.attendees().find((a) => a.id === id)?.status) === 'PENDING';
+    const next = [...queue.slice(index + 1), ...queue.slice(0, Math.max(index, 0))].find(isPending);
+    if (next) {
+      this.proofId.set(next);
+    } else {
+      this.closeProof();
+      this.feedback.success('No quedan comprobantes pendientes de revisar.');
+    }
+  }
+
   /** Desde el visor: mismo camino que la tabla y el detalle (RegistrationStatusController). */
   async confirmPayment(attendee: Attendee): Promise<void> {
-    await this.changeStatus(attendee, 'CONFIRMED');
+    if (await this.changeStatus(attendee, 'CONFIRMED')) this.advanceProof(attendee.id);
   }
 
   /** El visor ya pidió confirmación propia: no se vuelve a preguntar. */
   async cancelFromProof(attendee: Attendee): Promise<void> {
-    await this.changeStatus(attendee, 'CANCELLED', { skipConfirmation: true });
+    if (await this.changeStatus(attendee, 'CANCELLED', { skipConfirmation: true })) {
+      this.advanceProof(attendee.id);
+    }
   }
 
   /** Actualiza la fila en la lista y en el detalle abierto, si es la misma inscripción. */
@@ -406,233 +494,78 @@ export class AttendeesPage implements OnInit {
     return trimmed.startsWith('http://') || trimmed.startsWith('https://');
   }
 
-  isBooleanTrue(val: unknown): boolean {
-    if (val === true || val === 'true') return true;
-    if (typeof val === 'string') {
-      const lower = val.trim().toLowerCase();
-      return lower === 'yes' || lower === 'si' || lower === 'sí' || lower === 'on' || lower === '1';
-    }
-    return false;
+  responseText(val: unknown): string {
+    if (val === true || val === 'true') return 'Sí';
+    if (val === false || val === 'false') return 'No';
+    return Array.isArray(val) ? val.join(', ') : String(val);
   }
 
-  isBooleanFalse(val: unknown): boolean {
-    if (val === false || val === 'false') return true;
-    if (typeof val === 'string') {
-      const lower = val.trim().toLowerCase();
-      return lower === 'no' || lower === 'off' || lower === '0';
-    }
-    return false;
+  // Exportación (siempre sobre los inscritos filtrados)
+  readonly exportItems = computed<MenuItem[]>(() => {
+    const count = this.filteredAttendees().length;
+    const suffix = this.filtersActive() ? ` (${count})` : '';
+    return [
+      {
+        label: `CSV${suffix}`,
+        icon: 'pi pi-file',
+        disabled: count === 0,
+        command: () => this.exportToCSV(),
+      },
+      {
+        label: `Excel${suffix}`,
+        icon: 'pi pi-file-excel',
+        disabled: count === 0,
+        command: () => void this.exportToExcel(),
+      },
+    ];
+  });
+
+  toggleExportMenu(event: MouseEvent): void {
+    this.exportMenu()?.toggle(event);
+  }
+
+  private exportName(extension: string): string {
+    return `asistentes_${this.event()?.slug || 'asistentes'}.${extension}`;
   }
 
   exportToCSV(): void {
-    const attendeesList = this.filteredAttendees();
-    if (!attendeesList || attendeesList.length === 0) {
-      return;
+    const list = this.filteredAttendees();
+    if (list.length === 0) return;
+    try {
+      const table = buildAttendeeExport(list, this.event()?.formFields ?? []);
+      const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), toCsv(table)], {
+        type: 'text/csv;charset=utf-8;',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', this.exportName('csv'));
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      this.feedback.success(`CSV descargado: ${list.length} inscritos.`);
+    } catch (err) {
+      console.error('Error al exportar a CSV:', err);
+      this.feedback.error('No se pudo generar el CSV. Inténtalo de nuevo.');
     }
-
-    const headers = [
-      'first_name',
-      'last_name',
-      'email',
-      'checked_in',
-      'job_title',
-      'company',
-      'ticket_type',
-      'ticket_phase',
-      'amount_due',
-      'status',
-      'trae_computadora',
-    ];
-
-    const getValueByPattern = (
-      customResponses: Record<string, unknown> | null,
-      patterns: string[],
-    ): string => {
-      if (!customResponses) return '';
-      const keys = Object.keys(customResponses);
-
-      // 1. Try exact or lowercase matches first
-      for (const pattern of patterns) {
-        const lowercasePattern = pattern.toLowerCase();
-        for (const key of keys) {
-          if (key.toLowerCase() === lowercasePattern) {
-            return String(customResponses[key] ?? '');
-          }
-        }
-      }
-
-      // 2. Try partial matches (key contains pattern or pattern contains key)
-      for (const pattern of patterns) {
-        const lowercasePattern = pattern.toLowerCase();
-        for (const key of keys) {
-          const lowercaseKey = key.toLowerCase();
-          if (lowercaseKey.includes(lowercasePattern) || lowercasePattern.includes(lowercaseKey)) {
-            return String(customResponses[key] ?? '');
-          }
-        }
-      }
-
-      return '';
-    };
-
-    const escapeCSVValue = (val: unknown): string => {
-      if (val === null || val === undefined) return '';
-      let str = String(val);
-      // Evita que Excel interprete texto del usuario como fórmula (=, +, -, @).
-      if (/^[=+\-@]/.test(str) && !/^[+-]?\d/.test(str)) str = `'${str}`;
-      str = str.replace(/"/g, '""');
-      if (
-        str.includes(',') ||
-        str.includes('"') ||
-        str.includes('\n') ||
-        str.includes('\r') ||
-        str.includes('\t')
-      ) {
-        return `"${str}"`;
-      }
-      return str;
-    };
-
-    const rows = attendeesList.map((attendee) => {
-      const responses = attendee.customResponses;
-
-      const firstName = attendee.firstName;
-      const lastName = attendee.lastName;
-      const email = attendee.email;
-      const checkedIn = attendee.checkedIn ? 'TRUE' : 'FALSE';
-
-      const jobTitle = getValueByPattern(responses, [
-        'job_title',
-        'occupation',
-        'ocupacion',
-        'ocupación',
-        'cargo',
-        'trabajo',
-        'puesto',
-        'title',
-      ]);
-
-      const company = getValueByPattern(responses, [
-        'company',
-        'organization',
-        'empresa',
-        'institucion',
-        'institución',
-        'organizacion',
-        'organización',
-      ]);
-
-      const ticketType = attendee.ticketName;
-      const ticketPhase = attendee.phaseName ?? '';
-      const amountDue = attendee.couponId ? '0 (cupón)' : String(attendee.amountDue);
-      const status = this.translateStatus(attendee.status);
-
-      const rawBringsComputer = getValueByPattern(responses, [
-        'computer',
-        'laptop',
-        'computadora',
-        'compu',
-        'has_laptop',
-        'llevar_computadora',
-        'traeras_computadora',
-        'llevaras_computadora',
-        'llevaras_laptop',
-      ]);
-      const bringsComputer = this.isBooleanTrue(rawBringsComputer)
-        ? 'Sí'
-        : this.isBooleanFalse(rawBringsComputer)
-          ? 'No'
-          : String(rawBringsComputer ?? '');
-
-      return [
-        firstName,
-        lastName,
-        email,
-        checkedIn,
-        jobTitle,
-        company,
-        ticketType,
-        ticketPhase,
-        amountDue,
-        status,
-        bringsComputer,
-      ].map(escapeCSVValue);
-    });
-
-    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
-
-    const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
-      type: 'text/csv;charset=utf-8;',
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    const eventSlug = this.event()?.slug || 'asistentes';
-    link.setAttribute('href', url);
-    link.setAttribute('download', `asistentes_${eventSlug}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   }
 
   async exportToExcel(): Promise<void> {
-    const attendeesList = this.filteredAttendees();
-    if (!attendeesList || attendeesList.length === 0) {
-      return;
-    }
-
-    const customKeys = this.customResponseKeys();
-
-    const dataRows = attendeesList.map((attendee) => {
-      const responses = attendee.customResponses;
-
-      const rowData: Record<string, string | number> = {
-        Nombre: attendee.firstName,
-        Apellido: attendee.lastName,
-        Correo: attendee.email,
-        Teléfono: attendee.phone || '',
-        Rol: this.translateRole(attendee.role),
-        Estado: this.translateStatus(attendee.status),
-        'Tipo de Entrada': attendee.ticketName,
-        Fase: attendee.phaseName ?? '',
-        'Precio del paquete (Bs)': attendee.ticketPrice,
-        'Monto a pagar (Bs)': attendee.amountDue,
-        Cupón: attendee.couponCode ?? (attendee.couponId ? 'Sí' : ''),
-        '¿Asistió?': attendee.checkedIn ? 'Sí' : 'No',
-        'Fecha Registro': attendee.registeredAt
-          ? new Date(attendee.registeredAt).toLocaleString()
-          : '',
-        'Comprobante de Pago': attendee.paymentProofUrl || '',
-      };
-
-      customKeys.forEach((key) => {
-        const columnHeader = this.formatResponseKey(key);
-        const rawValue = responses ? responses[key] : '';
-
-        const formattedValue = this.isBooleanTrue(rawValue)
-          ? 'Sí'
-          : this.isBooleanFalse(rawValue)
-            ? 'No'
-            : String(rawValue ?? '');
-
-        rowData[columnHeader] = formattedValue;
-      });
-
-      return rowData;
-    });
-
+    const list = this.filteredAttendees();
+    if (list.length === 0) return;
     try {
+      const table = buildAttendeeExport(list, this.event()?.formFields ?? []);
       const XLSX = await import('xlsx');
-      const worksheet = XLSX.utils.json_to_sheet(dataRows);
+      const worksheet = XLSX.utils.aoa_to_sheet([table.headers, ...table.rows]);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Asistentes');
-
-      const eventSlug = this.event()?.slug || 'asistentes';
-      XLSX.writeFile(workbook, `asistentes_${eventSlug}.xlsx`);
+      XLSX.writeFile(workbook, this.exportName('xlsx'));
+      this.feedback.success(`Excel descargado: ${list.length} inscritos.`);
     } catch (err) {
       console.error('Error al exportar a Excel:', err);
+      this.feedback.error('No se pudo generar el Excel. Inténtalo de nuevo.');
     }
   }
 
@@ -708,13 +641,14 @@ export class AttendeesPage implements OnInit {
       attendee,
       'checkin',
       null,
-      'No se pudo registrar el check-in. Intenta de nuevo.',
+      'No se pudo registrar el check-in. Inténtalo de nuevo.',
     );
     if (result?.success) {
       this.patchAttendee(attendee.id, {
         checkedIn: true,
         checkedInAt: result.scannedAt || new Date(),
       });
+      this.feedback.success(`Check-in registrado: ${this.fullName(attendee)}.`);
     }
   }
 
@@ -726,13 +660,14 @@ export class AttendeesPage implements OnInit {
       attendee,
       'refrigerio',
       null,
-      'No se pudo registrar la entrega. Intenta de nuevo.',
+      'No se pudo registrar la entrega. Inténtalo de nuevo.',
     );
     if (result?.success) {
       this.patchAttendee(attendee.id, {
         refrigerioDelivered: true,
         refrigerioDeliveredAt: result.scannedAt || new Date(),
       });
+      this.feedback.success(`Refrigerio entregado: ${this.fullName(attendee)}.`);
     }
   }
 
@@ -753,6 +688,7 @@ export class AttendeesPage implements OnInit {
           s.sessionId === session.sessionId ? { ...s, asistio: true, checkedInAt: now } : s,
         ),
       );
+      this.feedback.success(`Ingreso registrado: ${session.sessionTitle}.`);
     }
   }
 }
