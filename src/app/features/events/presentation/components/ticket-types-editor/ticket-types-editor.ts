@@ -73,6 +73,8 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   readonly dialogError = signal<string | null>(null);
   readonly model = signal<TicketTypeFormValue>(emptyTicketTypeFormValue());
   readonly f = form(this.model);
+  private readonly baseline = signal('');
+  readonly dirty = computed(() => JSON.stringify(this.model()) !== this.baseline());
 
   // Confirmación de borrado
   readonly toDelete = signal<TicketType | null>(null);
@@ -390,6 +392,7 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
     this.cleanup = this.newTracker();
     this.editing.set(ticket);
     this.model.set(value);
+    this.baseline.set(JSON.stringify(value));
     this.submitted.set(false);
     this.dialogError.set(null);
     this.notice.set(null);

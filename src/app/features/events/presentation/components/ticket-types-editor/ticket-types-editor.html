@@ -159,9 +159,10 @@
     [title]="editing() ? 'Editar paquete' : 'Nuevo paquete'"
     icon="confirmation_number"
     initialSize="lg"
+    [dirty]="dirty()"
     (closeDialog)="closeDialog()"
   >
-    <form class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
+    <form id="ticket-form" class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
       <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div class="flex flex-col gap-1.5 md:col-span-2">
           <label for="tt-name" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
@@ -513,10 +514,10 @@
         Cancelar
       </button>
       <button
-        type="button"
+        type="submit"
+        form="ticket-form"
         class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="saving() || (submitted() && !canSave())"
-        (click)="save()"
       >
         {{ saving() ? 'Guardando...' : 'Guardar paquete' }}
       </button>

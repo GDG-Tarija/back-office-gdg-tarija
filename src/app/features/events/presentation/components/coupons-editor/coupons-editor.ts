@@ -50,6 +50,8 @@ export class CouponsEditor implements OnInit {
   readonly dialogError = signal<string | null>(null);
   readonly model = signal<CouponFormValue>(emptyCouponFormValue());
   readonly f = form(this.model);
+  private readonly baseline = signal('');
+  readonly dirty = computed(() => JSON.stringify(this.model()) !== this.baseline());
 
   readonly toDelete = signal<Coupon | null>(null);
   readonly deleting = signal(false);
@@ -185,6 +187,7 @@ export class CouponsEditor implements OnInit {
   private openDialog(coupon: Coupon | null, value: CouponFormValue): void {
     this.editing.set(coupon);
     this.model.set(value);
+    this.baseline.set(JSON.stringify(value));
     this.submitted.set(false);
     this.dialogError.set(null);
     this.notice.set(null);

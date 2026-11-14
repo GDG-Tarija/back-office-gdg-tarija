@@ -134,9 +134,10 @@
     [title]="editing() ? 'Editar cupón' : 'Nuevo cupón'"
     icon="sell"
     initialSize="md"
+    [dirty]="dirty()"
     (closeDialog)="closeDialog()"
   >
-    <form class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
+    <form id="coupon-form" class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
       <div class="flex flex-col gap-1.5">
         <label for="cp-code" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
           >Código *</label
@@ -226,10 +227,10 @@
         Cancelar
       </button>
       <button
-        type="button"
+        type="submit"
+        form="coupon-form"
         class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="saving() || (submitted() && !canSave())"
-        (click)="save()"
       >
         {{ saving() ? 'Guardando...' : 'Guardar cupón' }}
       </button>

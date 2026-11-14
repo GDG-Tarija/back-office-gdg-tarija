@@ -112,6 +112,8 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
   readonly editingTrack = signal<Track | null>(null);
   readonly trackModel = signal<TrackFormValue>({ name: '', description: '' });
   readonly tf = form(this.trackModel);
+  private readonly trackBaseline = signal('');
+  readonly trackDirty = computed(() => JSON.stringify(this.trackModel()) !== this.trackBaseline());
   readonly trackSubmitted = signal(false);
   readonly trackSaving = signal(false);
   readonly trackDialogError = signal<string | null>(null);
@@ -144,6 +146,10 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
   readonly editingSession = signal<Session | null>(null);
   readonly sessionModel = signal<SessionFormValue>(emptySessionFormValue());
   readonly sf = form(this.sessionModel);
+  private readonly sessionBaseline = signal('');
+  readonly sessionDirty = computed(
+    () => JSON.stringify(this.sessionModel()) !== this.sessionBaseline(),
+  );
   readonly sessionSubmitted = signal(false);
   readonly sessionSaving = signal(false);
   readonly sessionDialogError = signal<string | null>(null);
@@ -309,6 +315,7 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
   private openTrackDialog(track: Track | null, value: TrackFormValue): void {
     this.editingTrack.set(track);
     this.trackModel.set(value);
+    this.trackBaseline.set(JSON.stringify(value));
     this.trackSubmitted.set(false);
     this.trackDialogError.set(null);
     this.notice.set(null);
@@ -419,6 +426,7 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
     this.cleanup = this.newTracker();
     this.editingSession.set(session);
     this.sessionModel.set(value);
+    this.sessionBaseline.set(JSON.stringify(value));
     this.sessionSubmitted.set(false);
     this.sessionDialogError.set(null);
     this.notice.set(null);
