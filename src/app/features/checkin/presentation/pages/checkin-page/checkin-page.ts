@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { Html5Qrcode } from 'html5-qrcode';
 
 import { SelectModule } from 'primeng/select';
@@ -45,6 +46,7 @@ import { AuthService } from '../../../../../core/auth/services/auth.service';
 export class CheckinPage implements OnInit, OnDestroy {
   private readonly checkinRepo = inject(CheckinRepository);
   private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
 
   private html5Qrcode: Html5Qrcode | null = null;
   private lastScannedCode: string | null = null;
@@ -113,9 +115,11 @@ export class CheckinPage implements OnInit, OnDestroy {
       const data = await this.checkinRepo.getEvents();
       this.events.set(data);
       if (data.length > 0) {
-        this.selectedEvent.set(data[0]);
+        const requested = this.route.snapshot.queryParamMap.get('event');
+        const initial = data.find((e) => e.id === requested) ?? data[0];
+        this.selectedEvent.set(initial);
         if (this.entryMode() === 'manual') {
-          void this.loadAttendees(data[0].id);
+          void this.loadAttendees(initial.id);
         }
       }
     } catch (err) {

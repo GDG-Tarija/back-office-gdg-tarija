@@ -1,27 +1,25 @@
-<div class="gdg-page p-6 sm:p-8 space-y-6">
-  <!-- Header Section -->
+<div class="space-y-6 p-4 sm:p-8">
   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h1 class="text-3xl font-extrabold tracking-tight text-text-primary dark:text-neutral-100">
-        Administración de Eventos
+      <h1 class="text-3xl font-bold tracking-tight text-text-primary dark:text-neutral-100">
+        Eventos
       </h1>
       <p class="mt-1 text-sm text-text-secondary dark:text-neutral-400">
-        Gestiona y visualiza la lista de eventos creados de la comunidad GDG Tarija.
+        Todos los eventos de GDG Tarija: gestiona su configuración, asistentes y check-in.
       </p>
     </div>
     @if (isSuperadmin()) {
-      <button
-        type="button"
-        (click)="createEvent()"
-        class="inline-flex items-center gap-2 self-start rounded-full bg-google-blue px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+      <a
+        routerLink="/events/new"
+        class="inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-action px-5 text-sm font-semibold text-on-action transition-opacity hover:opacity-90"
       >
         <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
         Nuevo evento
-      </button>
+      </a>
     }
   </div>
 
-  @if (forbidden) {
+  @if (forbidden()) {
     <div
       class="flex items-center gap-3 rounded-2xl bg-google-yellow-light/40 p-4 text-sm font-medium text-text-primary dark:text-neutral-200"
       role="alert"
@@ -29,206 +27,290 @@
       <span class="material-symbols-rounded text-xl text-google-yellow" aria-hidden="true"
         >lock</span
       >
-      <span>Solo un superadministrador puede crear o editar eventos.</span>
+      <span class="flex-1"
+        >Tu rol no permite crear ni editar eventos. Pídele acceso a un organizador.</span
+      >
+      <button
+        type="button"
+        class="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
+        aria-label="Cerrar aviso"
+        (click)="dismissForbidden()"
+      >
+        <span class="material-symbols-rounded text-xl" aria-hidden="true">close</span>
+      </button>
     </div>
   }
 
   @if (errorMsg(); as err) {
     <div
-      class="flex items-center gap-3 rounded-2xl bg-google-red-light/30 border border-google-red/20 p-4 text-sm font-medium text-google-red"
+      class="flex flex-wrap items-center gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-error-text"
+      role="alert"
     >
-      <span class="material-symbols-rounded text-xl">error</span>
-      <span>{{ err }}</span>
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">error</span>
+      <span class="flex-1">{{ err }}</span>
+      <button
+        type="button"
+        class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-google-red/30 px-4 font-semibold hover:bg-google-red/10"
+        (click)="loadEvents()"
+      >
+        <span class="material-symbols-rounded text-base" aria-hidden="true">refresh</span>
+        Reintentar
+      </button>
     </div>
+  } @else {
+    <section
+      class="overflow-hidden rounded-3xl border border-black/5 bg-white shadow-xs dark:border-white/5 dark:bg-neutral-900"
+      aria-label="Lista de eventos"
+    >
+      <div
+        class="flex flex-col gap-3 border-b border-black/5 p-4 dark:border-white/5 md:flex-row md:items-end"
+      >
+        <div class="relative min-w-0 md:w-80">
+          <label for="events-search" class="sr-only">Buscar eventos por nombre, tipo o lugar</label>
+          <span
+            class="material-symbols-rounded pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-secondary"
+            aria-hidden="true"
+            >search</span
+          >
+          <input
+            id="events-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Buscar por nombre, tipo o lugar"
+            class="min-h-11 w-full rounded-xl border border-black/15 bg-transparent !pl-10 pr-11 text-sm dark:border-white/15"
+            [ngModel]="filters().query"
+            (ngModelChange)="setFilters({ query: $event })"
+          />
+          @if (filters().query) {
+            <button
+              type="button"
+              class="absolute right-0.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-text-secondary hover:text-text-primary"
+              aria-label="Limpiar búsqueda"
+              (click)="setFilters({ query: '' })"
+            >
+              <span class="material-symbols-rounded text-lg" aria-hidden="true">close</span>
+            </button>
+          }
+        </div>
+        <div class="flex flex-col gap-1">
+          <label for="events-status" class="text-xs font-semibold text-text-secondary"
+            >Estado</label
+          >
+          <p-select
+            inputId="events-status"
+            [options]="statusOptions"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="filters().status"
+            (ngModelChange)="setFilters({ status: $event })"
+            styleClass="min-h-11 w-full md:w-44"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label for="events-time" class="text-xs font-semibold text-text-secondary">Cuándo</label>
+          <p-select
+            inputId="events-time"
+            [options]="timeOptions"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="filters().time"
+            (ngModelChange)="setFilters({ time: $event })"
+            styleClass="min-h-11 w-full md:w-44"
+          />
+        </div>
+        @if (filtersActive()) {
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full px-3 text-sm font-semibold text-accent-text hover:bg-google-blue-light/50 md:self-end"
+            (click)="clearFilters()"
+          >
+            Limpiar filtros
+          </button>
+        }
+      </div>
+
+      @if (loadingEvents()) {
+        <div class="flex justify-center p-12" role="status" aria-label="Cargando eventos">
+          <span
+            class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+            aria-hidden="true"
+            >progress_activity</span
+          >
+        </div>
+      } @else if (events().length === 0) {
+        <div class="flex flex-col items-center gap-3 p-12 text-center">
+          <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
+            >calendar_month</span
+          >
+          <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">
+            Todavía no hay eventos
+          </h2>
+          @if (isSuperadmin()) {
+            <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
+              Crea el primero: empieza como borrador y lo publicas cuando esté listo.
+            </p>
+            <a
+              routerLink="/events/new"
+              class="inline-flex min-h-11 items-center gap-2 rounded-full bg-action px-5 text-sm font-semibold text-on-action hover:opacity-90"
+            >
+              <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+              Crear evento
+            </a>
+          } @else {
+            <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
+              Cuando un organizador cree un evento, aparecerá aquí.
+            </p>
+          }
+        </div>
+      } @else if (visible().length === 0) {
+        <div class="flex flex-col items-center gap-3 p-12 text-center">
+          <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
+            >search_off</span
+          >
+          <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">Sin resultados</h2>
+          <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
+            Ningún evento coincide con la búsqueda o los filtros actuales.
+          </p>
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center rounded-full border border-black/15 px-5 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
+            (click)="clearFilters()"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      } @else if (isMobile()) {
+        <ul class="divide-y divide-black/5 dark:divide-white/5">
+          @for (event of page(); track event.id) {
+            <li class="space-y-3 p-4">
+              <div class="space-y-1">
+                <a
+                  [routerLink]="hubLink(event)"
+                  class="flex min-h-11 items-center rounded font-bold text-text-primary underline-offset-2 hover:underline dark:text-neutral-100"
+                >
+                  {{ event.title }}
+                </a>
+                <p class="text-sm text-text-secondary dark:text-neutral-400">
+                  {{ typeLabel(event) }} · {{ event.dateStart | date: 'EEE d MMM y, HH:mm' }}
+                </p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 text-sm">
+                <p-tag
+                  [value]="event.isPublished ? 'Publicado' : 'Borrador'"
+                  [severity]="event.isPublished ? 'success' : 'secondary'"
+                />
+                <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">{{
+                  timingLabel(event)
+                }}</span>
+                <span class="ml-auto text-text-secondary dark:text-neutral-300"
+                  >Inscritos
+                  <strong class="text-text-primary dark:text-neutral-100">{{
+                    registeredLabel(event)
+                  }}</strong></span
+                >
+              </div>
+              <ng-container *ngTemplateOutlet="actions; context: { $implicit: event }" />
+            </li>
+          }
+        </ul>
+        <p-paginator
+          [first]="first()"
+          [rows]="rows"
+          [totalRecords]="visible().length"
+          [showCurrentPageReport]="false"
+          (onPageChange)="onPage($event)"
+        />
+      } @else {
+        <p-table
+          [value]="visible()"
+          [paginator]="true"
+          [rows]="rows"
+          [first]="first()"
+          (onPage)="onPage($event)"
+          [tableStyle]="{ 'min-width': '56rem' }"
+        >
+          <ng-template #header>
+            <tr>
+              <th scope="col" class="min-w-[18rem]">Evento</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Fecha</th>
+              <th scope="col" class="text-center">Inscritos</th>
+              <th scope="col">Estado</th>
+              <th scope="col"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-event>
+            <tr>
+              <td>
+                <a
+                  [routerLink]="hubLink(event)"
+                  class="inline-flex min-h-11 items-center font-bold text-text-primary underline-offset-2 hover:underline dark:text-neutral-100"
+                  >{{ event.title }}</a
+                >
+                @if (event.locationName) {
+                  <p class="mt-0.5 text-xs text-text-secondary dark:text-neutral-400">
+                    {{ event.locationName }}
+                  </p>
+                }
+              </td>
+              <td>{{ typeLabel(event) }}</td>
+              <td class="whitespace-nowrap">
+                {{ event.dateStart | date: 'd MMM y' }}
+                <span class="block text-xs text-text-secondary dark:text-neutral-400">{{
+                  event.dateStart | date: 'HH:mm'
+                }}</span>
+              </td>
+              <td class="text-center font-semibold">{{ registeredLabel(event) }}</td>
+              <td>
+                <div class="flex flex-col items-start gap-1">
+                  <p-tag
+                    [value]="event.isPublished ? 'Publicado' : 'Borrador'"
+                    [severity]="event.isPublished ? 'success' : 'secondary'"
+                  />
+                  <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">{{
+                    timingLabel(event)
+                  }}</span>
+                </div>
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="actions; context: { $implicit: event }" />
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+    </section>
   }
 
-  <!-- Events List Table Card -->
-  <div
-    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden shadow-xs"
-  >
-    <div class="overflow-x-auto w-full">
-      <p-table
-        #dt
-        [value]="events()"
-        [loading]="loadingEvents()"
-        [paginator]="true"
-        [rows]="10"
-        [rowsPerPageOptions]="[10, 20, 50]"
-        [globalFilterFields]="['id', 'title', 'category', 'locationName', 'eventType']"
-        styleClass="p-datatable-striped"
-        [tableStyle]="{ 'min-width': '64rem' }"
+  <ng-template #actions let-event>
+    <div class="flex items-center gap-2">
+      <a
+        [routerLink]="hubLink(event)"
+        class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-blue-light/60 px-4 text-sm font-semibold text-accent-text transition-colors hover:bg-google-blue-light dark:bg-google-blue/20"
       >
-        <ng-template pTemplate="caption">
-          <div
-            class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-5 bg-neutral-50/50 dark:bg-neutral-850/50 border-b border-black/5 dark:border-white/5"
-          >
-            <span class="text-base font-bold text-text-primary dark:text-neutral-200"
-              >Eventos Registrados</span
-            >
-            <div class="relative w-full sm:w-72">
-              <span
-                class="material-symbols-rounded absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none"
-                >search</span
-              >
-              <input
-                type="text"
-                pInputText
-                placeholder="Buscar por ID, nombre..."
-                class="w-full !pl-10 pr-4 text-sm !rounded-xl"
-                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
-              />
-            </div>
-          </div>
-        </ng-template>
-
-        <ng-template pTemplate="header">
-          <tr>
-            <th pSortableColumn="id" class="dark:text-neutral-300 w-36">
-              ID <p-sortIcon field="id"></p-sortIcon>
-            </th>
-            <th pSortableColumn="title" class="dark:text-neutral-300 min-w-[280px]">
-              Evento <p-sortIcon field="title"></p-sortIcon>
-            </th>
-            <th pSortableColumn="eventType" class="dark:text-neutral-300">
-              Tipo <p-sortIcon field="eventType"></p-sortIcon>
-            </th>
-            <th pSortableColumn="capacity" class="dark:text-neutral-300 text-center">
-              Capacidad <p-sortIcon field="capacity"></p-sortIcon>
-            </th>
-            <th pSortableColumn="dateStart" class="dark:text-neutral-300">
-              Fecha <p-sortIcon field="dateStart"></p-sortIcon>
-            </th>
-            <th pSortableColumn="locationName" class="dark:text-neutral-300">
-              Lugar <p-sortIcon field="locationName"></p-sortIcon>
-            </th>
-            <th pSortableColumn="isPublished" class="dark:text-neutral-300">
-              Estado <p-sortIcon field="isPublished"></p-sortIcon>
-            </th>
-            <th class="dark:text-neutral-300 text-center w-72">Acciones</th>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="body" let-event>
-          <tr class="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
-            <td>
-              <div class="flex items-center gap-1.5 font-mono text-xs">
-                <span
-                  class="bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg text-text-secondary dark:text-neutral-300 font-bold truncate max-w-[80px]"
-                  [title]="event.id"
-                >
-                  {{ event.id.substring(0, 8) }}...
-                </span>
-                <button
-                  type="button"
-                  (click)="copyToClipboard(event.id)"
-                  class="flex size-6 items-center justify-center rounded-full text-text-secondary hover:text-google-blue hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 transition-colors"
-                  [title]="copiedId() === event.id ? '¡Copiado!' : 'Copiar ID completo'"
-                  [attr.aria-label]="copiedId() === event.id ? '¡Copiado!' : 'Copiar ID completo'"
-                >
-                  <span class="material-symbols-rounded text-sm">
-                    {{ copiedId() === event.id ? 'check' : 'content_copy' }}
-                  </span>
-                </button>
-              </div>
-            </td>
-            <td>
-              <span class="font-bold text-text-primary dark:text-neutral-200">{{
-                event.title
-              }}</span>
-            </td>
-            <td>
-              <span
-                class="text-xs font-semibold px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-text-secondary dark:text-neutral-300 border border-black/5 dark:border-white/5"
-              >
-                {{ event.eventType }}
-              </span>
-            </td>
-            <td class="text-center font-semibold text-text-primary dark:text-neutral-200">
-              {{ event.capacity }} personas
-            </td>
-            <td>
-              <div class="flex flex-col text-sm text-text-primary dark:text-neutral-200">
-                <span class="font-medium">{{ event.dateStart | date: 'dd/MM/yyyy' }}</span>
-                <span class="text-xs text-text-secondary dark:text-neutral-400 mt-0.5"
-                  >{{ event.dateStart | date: 'HH:mm' }} hrs</span
-                >
-              </div>
-            </td>
-            <td>
-              <div
-                class="flex items-center gap-1.5 text-sm text-text-secondary dark:text-neutral-300"
-              >
-                <span class="material-symbols-rounded text-sm text-google-blue">location_on</span>
-                <span class="truncate max-w-[200px]" [title]="event.locationName">{{
-                  event.locationName || 'No especificado'
-                }}</span>
-              </div>
-            </td>
-            <td>
-              <p-tag
-                [value]="event.isPublished ? 'Publicado' : 'Borrador'"
-                [severity]="getEventStatusSeverity(event)"
-              />
-            </td>
-            <td class="text-center">
-              <div class="flex items-center justify-center gap-1.5">
-                <button
-                  type="button"
-                  (click)="openCredentialGenerator(event)"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-text-primary dark:text-neutral-200 transition-colors"
-                  title="Generar credenciales"
-                >
-                  <span class="material-symbols-rounded text-sm">badge</span>
-                  <span>Credenciales</span>
-                </button>
-
-                <button
-                  type="button"
-                  (click)="viewAttendees(event)"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-google-blue-light/60 hover:bg-google-blue-light dark:bg-google-blue/20 dark:hover:bg-google-blue/30 text-google-blue transition-colors"
-                  title="Ver asistentes"
-                >
-                  <span class="material-symbols-rounded text-sm">group</span>
-                  <span>Asistentes</span>
-                </button>
-
-                @if (isSuperadmin()) {
-                  <button
-                    type="button"
-                    (click)="editEvent(event)"
-                    class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-text-primary dark:text-neutral-200 transition-colors"
-                    title="Editar y gestionar evento"
-                  >
-                    <span class="material-symbols-rounded text-sm">edit</span>
-                    <span>Gestionar</span>
-                  </button>
-                }
-              </div>
-            </td>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="emptymessage">
-          <tr>
-            <td colspan="8" class="text-center p-12 text-text-secondary dark:text-neutral-400">
-              <div class="flex flex-col items-center gap-3">
-                <span
-                  class="material-symbols-rounded text-5xl text-neutral-300 dark:text-neutral-600"
-                  >calendar_month</span
-                >
-                <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
-                  >No se encontraron eventos</span
-                >
-                <span class="text-xs max-w-sm"
-                  >Intenta ajustar tu búsqueda o registra nuevos eventos en la base de datos.</span
-                >
-              </div>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
+        <span class="material-symbols-rounded text-base" aria-hidden="true">{{
+          isSuperadmin() ? 'tune' : 'group'
+        }}</span>
+        {{ primaryLabel() }}
+      </a>
+      <button
+        type="button"
+        class="flex size-11 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        [attr.aria-label]="'Más acciones de ' + event.title"
+        aria-haspopup="menu"
+        (click)="openRowMenu(event, $event)"
+      >
+        <span class="material-symbols-rounded text-xl" aria-hidden="true">more_vert</span>
+      </button>
     </div>
-  </div>
+  </ng-template>
 
+  <p-menu
+    #rowMenu
+    styleClass="row-actions-menu"
+    [popup]="true"
+    [model]="rowMenuItems()"
+    appendTo="body"
+  />
   <app-credential-generator />
 </div>

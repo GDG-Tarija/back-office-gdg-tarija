@@ -4,6 +4,7 @@ import { PostgrestError } from '@supabase/supabase-js';
 
 import { Profile } from '../../models/profile.model';
 import { BackofficeRole } from '../../models/role.model';
+import { DEFAULT_REDIRECT, REDIRECT_KEY, accessDeniedMessage } from '../redirect';
 import { SUPABASE } from '../../supabase/supabase.client';
 
 type AuthSession = {
@@ -43,6 +44,10 @@ export class AuthService {
     return data ?? null;
   }
 
+  async denyAccess(email: string | null | undefined): Promise<void> {
+    await this.signOutWithError(accessDeniedMessage(email));
+  }
+
   async signOutWithError(message: string): Promise<void> {
     this.authError.set(message);
     await this.signOut();
@@ -71,10 +76,10 @@ export class AuthService {
   signInWithGoogle(): void {
     this.loading.set(true);
     this.authError.set(null);
-    const currentPath = window.location.pathname;
-    const redirectTarget = currentPath === '/auth/login' ? '/dashboard' : currentPath;
-
-    sessionStorage.setItem('redirect_to', redirectTarget);
+    // Si el guard guardó el deep link, se respeta; si no, se entra por el inicio.
+    if (!sessionStorage.getItem(REDIRECT_KEY)) {
+      sessionStorage.setItem(REDIRECT_KEY, DEFAULT_REDIRECT);
+    }
 
     const base = document.querySelector('base')?.getAttribute('href') ?? '/';
     const cleanBase = base.replace(/\/$/, '');
@@ -139,7 +144,7 @@ export class AuthService {
 
     const role = await this.resolveRole();
     if (!role) {
-      await this.signOutWithError('Tu correo no está autorizado para acceder a este panel.');
+      await this.denyAccess(partial.email);
       return;
     }
     this.role.set(role);
@@ -169,7 +174,7 @@ export class AuthService {
 
     const role = await this.resolveRole();
     if (!role) {
-      await this.signOutWithError('Tu correo no está autorizado para acceder a este panel.');
+      await this.denyAccess(partial.email);
       return;
     }
     this.role.set(role);

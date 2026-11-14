@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './core/auth/guards/auth.guard';
 import { homeGuard } from './core/auth/guards/home.guard';
+import { loginGuard } from './core/auth/guards/login.guard';
 
 export const routes: Routes = [
   {
@@ -16,6 +17,7 @@ export const routes: Routes = [
       {
         path: 'login',
         title: 'Iniciar sesión',
+        canActivate: [loginGuard],
         loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
       },
     ],

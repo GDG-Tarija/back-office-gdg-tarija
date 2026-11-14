@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { signal } from '@angular/core';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 
@@ -107,7 +108,10 @@ describe('CheckinPage (QR y Modo Manual)', () => {
     user: signal({ id: '00000000-0000-4000-8000-0000000000a2' }),
   };
 
+  let queryParams: Record<string, string> = {};
+
   beforeEach(() => {
+    queryParams = {};
     Object.values(repo).forEach((fn) => fn.mockReset());
     repo.getEvents.mockResolvedValue([mockEvent]);
     repo.getAttendees.mockResolvedValue(mockAttendees);
@@ -115,12 +119,39 @@ describe('CheckinPage (QR y Modo Manual)', () => {
 
     TestBed.configureTestingModule({
       imports: [CheckinPage],
-      providers: [{ provide: AuthService, useValue: authStub }],
+      providers: [
+        { provide: AuthService, useValue: authStub },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              get queryParamMap() {
+                return convertToParamMap(queryParams);
+              },
+            },
+          },
+        },
+      ],
     }).overrideComponent(CheckinPage, {
       set: {
         providers: [{ provide: CheckinRepository, useValue: repo }],
       },
     });
+  });
+
+  it('preselecciona el evento indicado en ?event= y cae al primero si no existe', async () => {
+    const other = { ...mockEvent, id: 'otro-evento' };
+    repo.getEvents.mockResolvedValue([mockEvent, other]);
+
+    queryParams = { event: 'otro-evento' };
+    let cmp = TestBed.createComponent(CheckinPage).componentInstance;
+    await cmp.loadEvents();
+    expect(cmp.selectedEvent()?.id).toBe('otro-evento');
+
+    queryParams = { event: 'no-existe' };
+    cmp = TestBed.createComponent(CheckinPage).componentInstance;
+    await cmp.loadEvents();
+    expect(cmp.selectedEvent()?.id).toBe(mockEvent.id);
   });
 
   it('cambia a modo manual y carga los inscritos del evento seleccionado', async () => {

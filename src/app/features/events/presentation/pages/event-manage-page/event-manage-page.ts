@@ -1,7 +1,5 @@
 import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-
-import { TagModule } from 'primeng/tag';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { DialogFrame } from '../../../../../shared/components/dialog-frame/dialog-frame';
 import { AssetsApi } from '../../../data/assets.api';
@@ -22,6 +20,7 @@ import { Session } from '../../../domain/session.model';
 import { SessionsRepository } from '../../../domain/sessions.repository';
 import { TicketType } from '../../../domain/ticket-type.model';
 import { TicketTypesRepository } from '../../../domain/ticket-types.repository';
+import { EventHeader } from '../../components/event-header/event-header';
 import { EventBasicsForm } from '../../components/event-basics-form/event-basics-form';
 import { CouponsEditor } from '../../components/coupons-editor/coupons-editor';
 import { FormFieldsBuilder } from '../../components/form-fields-builder/form-fields-builder';
@@ -45,9 +44,8 @@ export type ManageTabId = (typeof MANAGE_TABS)[number]['id'];
   selector: 'app-event-manage-page',
   standalone: true,
   imports: [
-    RouterLink,
-    TagModule,
     DialogFrame,
+    EventHeader,
     CouponsEditor,
     EventBasicsForm,
     FormFieldsBuilder,
