@@ -740,16 +740,17 @@ export function validatePublish(ctx: PublishContext): ValidationResult {
 
   const base = validateEvent(e);
   r.errors.push(...base.errors);
-  const missing: string[] = [];
-  if (!e.description?.trim()) missing.push('descripción');
-  if (!e.locationName?.trim()) missing.push('lugar');
-  if (!e.locationType) missing.push('modalidad');
-  if (!e.dateEnd) missing.push('fecha de fin');
-  if (missing.length) {
-    r.errors.push({
-      field: 'event',
-      message: `Completa los datos del evento: falta ${missing.join(', ')}.`,
-    });
+  if (!e.description?.trim()) {
+    r.errors.push({ field: 'description', message: 'Añade una descripción del evento.' });
+  }
+  if (!e.locationName?.trim()) {
+    r.errors.push({ field: 'locationName', message: 'Indica el lugar del evento.' });
+  }
+  if (!e.locationType) {
+    r.errors.push({ field: 'locationType', message: 'Elige la modalidad del evento.' });
+  }
+  if (!e.dateEnd) {
+    r.errors.push({ field: 'dateEnd', message: 'Indica la fecha de fin del evento.' });
   }
 
   if (ctx.ticketTypes.length < 1) {
