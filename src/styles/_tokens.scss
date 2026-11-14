@@ -1,0 +1,70 @@
+// Tokens claros (fuente única). `static` fuerza su emisión aunque ninguna utilidad los use:
+// también se consumen con var(--…) desde SCSS de componentes. El oscuro: _variables.scss.
+@theme static {
+  --color-google-blue: #4285f4;
+  --color-google-red: #ea4335;
+  --color-google-yellow: #fbbc05;
+  --color-google-green: #34a853;
+  --color-google-blue-light: #d2e3fc;
+  --color-google-red-light: #fad2cf;
+  --color-google-yellow-light: #fde293;
+  --color-google-green-light: #ceead6;
+
+  // Texto de marca sobre fondo claro/pastel (AA). Usar estos en vez de google-* para texto.
+  --color-google-blue-dark: #174ea6;
+  --color-google-red-dark: #a50e0e;
+  --color-google-yellow-dark: #7a4100;
+  --color-google-green-dark: #0d652d;
+
+  --color-text-primary: #212121;
+  --color-text-secondary: #424242;
+  --color-text-muted: #666666;
+  --color-placeholder: #6b6b6b;
+
+  --color-surface-main: #f8f9fa;
+  --color-surface-paper: #ffffff;
+  --color-border: #e0e0e0;
+
+  // Acción primaria: texto blanco 5.4:1 (el #4285f4 puro da 3.6:1).
+  --color-action: #1967d2;
+  --color-action-hover: #185abc;
+  --color-on-action: #ffffff;
+
+  // Texto de acento / destructivo sobre superficie normal.
+  --color-accent-text: #1967d2;
+  --color-danger-text: #c5221f;
+
+  // Estados semánticos: fondo + texto AA.
+  --color-success-bg: #e6f4ea;
+  --color-success-text: #0d652d;
+  --color-warning-bg: #fef7e0;
+  --color-warning-text: #7a4100;
+  --color-error-bg: #fce8e6;
+  --color-error-text: #a50e0e;
+  --color-info-bg: #e8f0fe;
+  --color-info-text: #174ea6;
+
+  // Neutral que Tailwind no trae; lo usan varias pantallas como `dark:bg-neutral-850`.
+  --color-neutral-850: #1f1f1f;
+
+  --font-google: 'Google Sans', system-ui, sans-serif;
+
+  // Solo se cargan 400/500/700: los pesos intermedios se resuelven explícitamente.
+  --font-weight-semibold: 700;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 700;
+
+  --shadow-google-card: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-google-card-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  --animate-gdg-spin: gdg-spin 1.2s linear infinite;
+
+  @keyframes gdg-spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+}
