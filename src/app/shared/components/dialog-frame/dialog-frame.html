@@ -1,52 +1,99 @@
-<div
-  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in"
+<p-dialog
+  [visible]="true"
+  [modal]="true"
+  [closable]="false"
+  [closeOnEscape]="false"
+  [dismissableMask]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [blockScroll]="true"
+  appendTo="body"
+  maskStyleClass="app-dialog-mask"
+  [style]="dialogStyle()"
+  styleClass="max-h-[100dvh] sm:max-h-[90dvh]"
+  contentStyleClass="!px-5 !pb-5 sm:!px-6"
 >
-  <div
-    class="flex flex-col w-full bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl overflow-hidden border border-black/5 dark:border-white/10 transition-all duration-300"
-    [class]="sizeClass()"
-  >
-    <!-- Header -->
-    <div class="flex items-center justify-between px-6 py-4 bg-google-blue text-white select-none">
-      <div class="flex items-center gap-3 min-w-0">
-        <span class="material-symbols-rounded text-xl opacity-90">{{ icon() }}</span>
-        <h3 class="text-base font-semibold truncate">{{ title() }}</h3>
+  <ng-template #header let-labelledBy="ariaLabelledBy">
+    <div class="flex w-full min-w-0 items-center justify-between gap-3 px-5 pt-3 pb-1 sm:px-6">
+      <div class="flex min-w-0 items-center gap-3">
+        <span class="material-symbols-rounded text-xl text-google-blue" aria-hidden="true">{{
+          icon()
+        }}</span>
+        <h2 [id]="labelledBy" class="truncate text-base font-semibold">{{ title() }}</h2>
       </div>
-
-      <div class="flex items-center gap-1">
-        <!-- Pantalla completa -->
+      <div class="flex shrink-0 items-center gap-1">
+        @if (canMaximize()) {
+          <button
+            type="button"
+            class="flex size-11 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+            [attr.aria-label]="fullscreen() ? 'Salir de pantalla completa' : 'Pantalla completa'"
+            (click)="toggleFullscreen()"
+          >
+            <span class="material-symbols-rounded text-xl" aria-hidden="true">{{
+              fullscreen() ? 'fullscreen_exit' : 'fullscreen'
+            }}</span>
+          </button>
+        }
         <button
           type="button"
-          (click)="toggleFullscreen()"
-          class="flex size-8 items-center justify-center rounded-full hover:bg-white/20 transition-colors text-white"
-          [title]="isFullscreen() ? 'Restaurar' : 'Pantalla completa'"
+          class="flex size-11 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+          aria-label="Cerrar"
+          (click)="requestClose()"
         >
-          <span class="material-symbols-rounded text-lg">{{
-            isFullscreen() ? 'fullscreen_exit' : 'fullscreen'
-          }}</span>
-        </button>
-
-        <!-- Cerrar -->
-        <button
-          type="button"
-          (click)="close()"
-          class="flex size-8 items-center justify-center rounded-full hover:bg-red-500 transition-colors text-white"
-          title="Cerrar"
-        >
-          <span class="material-symbols-rounded text-lg">close</span>
+          <span class="material-symbols-rounded text-xl" aria-hidden="true">close</span>
         </button>
       </div>
     </div>
+  </ng-template>
 
-    <!-- Body -->
-    <div class="flex-1 p-6 overflow-y-auto max-h-[75vh]">
-      <ng-content />
-    </div>
+  <ng-content />
 
-    <!-- Footer -->
+  <ng-template #footer>
     <div
-      class="flex items-center justify-end gap-3 px-6 py-4 border-t border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-900/50"
+      class="flex w-full flex-wrap items-center justify-end gap-3 px-5 pt-2 pb-4 sm:px-6 [&_button]:min-h-11"
     >
       <ng-content select="[dialog-actions]" />
     </div>
-  </div>
-</div>
+  </ng-template>
+</p-dialog>
+
+@if (confirmingDiscard()) {
+  <p-dialog
+    [visible]="true"
+    [modal]="true"
+    [closable]="false"
+    [closeOnEscape]="false"
+    [draggable]="false"
+    [resizable]="false"
+    [blockScroll]="true"
+    appendTo="body"
+    role="alertdialog"
+    [baseZIndex]="1000"
+    [style]="{ width: 'min(calc(100vw - 1rem), 24rem)' }"
+  >
+    <ng-template #header let-labelledBy="ariaLabelledBy">
+      <h2 [id]="labelledBy" class="px-5 pt-4 text-base font-semibold">¿Descartar los cambios?</h2>
+    </ng-template>
+    <p class="px-5 text-sm text-text-primary dark:text-neutral-200">
+      Lo que cambiaste en este formulario se perderá.
+    </p>
+    <ng-template #footer>
+      <div class="flex w-full flex-wrap items-center justify-end gap-3 px-5 pt-2 pb-4">
+        <button
+          type="button"
+          class="min-h-11 rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+          (click)="keepEditing()"
+        >
+          Seguir editando
+        </button>
+        <button
+          type="button"
+          class="min-h-11 rounded-full bg-google-red px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          (click)="discard()"
+        >
+          Descartar
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
+}
