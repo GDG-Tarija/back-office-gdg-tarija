@@ -656,7 +656,9 @@ export class CheckinPage implements OnInit, OnDestroy {
   }
 
   // Traducción y estilo de roles y estados reutilizando el dominio
-  getRoleSeverity(role?: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+  getRoleSeverity(
+    role?: string,
+  ): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
     return getAttendeeRoleSeverity(role);
   }
 
