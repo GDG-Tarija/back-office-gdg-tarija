@@ -94,28 +94,48 @@ const mockSession: Session = {
   capacity: 30,
 };
 
-describe('CheckinPage (QR y Modo Manual)', () => {
+describe('CheckinPage (puerta: QR y Modo Manual)', () => {
   const repo = {
     getEvents: vi.fn(),
+    getAssignedEventIds: vi.fn(),
     getAttendees: vi.fn(),
     getSessions: vi.fn(),
     getCheckinStats: vi.fn(),
     verifyRegistration: vi.fn(),
     registerScan: vi.fn(),
+    undoScan: vi.fn(),
   };
 
   const authStub = {
     user: signal({ id: '00000000-0000-4000-8000-0000000000a2' }),
+    role: signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN'),
+  };
+
+  const person = {
+    firstName: 'Diego',
+    lastName: 'Developer',
+    email: 'diego@ejemplo.test',
+    phone: '+59170000002',
+    role: 'ATTENDEE',
+    ticketName: 'Elite Builder',
   };
 
   let queryParams: Record<string, string> = {};
 
   beforeEach(() => {
     queryParams = {};
+    localStorage.clear();
     Object.values(repo).forEach((fn) => fn.mockReset());
+    authStub.role.set('SUPERADMIN');
     repo.getEvents.mockResolvedValue([mockEvent]);
+    repo.getAssignedEventIds.mockResolvedValue([]);
     repo.getAttendees.mockResolvedValue(mockAttendees);
     repo.getSessions.mockResolvedValue([mockSession]);
+    repo.getCheckinStats.mockResolvedValue({
+      checkedInCount: 4,
+      refrigerioCount: 1,
+      totalRegistered: 10,
+    });
 
     TestBed.configureTestingModule({
       imports: [CheckinPage],
@@ -139,25 +159,75 @@ describe('CheckinPage (QR y Modo Manual)', () => {
     });
   });
 
-  it('preselecciona el evento indicado en ?event= y cae al primero si no existe', async () => {
-    const other = { ...mockEvent, id: 'otro-evento' };
-    repo.getEvents.mockResolvedValue([mockEvent, other]);
+  async function openPage(): Promise<CheckinPage> {
+    const cmp = TestBed.createComponent(CheckinPage).componentInstance;
+    await cmp.loadEvents();
+    return cmp;
+  }
+
+  it('preselecciona el evento de ?event= y, sin él, el de hoy en vez del más lejano', async () => {
+    const far = { ...mockEvent, id: 'lejano', dateStart: new Date('2030-01-01T09:00:00Z') };
+    const other = { ...mockEvent, id: 'otro-evento', dateStart: new Date('2030-02-01T09:00:00Z') };
+    const now = new Date();
+    const today = {
+      ...mockEvent,
+      id: 'hoy',
+      dateStart: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 1),
+      dateEnd: null,
+    };
+    repo.getEvents.mockResolvedValue([far, other, today]);
 
     queryParams = { event: 'otro-evento' };
-    let cmp = TestBed.createComponent(CheckinPage).componentInstance;
-    await cmp.loadEvents();
-    expect(cmp.selectedEvent()?.id).toBe('otro-evento');
+    expect((await openPage()).selectedEvent()?.id).toBe('otro-evento');
 
-    queryParams = { event: 'no-existe' };
-    cmp = TestBed.createComponent(CheckinPage).componentInstance;
-    await cmp.loadEvents();
+    queryParams = {};
+    expect((await openPage()).selectedEvent()?.id).toBe('hoy');
+  });
+
+  it('un STAFF solo ve los eventos asignados y, con uno solo, queda elegido', async () => {
+    authStub.role.set('STAFF');
+    const other = { ...mockEvent, id: 'ajeno' };
+    repo.getEvents.mockResolvedValue([other, mockEvent]);
+    repo.getAssignedEventIds.mockResolvedValue([mockEvent.id]);
+
+    const cmp = await openPage();
+
+    expect(cmp.events().map((e) => e.id)).toEqual([mockEvent.id]);
     expect(cmp.selectedEvent()?.id).toBe(mockEvent.id);
   });
 
+  it('un STAFF sin asignaciones no ve eventos ni elige ninguno', async () => {
+    authStub.role.set('STAFF');
+    repo.getAssignedEventIds.mockResolvedValue([]);
+
+    const cmp = await openPage();
+
+    expect(cmp.events()).toEqual([]);
+    expect(cmp.selectedEvent()).toBeNull();
+  });
+
+  it('recuerda el último evento usado en el dispositivo', async () => {
+    const a = { ...mockEvent, id: 'a', dateStart: new Date('2030-01-01T09:00:00Z') };
+    const b = { ...mockEvent, id: 'b', dateStart: new Date('2031-01-01T09:00:00Z') };
+    repo.getEvents.mockResolvedValue([a, b]);
+    localStorage.setItem('checkin:last-event', 'b');
+
+    expect((await openPage()).selectedEvent()?.id).toBe('b');
+  });
+
+  it('no pide la cámara al cargar la página', async () => {
+    const getUserMedia = vi.fn();
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia },
+      configurable: true,
+    });
+    const cmp = await openPage();
+    expect(getUserMedia).not.toHaveBeenCalled();
+    expect(cmp.scanning()).toBe(false);
+  });
+
   it('cambia a modo manual y carga los inscritos del evento seleccionado', async () => {
-    const fixture = TestBed.createComponent(CheckinPage);
-    const cmp = fixture.componentInstance;
-    await cmp.loadEvents();
+    const cmp = await openPage();
 
     expect(cmp.entryMode()).toBe('qr');
     await cmp.setEntryMode('manual');
@@ -170,24 +240,19 @@ describe('CheckinPage (QR y Modo Manual)', () => {
   it('filtra inscritos en vivo con debounce por nombre, celular, correo, ID y respuestas', async () => {
     vi.useFakeTimers();
     try {
-      const fixture = TestBed.createComponent(CheckinPage);
-      const cmp = fixture.componentInstance;
-      await cmp.loadEvents();
+      const cmp = await openPage();
       await cmp.setEntryMode('manual');
 
-      // Buscar por celular sin prefijo
       cmp.onSearchInput('70000002');
       expect(cmp.debouncedQuery()).toBe('');
       vi.advanceTimersByTime(250);
       expect(cmp.debouncedQuery()).toBe('70000002');
       expect(cmp.filteredAttendees().map((a) => a.firstName)).toEqual(['Diego']);
 
-      // Buscar por respuesta del formulario (universidad UCB)
       cmp.onSearchInput('UCB');
       vi.advanceTimersByTime(250);
       expect(cmp.filteredAttendees().map((a) => a.firstName)).toEqual(['Diego']);
 
-      // Limpiar búsqueda resetea de inmediato
       cmp.clearSearch();
       expect(cmp.searchQuery()).toBe('');
       expect(cmp.debouncedQuery()).toBe('');
@@ -197,92 +262,157 @@ describe('CheckinPage (QR y Modo Manual)', () => {
     }
   });
 
-  it('al elegir un inscrito ejecuta el mismo flujo de verificación y confirmación que el QR', async () => {
-    const fixture = TestBed.createComponent(CheckinPage);
-    const cmp = fixture.componentInstance;
-    await cmp.loadEvents();
+  it('una confirmada se registra al instante: resultado verde, contador y historial', async () => {
+    vi.useFakeTimers();
+    try {
+      const cmp = await openPage();
+      await cmp.setEntryMode('manual');
+      repo.registerScan.mockResolvedValue({
+        success: true,
+        message: '¡Asistencia registrada con éxito!',
+        attendee: person,
+        scannedAt: new Date('2026-11-20T09:15:00Z'),
+        scanLogId: 'log-1',
+      });
+
+      await cmp.selectAttendee(mockAttendees[0]);
+
+      expect(repo.registerScan).toHaveBeenCalledWith(
+        mockAttendees[0].id,
+        mockEvent.id,
+        'checkin',
+        null,
+        '00000000-0000-4000-8000-0000000000a2',
+      );
+      expect(repo.verifyRegistration).not.toHaveBeenCalled();
+      expect(cmp.door()?.state).toMatchObject({
+        tone: 'go',
+        headline: 'Puede pasar',
+        undoable: true,
+      });
+      expect(cmp.isAttendeeScannedForCurrentMode(cmp.attendees()[0])).toBe(true);
+      expect(cmp.counter()).toBe('5 de 10 ingresaron');
+      expect(cmp.recentScans()[0]).toMatchObject({ name: 'Diego Developer', tone: 'go' });
+
+      // El verde se va solo a los 5 s.
+      vi.advanceTimersByTime(5000);
+      expect(cmp.door()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('deshacer borra el registro y revierte contador, lista e historial', async () => {
+    const cmp = await openPage();
     await cmp.setEntryMode('manual');
-
-    repo.verifyRegistration.mockResolvedValue({
-      success: true,
-      message: 'Credencial válida para escanear.',
-      attendee: {
-        firstName: 'Diego',
-        lastName: 'Developer',
-        email: 'diego@ejemplo.test',
-        phone: '+59170000002',
-        role: 'ATTENDEE',
-        ticketName: 'Elite Builder',
-      },
-      scanTypeLabel: 'Registro General / Check-in',
-      registrationDbId: mockAttendees[0].id,
-      userId: mockAttendees[0].userId,
-    });
-
-    await cmp.selectAttendee(mockAttendees[0]);
-
-    expect(repo.verifyRegistration).toHaveBeenCalledWith(
-      mockAttendees[0].id,
-      mockEvent.id,
-      'checkin',
-      null,
-    );
-    expect(cmp.showConfirmDialog()).toBe(true);
-    expect(cmp.pendingConfirmCode()).toBe(mockAttendees[0].id);
-
-    // Confirmar el registro
     repo.registerScan.mockResolvedValue({
       success: true,
-      message: '¡Asistencia registrada con éxito!',
-      attendee: {
-        firstName: 'Diego',
-        lastName: 'Developer',
-        email: 'diego@ejemplo.test',
-        phone: '+59170000002',
-        role: 'ATTENDEE',
-        ticketName: 'Elite Builder',
-      },
-      scannedAt: new Date('2026-11-20T09:15:00Z'),
-      scanTypeLabel: 'Registro General / Check-in',
+      message: 'ok',
+      attendee: person,
+      scanLogId: 'log-1',
+      userId: 'u1',
+    });
+    repo.undoScan.mockResolvedValue({ ok: true, message: 'Registro deshecho.' });
+
+    await cmp.selectAttendee(mockAttendees[0]);
+    await cmp.undo();
+
+    expect(repo.undoScan).toHaveBeenCalledWith({
+      scanLogId: 'log-1',
+      mode: 'checkin',
+      sessionId: null,
+      userId: 'u1',
+    });
+    expect(cmp.door()).toBeNull();
+    expect(cmp.counter()).toBe('4 de 10 ingresaron');
+    expect(cmp.isAttendeeScannedForCurrentMode(cmp.attendees()[0])).toBe(false);
+    expect(cmp.recentScans()[0].label).toBe('Deshecho');
+  });
+
+  it('si ya no se puede deshacer, el verde sigue y muestra por qué', async () => {
+    const cmp = await openPage();
+    repo.registerScan.mockResolvedValue({
+      success: true,
+      message: 'ok',
+      attendee: person,
+      scanLogId: 'log-1',
+    });
+    repo.undoScan.mockResolvedValue({ ok: false, message: 'Ya no se puede deshacer.' });
+
+    await cmp.handleQrDecoded(mockAttendees[0].id);
+    await cmp.undo();
+
+    expect(cmp.door()).not.toBeNull();
+    expect(cmp.undoError()).toBe('Ya no se puede deshacer.');
+  });
+
+  it('pendiente de pago pide atención en ámbar y no cambia el contador', async () => {
+    const cmp = await openPage();
+    repo.registerScan.mockResolvedValue({
+      success: false,
+      reason: 'pending',
+      message: 'pendiente',
+      attendee: { ...person, firstName: 'Ana', lastName: 'Asistente' },
     });
 
-    await cmp.confirmCheckin();
+    await cmp.handleQrDecoded(mockAttendees[1].id);
+
+    expect(cmp.door()?.state).toMatchObject({ tone: 'wait', headline: 'Pago pendiente' });
+    expect(cmp.counter()).toBe('4 de 10 ingresaron');
+    expect(cmp.isAttendeeScannedForCurrentMode(mockAttendees[1])).toBe(false);
+
+    // El resultado se queda hasta que el operador toque "Seguir escaneando".
+    cmp.dismissDoor();
+    expect(cmp.door()).toBeNull();
+  });
+
+  it('mientras hay un resultado en pantalla ignora otros QR', async () => {
+    const cmp = await openPage();
+    repo.registerScan.mockResolvedValue({
+      success: false,
+      reason: 'cancelled',
+      message: 'anulada',
+      attendee: person,
+    });
+
+    await cmp.handleQrDecoded('qr-1');
+    await cmp.handleQrDecoded('qr-2');
+
+    expect(repo.registerScan).toHaveBeenCalledTimes(1);
+    expect(cmp.door()?.state.tone).toBe('stop');
+  });
+
+  it('en modo sesión pasa la sesión elegida y el texto cambia según el modo', async () => {
+    const cmp = await openPage();
+    cmp.setMode('session');
+    await vi.waitFor(() => expect(cmp.selectedSession()).not.toBeNull());
+    repo.registerScan.mockResolvedValue({
+      success: true,
+      message: 'ok',
+      attendee: person,
+      scanLogId: 'log-2',
+    });
+
+    await cmp.handleQrDecoded(mockAttendees[0].id);
 
     expect(repo.registerScan).toHaveBeenCalledWith(
       mockAttendees[0].id,
       mockEvent.id,
-      'checkin',
-      null,
+      'session',
+      mockSession.id,
       '00000000-0000-4000-8000-0000000000a2',
     );
-    expect(cmp.pendingConfirmCode()).toBeNull();
-    // El estado local del inscrito se actualiza inmediatamente
-    expect(cmp.isAttendeeScannedForCurrentMode(cmp.attendees()[0])).toBe(true);
+    expect(cmp.door()?.state.headline).toBe('Puede entrar a la sesión');
   });
 
-  it('valida estado no confirmado o ya registrado al seleccionar en modo manual', async () => {
-    const fixture = TestBed.createComponent(CheckinPage);
-    const cmp = fixture.componentInstance;
-    await cmp.loadEvents();
+  it('en la búsqueda manual los no confirmados no se pueden tocar y explican por qué', async () => {
+    const cmp = await openPage();
     await cmp.setEntryMode('manual');
 
-    repo.verifyRegistration.mockResolvedValue({
-      success: false,
-      message: 'El registro del asistente está en estado: PENDING. Debe estar Confirmado.',
-      attendee: {
-        firstName: 'Ana',
-        lastName: 'Asistente',
-        email: 'ana@ejemplo.test',
-        role: 'ATTENDEE',
-        ticketName: 'Ticket Básico',
-      },
-    });
-
-    await cmp.selectAttendee(mockAttendees[1]);
-
-    expect(cmp.showConfirmDialog()).toBe(true);
-    expect(cmp.pendingConfirmCode()).toBeNull();
-    expect(cmp.scanResult()?.success).toBe(false);
-    expect(cmp.scanResult()?.message).toContain('PENDING');
+    expect(cmp.rowState(mockAttendees[0]).canRegister).toBe(true);
+    const pending = cmp.rowState(mockAttendees[1]);
+    expect(pending.canRegister).toBe(false);
+    expect(pending.label).toBe('Pendiente de pago');
+    expect(pending.hint).toContain('mesa de pagos');
   });
 });

@@ -1,877 +1,596 @@
-<div
-  class="min-h-screen bg-neutral-50/30 dark:bg-neutral-950/20 p-4 sm:p-6 lg:p-8 space-y-5 overflow-x-hidden w-full max-w-full"
->
-  <!-- Breadcrumb -->
-  <div class="flex items-center gap-2">
-    <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">
-      Panel / Control de Asistencias / {{ entryMode() === 'qr' ? 'Escáner QR' : 'Modo Manual' }}
-    </span>
-  </div>
+<div class="mx-auto flex w-full max-w-2xl flex-col gap-3 p-3 sm:p-6">
+  <h1 class="sr-only">Control de asistencia</h1>
 
-  <!-- Header con Selector QR / Manual -->
-  <div
-    class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-5 sm:p-6 shadow-xs"
-  >
-    <div class="flex items-center gap-3">
+  @if (loadingEvents() && events().length === 0) {
+    <div class="flex items-center justify-center gap-3 py-16" role="status">
+      <div class="gdg-spinner"></div>
+      <span class="text-sm font-semibold text-text-secondary dark:text-neutral-400">
+        Buscando tu evento...
+      </span>
+    </div>
+  } @else if (eventsError(); as err) {
+    <div
+      class="flex flex-col items-center gap-3 rounded-2xl border border-google-red/25 bg-google-red-light/30 p-6 text-center"
+      role="alert"
+    >
+      <span class="material-symbols-rounded text-3xl text-google-red" aria-hidden="true"
+        >error</span
+      >
+      <p class="text-sm font-bold text-text-primary dark:text-neutral-100">{{ err }}</p>
+      <button
+        type="button"
+        (click)="loadEvents()"
+        class="min-h-11 cursor-pointer rounded-full bg-google-blue px-5 text-sm font-bold text-white hover:opacity-90"
+      >
+        Reintentar
+      </button>
+    </div>
+  } @else if (events().length === 0) {
+    <div
+      class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-neutral-300 p-8 text-center dark:border-neutral-700"
+    >
+      <span
+        class="material-symbols-rounded text-4xl text-neutral-400 dark:text-neutral-500"
+        aria-hidden="true"
+        >event_busy</span
+      >
+      <p class="text-base font-bold text-text-primary dark:text-neutral-100">
+        No tienes eventos asignados
+      </p>
+      <p class="max-w-xs text-sm text-text-secondary dark:text-neutral-400">
+        Pídele a un organizador que te asigne a un evento y vuelve a abrir esta pantalla.
+      </p>
+    </div>
+  } @else {
+    <!-- Barra compacta: evento, modo y entrada. La cámara queda por encima del pliegue. -->
+    <div class="flex flex-col gap-2">
+      <label for="event-select" class="sr-only">Evento</label>
+      <p-select
+        inputId="event-select"
+        [options]="events()"
+        [(ngModel)]="selectedEvent"
+        optionLabel="title"
+        placeholder="Elige un evento"
+        ariaLabel="Evento"
+        styleClass="w-full !min-h-11 text-sm !rounded-xl"
+        (onChange)="onEventChange()"
+        appendTo="body"
+      />
+
       <div
-        class="flex size-10 items-center justify-center rounded-2xl bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue shrink-0"
+        role="group"
+        aria-label="Qué vas a registrar"
+        class="grid grid-cols-3 gap-1 rounded-2xl border border-black/5 bg-neutral-100 p-1 dark:border-white/5 dark:bg-neutral-800"
       >
-        <span class="material-symbols-rounded text-2xl">
-          {{ entryMode() === 'qr' ? 'qr_code_scanner' : 'person_search' }}
-        </span>
-      </div>
-      <div>
-        <h1 class="text-xl sm:text-2xl font-extrabold text-text-primary dark:text-neutral-100">
-          Control de Asistencia (Check-in)
-        </h1>
-        <p class="text-xs text-text-secondary dark:text-neutral-400 mt-0.5">
-          Registra ingresos generales, refrigerios o sesiones mediante QR o búsqueda manual.
-        </p>
-      </div>
-    </div>
-
-    <!-- Selector QR / Manual -->
-    <div
-      role="group"
-      aria-label="Modo de check-in"
-      class="grid grid-cols-2 sm:inline-flex items-center p-1 rounded-2xl bg-neutral-100 dark:bg-neutral-800 border border-black/5 dark:border-white/5 w-full sm:w-auto shrink-0"
-    >
-      <button
-        type="button"
-        [attr.aria-pressed]="entryMode() === 'qr'"
-        (click)="setEntryMode('qr')"
-        [class]="
-          entryMode() === 'qr'
-            ? 'bg-white dark:bg-neutral-900 text-google-blue shadow-xs'
-            : 'text-text-secondary dark:text-neutral-400 hover:text-text-primary dark:hover:text-neutral-200'
-        "
-        class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer"
-      >
-        <span class="material-symbols-rounded text-lg" aria-hidden="true">qr_code_scanner</span>
-        <span>QR</span>
-      </button>
-
-      <button
-        type="button"
-        [attr.aria-pressed]="entryMode() === 'manual'"
-        (click)="setEntryMode('manual')"
-        [class]="
-          entryMode() === 'manual'
-            ? 'bg-white dark:bg-neutral-900 text-google-blue shadow-xs'
-            : 'text-text-secondary dark:text-neutral-400 hover:text-text-primary dark:hover:text-neutral-200'
-        "
-        class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer"
-      >
-        <span class="material-symbols-rounded text-lg" aria-hidden="true">person_search</span>
-        <span>Manual</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Unified Workspace Card -->
-  <div
-    class="bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl shadow-xs overflow-hidden w-full"
-  >
-    <div
-      class="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-neutral-100 dark:divide-neutral-800"
-    >
-      <!-- Left Panel: Controls (5 Cols) -->
-      <div class="lg:col-span-5 p-5 sm:p-8 space-y-5">
-        <div
-          class="border-b border-neutral-100 dark:border-neutral-800 pb-3 flex items-center gap-2.5"
-        >
-          <span class="material-symbols-rounded text-google-blue text-xl">settings</span>
-          <span class="font-bold text-text-primary dark:text-neutral-200">
-            Parámetros del Control
-          </span>
-        </div>
-
-        <!-- Event Selection -->
-        <div class="flex flex-col gap-1.5">
-          <label
-            for="event-select"
-            class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300"
+        @for (option of modeOptions; track option.value) {
+          <button
+            type="button"
+            [attr.aria-pressed]="selectedMode() === option.value"
+            (click)="setMode(option.value)"
+            [class]="
+              selectedMode() === option.value
+                ? 'bg-white text-google-blue shadow-xs dark:bg-neutral-900'
+                : 'text-text-secondary hover:text-text-primary dark:text-neutral-300 dark:hover:text-neutral-100'
+            "
+            class="flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-bold transition-colors"
           >
-            Evento
-          </label>
-          <p-select
-            id="event-select"
-            [options]="events()"
-            [loading]="loadingEvents()"
-            [(ngModel)]="selectedEvent"
-            optionLabel="title"
-            placeholder="Seleccione un evento"
-            styleClass="w-full text-sm !rounded-xl"
-            (onChange)="onEventChange()"
-            appendTo="body"
-          />
-        </div>
-
-        <!-- Scan Mode -->
-        <div class="flex flex-col gap-1.5">
-          <label
-            for="mode-select"
-            class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300"
-          >
-            Tipo de Control / Registro
-          </label>
-          <p-select
-            id="mode-select"
-            [options]="modeOptions"
-            [(ngModel)]="selectedMode"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccione modo"
-            styleClass="w-full text-sm !rounded-xl"
-            (onChange)="onModeChange()"
-            appendTo="body"
-          />
-        </div>
-
-        <!-- Session Selection (Condicional) -->
-        @if (selectedMode() === 'session') {
-          <div class="flex flex-col gap-1.5 animate-fade-in">
-            <label
-              for="session-select"
-              class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300"
-            >
-              Sesión / Charla / Taller
-            </label>
-            @if (loadingSessions()) {
-              <div class="flex items-center gap-2 text-xs text-text-secondary py-2">
-                <div class="gdg-spinner !size-5"></div>
-                <span>Cargando sesiones...</span>
-              </div>
-            } @else {
-              <p-select
-                id="session-select"
-                [options]="sessions()"
-                [(ngModel)]="selectedSession"
-                optionLabel="title"
-                placeholder="Seleccione una sesión"
-                styleClass="w-full text-sm !rounded-xl"
-                appendTo="body"
-              />
-              @if (sessions().length === 0) {
-                <span class="text-xs text-google-red font-semibold">
-                  No hay sesiones definidas para este evento.
-                </span>
-              }
-            }
-          </div>
+            <span class="material-symbols-rounded text-lg" aria-hidden="true">{{
+              option.icon
+            }}</span>
+            <span>{{ option.label }}</span>
+          </button>
         }
+      </div>
 
-        <!-- Controles exclusivos del modo QR -->
-        @if (entryMode() === 'qr') {
-          <!-- Camera Selection -->
-          <div class="flex flex-col gap-1.5 animate-fade-in">
-            <label
-              for="camera-select"
-              class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300"
-            >
-              Cámara de Entrada
-            </label>
+      @if (selectedMode() === 'session') {
+        <div class="flex flex-col gap-1">
+          <label for="session-select" class="sr-only">Sesión</label>
+          @if (loadingSessions()) {
+            <div class="flex min-h-11 items-center gap-2 text-xs text-text-secondary" role="status">
+              <div class="gdg-spinner !size-5"></div>
+              <span>Cargando sesiones...</span>
+            </div>
+          } @else if (sessions().length === 0) {
+            <p class="text-sm font-semibold text-red-700 dark:text-red-400">
+              Este evento no tiene sesiones. Créalas en Eventos → Sesiones.
+            </p>
+          } @else {
             <p-select
-              id="camera-select"
-              [options]="cameras()"
-              [(ngModel)]="selectedCameraId"
-              optionLabel="label"
-              optionValue="id"
-              placeholder="Seleccione dispositivo"
-              styleClass="w-full text-sm !rounded-xl"
-              [disabled]="cameras().length === 0"
+              inputId="session-select"
+              [options]="sessions()"
+              [(ngModel)]="selectedSession"
+              optionLabel="displayLabel"
+              placeholder="Elige la sesión"
+              ariaLabel="Sesión"
+              styleClass="w-full !min-h-11 text-sm !rounded-xl"
               appendTo="body"
-              (onChange)="onCameraChange()"
             />
-          </div>
+          }
+        </div>
+      }
+    </div>
 
-          <!-- Toggle Scanning button -->
-          <div class="pt-2 animate-fade-in">
+    <div class="flex items-center justify-between gap-3">
+      <p
+        class="min-w-0 truncate text-sm font-bold tabular-nums text-text-primary dark:text-neutral-100"
+        role="status"
+        aria-live="polite"
+      >
+        @if (counter(); as text) {
+          <span
+            class="material-symbols-rounded align-middle text-lg text-google-blue"
+            aria-hidden="true"
+            >groups</span
+          >
+          {{ text }}
+        }
+      </p>
+
+      <div
+        role="group"
+        aria-label="Cómo registrar"
+        class="inline-flex shrink-0 gap-1 rounded-2xl border border-black/5 bg-neutral-100 p-1 dark:border-white/5 dark:bg-neutral-800"
+      >
+        <button
+          type="button"
+          [attr.aria-pressed]="entryMode() === 'qr'"
+          (click)="setEntryMode('qr')"
+          [class]="
+            entryMode() === 'qr'
+              ? 'bg-white text-google-blue shadow-xs dark:bg-neutral-900'
+              : 'text-text-secondary hover:text-text-primary dark:text-neutral-300'
+          "
+          class="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-xl px-3 text-sm font-bold transition-colors"
+        >
+          <span class="material-symbols-rounded text-lg" aria-hidden="true">qr_code_scanner</span>
+          <span>QR</span>
+        </button>
+        <button
+          type="button"
+          [attr.aria-pressed]="entryMode() === 'manual'"
+          (click)="setEntryMode('manual')"
+          [class]="
+            entryMode() === 'manual'
+              ? 'bg-white text-google-blue shadow-xs dark:bg-neutral-900'
+              : 'text-text-secondary hover:text-text-primary dark:text-neutral-300'
+          "
+          class="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-xl px-3 text-sm font-bold transition-colors"
+        >
+          <span class="material-symbols-rounded text-lg" aria-hidden="true">person_search</span>
+          <span>Manual</span>
+        </button>
+      </div>
+    </div>
+
+    @if (notice(); as text) {
+      <p
+        class="rounded-xl bg-neutral-100 px-3 py-2 text-sm font-semibold text-text-primary dark:bg-neutral-800 dark:text-neutral-100"
+        role="status"
+      >
+        {{ text }}
+      </p>
+    }
+
+    @if (qrError(); as text) {
+      <div
+        class="flex items-start gap-2 rounded-xl border border-google-red/25 bg-google-red-light/30 p-3 text-sm font-semibold text-red-700 dark:text-red-300"
+        role="alert"
+      >
+        <span class="material-symbols-rounded text-lg shrink-0" aria-hidden="true">warning</span>
+        <span>{{ text }}</span>
+      </div>
+    }
+
+    @if (entryMode() === 'qr') {
+      <div
+        class="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-950 dark:border-neutral-800"
+      >
+        <div id="reader" class="size-full"></div>
+
+        @if (!scanning()) {
+          <div
+            class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-neutral-950 p-6 text-center"
+          >
+            <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
+              >qr_code_scanner</span
+            >
             <button
               type="button"
-              (click)="toggleCamera()"
-              [disabled]="!selectedEvent() || (selectedMode() === 'session' && !selectedSession())"
-              [class]="
-                scanning()
-                  ? 'bg-google-red text-white hover:bg-red-600'
-                  : 'bg-google-green text-white hover:bg-green-600'
+              (click)="startCamera()"
+              [disabled]="
+                !selectedEvent() ||
+                (selectedMode() === 'session' && !selectedSession()) ||
+                cameraStarting()
               "
-              class="flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-full font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+              class="flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-white px-6 text-base font-bold text-neutral-950 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span class="material-symbols-rounded text-xl">{{
-                scanning() ? 'videocam_off' : 'photo_camera'
-              }}</span>
-              <span>{{ scanning() ? 'Apagar Cámara' : 'Encender Cámara' }}</span>
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">photo_camera</span>
+              <span>{{ cameraStarting() ? 'Abriendo cámara...' : 'Activar cámara' }}</span>
             </button>
+            <p class="max-w-xs text-sm text-neutral-300">
+              Tu navegador pedirá permiso para usar la cámara.
+            </p>
           </div>
         } @else {
-          <!-- Resumen rápido en Modo Manual (oculto en móvil muy compacto si no hace falta, útil en desktop) -->
+          <div class="absolute inset-x-0 bottom-0 flex justify-between gap-2 p-3">
+            <button
+              type="button"
+              (click)="flipCamera()"
+              aria-label="Cambiar de cámara"
+              class="flex size-11 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/75"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">cameraswitch</span>
+            </button>
+            <button
+              type="button"
+              (click)="stopScanner()"
+              aria-label="Apagar la cámara"
+              class="flex size-11 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/75"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">videocam_off</span>
+            </button>
+          </div>
+        }
+
+        @if (isProcessing()) {
           <div
-            class="rounded-2xl bg-google-blue/5 dark:bg-google-blue/10 border border-google-blue/15 p-3.5 text-xs text-text-secondary dark:text-neutral-300 flex items-start gap-2.5 animate-fade-in"
+            class="absolute inset-0 z-10 flex items-center justify-center bg-neutral-950/70"
+            role="status"
           >
-            <span class="material-symbols-rounded text-google-blue text-lg shrink-0">info</span>
-            <p class="leading-relaxed">
-              Busca al participante por
-              <strong class="text-text-primary dark:text-neutral-100"
-                >nombre, celular, correo, ID</strong
-              >
-              o respuestas de su inscripción y selecciónalo para verificar y confirmar su ingreso.
-            </p>
+            <div class="gdg-spinner"></div>
+            <span class="sr-only">Registrando...</span>
           </div>
         }
       </div>
-
-      <!-- Right Panel: Viewport (QR) o Buscador (Manual) (7 Cols) -->
-      <div
-        class="lg:col-span-7 p-5 sm:p-8 flex flex-col items-center justify-start min-h-[360px] relative gap-5"
-      >
-        <!-- Overlay if Processing DB -->
-        @if (isProcessing()) {
-          <div
-            class="absolute inset-0 bg-white/80 dark:bg-neutral-900/80 z-20 flex flex-col items-center justify-center gap-3 backdrop-blur-xs rounded-r-3xl"
-          >
-            <div class="gdg-spinner"></div>
-            <span class="text-sm font-bold text-text-primary dark:text-neutral-200">
-              Procesando registro...
-            </span>
-          </div>
-        }
-
-        <!-- Error messages -->
-        @if (qrError()) {
-          <div
-            class="p-4 bg-google-red-light/50 border border-google-red/25 text-google-red rounded-2xl w-full text-xs font-bold flex flex-col sm:flex-row items-center justify-between gap-3"
-          >
-            <div class="flex items-center gap-2 text-center sm:text-left">
-              <span class="material-symbols-rounded text-lg shrink-0">warning</span>
-              <span>{{ qrError() }}</span>
-            </div>
-            @if (entryMode() === 'qr') {
+    } @else {
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <div class="relative min-w-0 flex-1">
+            <label for="manual-checkin-search" class="sr-only">
+              Buscar inscrito por nombre, celular, correo o ID
+            </label>
+            <span
+              class="material-symbols-rounded pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xl text-text-secondary"
+              aria-hidden="true"
+              >search</span
+            >
+            <input
+              id="manual-checkin-search"
+              type="search"
+              pInputText
+              autocomplete="off"
+              [value]="searchQuery()"
+              [disabled]="!selectedEvent() || loadingAttendees()"
+              (input)="onSearchInput($any($event.target).value)"
+              placeholder="Nombre, celular, correo o ID"
+              class="min-h-11 w-full !rounded-2xl !pl-11 !pr-11 text-base"
+            />
+            @if (searchQuery()) {
               <button
                 type="button"
-                (click)="setEntryMode('manual')"
-                class="px-3.5 py-1.5 rounded-full bg-google-red text-white text-xs font-bold hover:opacity-90 transition-opacity shrink-0 cursor-pointer"
+                (click)="clearSearch()"
+                aria-label="Limpiar búsqueda"
+                class="absolute right-0 top-1/2 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-text-secondary hover:text-text-primary"
               >
-                Usar modo manual
+                <span class="material-symbols-rounded text-lg" aria-hidden="true">close</span>
               </button>
             }
           </div>
+          @if (selectedEvent(); as event) {
+            <button
+              type="button"
+              (click)="loadAttendees(event.id, true)"
+              [disabled]="loadingAttendees()"
+              aria-label="Actualizar lista de inscritos"
+              class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 hover:text-google-blue disabled:opacity-50 dark:hover:bg-neutral-800"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
+            </button>
+          }
+        </div>
+
+        @if (!loadingAttendees() && attendees().length > 0) {
+          <p class="text-xs font-semibold text-text-secondary dark:text-neutral-300">
+            {{ filteredAttendees().length }} de {{ attendees().length }} inscritos
+          </p>
         }
 
-        @if (entryMode() === 'qr') {
-          <!-- Camera box container -->
-          <div
-            class="relative w-full max-w-[320px] aspect-square rounded-3xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-950 flex items-center justify-center shadow-inner my-auto"
+        @if (selectedMode() === 'session' && !selectedSession()) {
+          <p
+            class="rounded-xl bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950 dark:bg-amber-950/40 dark:text-amber-200"
           >
-            <div id="reader" class="w-full h-full"></div>
+            Elige la sesión arriba para poder registrar el ingreso.
+          </p>
+        }
 
-            @if (!scanning()) {
-              <!-- Placeholder illustration when camera is off -->
-              <div
-                class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-6 bg-neutral-950/90 backdrop-blur-xs"
-              >
-                <div
-                  class="size-20 rounded-3xl bg-neutral-900 border border-white/10 flex items-center justify-center text-google-blue shadow-lg animate-pulse"
-                >
-                  <span class="material-symbols-rounded text-4xl">qr_code_scanner</span>
-                </div>
-                <span class="text-sm text-neutral-300 font-bold max-w-xs">
-                  Escáner Listo para Iniciar
-                </span>
-                <p class="text-xs text-neutral-400 max-w-xs leading-relaxed">
-                  Selecciona un evento y propósito y presiona "Encender Cámara", o cambia a
-                  <button
-                    type="button"
-                    (click)="setEntryMode('manual')"
-                    class="text-google-blue underline font-bold cursor-pointer"
-                  >
-                    Modo Manual
-                  </button>
-                  si prefieres buscar al asistente.
-                </p>
-              </div>
-            }
+        @if (loadingAttendees()) {
+          <div class="flex items-center justify-center gap-3 py-12" role="status">
+            <div class="gdg-spinner"></div>
+            <span class="text-sm font-semibold text-text-secondary dark:text-neutral-400">
+              Cargando inscritos...
+            </span>
+          </div>
+        } @else if (attendeesError(); as err) {
+          <div
+            class="flex flex-col items-center gap-3 rounded-2xl border border-google-red/25 bg-google-red-light/30 p-6 text-center"
+            role="alert"
+          >
+            <p class="text-sm font-bold text-text-primary dark:text-neutral-100">{{ err }}</p>
+            <button
+              type="button"
+              (click)="loadAttendees(selectedEvent()!.id, true)"
+              class="min-h-11 cursor-pointer rounded-full bg-google-blue px-5 text-sm font-bold text-white hover:opacity-90"
+            >
+              Reintentar
+            </button>
+          </div>
+        } @else if (attendees().length === 0) {
+          <p
+            class="rounded-2xl border border-dashed border-neutral-300 p-8 text-center text-sm font-semibold text-text-secondary dark:border-neutral-700 dark:text-neutral-300"
+          >
+            Este evento aún no tiene inscritos.
+          </p>
+        } @else if (filteredAttendees().length === 0) {
+          <div
+            class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-neutral-300 p-8 text-center dark:border-neutral-700"
+          >
+            <p class="text-sm font-bold text-text-primary dark:text-neutral-100">
+              Nadie coincide con "{{ debouncedQuery() }}"
+            </p>
+            <p class="max-w-xs text-sm text-text-secondary dark:text-neutral-300">
+              Revisa el nombre, el celular, el correo o el ID.
+            </p>
+            <button
+              type="button"
+              (click)="clearSearch()"
+              class="mt-1 min-h-11 cursor-pointer rounded-full bg-neutral-100 px-5 text-sm font-bold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+            >
+              Limpiar búsqueda
+            </button>
           </div>
         } @else {
-          <!-- MODO MANUAL: Buscador en vivo y lista de resultados -->
-          <div class="w-full flex flex-col gap-4 animate-fade-in">
-            <!-- Encabezado y buscador -->
-            <div class="flex flex-col gap-2">
-              <div class="flex items-center justify-between gap-2">
-                <label
-                  for="manual-checkin-search"
-                  class="text-xs font-bold uppercase tracking-wider text-text-primary dark:text-neutral-300 flex items-center gap-1.5"
-                >
-                  <span class="material-symbols-rounded text-base text-google-blue">search</span>
-                  <span>Buscar Inscrito del Evento</span>
-                </label>
-
-                <div class="flex items-center gap-2">
-                  @if (!loadingAttendees() && selectedEvent()) {
-                    <span
-                      class="text-xs font-semibold text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2.5 py-1 rounded-full"
-                    >
-                      {{ filteredAttendees().length }} de {{ attendees().length }}
-                    </span>
-                  }
-                  @if (selectedEvent(); as event) {
-                    <button
-                      type="button"
-                      (click)="loadAttendees(event.id, true)"
-                      [disabled]="loadingAttendees()"
-                      aria-label="Actualizar lista de inscritos"
-                      title="Actualizar lista de inscritos"
-                      class="flex size-8 items-center justify-center rounded-full text-text-secondary hover:text-google-blue hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      <span class="material-symbols-rounded text-lg">refresh</span>
-                    </button>
-                  }
-                </div>
-              </div>
-
-              <!-- Input de búsqueda con debounce -->
-              <div class="relative w-full">
-                <span
-                  class="material-symbols-rounded absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-xl pointer-events-none"
-                  >search</span
-                >
-                <input
-                  id="manual-checkin-search"
-                  type="search"
-                  pInputText
-                  autocomplete="off"
-                  [value]="searchQuery()"
-                  [disabled]="!selectedEvent() || loadingAttendees()"
-                  (input)="onSearchInput($any($event.target).value)"
-                  placeholder="Nombre, celular, correo, ID o universidad/empresa..."
-                  aria-label="Buscar inscrito por nombre, celular, correo, ID o datos de inscripción"
-                  class="w-full !pl-11 !pr-10 !py-3 text-sm sm:text-base !rounded-2xl"
-                />
-                @if (searchQuery()) {
-                  <button
-                    type="button"
-                    (click)="clearSearch()"
-                    aria-label="Limpiar búsqueda"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-                  >
-                    <span class="material-symbols-rounded text-lg">close</span>
-                  </button>
-                }
-              </div>
-            </div>
-
-            <!-- Aviso si está en modo sesión y no eligió sesión -->
-            @if (selectedMode() === 'session' && !selectedSession()) {
-              <div
-                class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-2"
-              >
-                <span class="material-symbols-rounded text-lg shrink-0">warning</span>
-                <span>Selecciona una sesión en el panel para poder registrar el ingreso.</span>
-              </div>
-            }
-
-            <!-- Estados de carga / error / resultados -->
-            @if (!selectedEvent()) {
-              <div
-                class="flex flex-col items-center justify-center py-12 px-4 text-center rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800"
-              >
-                <span
-                  class="material-symbols-rounded text-4xl text-neutral-300 dark:text-neutral-600"
-                  >event</span
-                >
-                <span class="text-sm font-bold text-text-primary dark:text-neutral-200 mt-2">
-                  Selecciona un evento
-                </span>
-                <span class="text-xs text-text-secondary dark:text-neutral-400 mt-1">
-                  Elige el evento activo para buscar entre sus inscritos.
-                </span>
-              </div>
-            } @else if (loadingAttendees()) {
-              <div class="flex flex-col items-center justify-center py-12 gap-3">
-                <div class="gdg-spinner"></div>
-                <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">
-                  Cargando inscritos del evento...
-                </span>
-              </div>
-            } @else if (attendeesError(); as err) {
-              <div
-                class="flex flex-col items-center justify-center py-10 px-4 text-center rounded-2xl bg-google-red-light/20 border border-google-red/20 gap-3"
-              >
-                <span class="material-symbols-rounded text-3xl text-google-red">error</span>
-                <span class="text-sm font-bold text-text-primary dark:text-neutral-200">
-                  {{ err }}
-                </span>
-                <button
-                  type="button"
-                  (click)="loadAttendees(selectedEvent()!.id, true)"
-                  class="px-4 py-2 rounded-full bg-google-blue text-white text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer"
-                >
-                  Reintentar
-                </button>
-              </div>
-            } @else if (attendees().length === 0) {
-              <div
-                class="flex flex-col items-center justify-center py-12 px-4 text-center rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800"
-              >
-                <span
-                  class="material-symbols-rounded text-4xl text-neutral-300 dark:text-neutral-600"
-                  >group_off</span
-                >
-                <span class="text-sm font-bold text-text-primary dark:text-neutral-200 mt-2">
-                  Sin inscritos en este evento
-                </span>
-                <span class="text-xs text-text-secondary dark:text-neutral-400 mt-1">
-                  Aún no existen registros para el evento seleccionado.
-                </span>
-              </div>
-            } @else if (filteredAttendees().length === 0) {
-              <div
-                class="flex flex-col items-center justify-center py-12 px-4 text-center rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800 gap-2"
-              >
-                <span
-                  class="material-symbols-rounded text-4xl text-neutral-300 dark:text-neutral-600"
-                  >search_off</span
-                >
-                <span class="text-sm font-bold text-text-primary dark:text-neutral-200">
-                  No se encontraron inscritos para "{{ debouncedQuery() }}"
-                </span>
-                <span class="text-xs text-text-secondary dark:text-neutral-400 max-w-xs">
-                  Verifica el nombre, número de celular, correo, ID o respuesta del formulario.
-                </span>
-                <button
-                  type="button"
-                  (click)="clearSearch()"
-                  class="mt-2 px-4 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-xs font-bold text-text-primary dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
-                >
-                  Limpiar búsqueda
-                </button>
-              </div>
-            } @else {
-              <!-- Lista de resultados tocables para móvil y desktop -->
-              <div
-                class="flex flex-col gap-2.5 max-h-[62vh] lg:max-h-[460px] overflow-y-auto pr-1"
-                aria-label="Resultados de inscritos"
-              >
-                @for (attendee of visibleAttendees(); track attendee.id) {
-                  @let alreadyScanned = isAttendeeScannedForCurrentMode(attendee);
-                  @let matchedResponses = getMatchedResponses(attendee);
+          <ul class="flex flex-col gap-2" aria-label="Resultados de inscritos">
+            @for (attendee of visibleAttendees(); track attendee.id) {
+              @let row = rowState(attendee);
+              @let matchedResponses = getMatchedResponses(attendee);
+              <li>
+                @if (row.canRegister) {
                   <button
                     type="button"
                     (click)="selectAttendee(attendee)"
                     [disabled]="selectedMode() === 'session' && !selectedSession()"
                     [attr.aria-label]="
-                      'Seleccionar a ' + attendee.firstName + ' ' + attendee.lastName
+                      'Registrar a ' + attendee.firstName + ' ' + attendee.lastName
                     "
-                    class="w-full text-left p-3.5 sm:p-4 rounded-2xl border transition-all flex items-start justify-between gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white p-3 text-left transition-colors hover:border-google-blue disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-neutral-900"
+                  >
+                    <ng-container
+                      *ngTemplateOutlet="
+                        person;
+                        context: { $implicit: attendee, matched: matchedResponses }
+                      "
+                    />
+                    <span
+                      class="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full bg-google-blue px-3.5 text-sm font-bold text-white"
+                    >
+                      <span>{{ row.label }}</span>
+                      <span class="material-symbols-rounded text-base" aria-hidden="true">{{
+                        row.icon
+                      }}</span>
+                    </span>
+                  </button>
+                } @else {
+                  <div
+                    class="flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border p-3"
                     [class]="
-                      alreadyScanned
-                        ? 'bg-neutral-50/80 dark:bg-neutral-900/60 border-neutral-200 dark:border-neutral-800 hover:border-google-blue/40'
-                        : 'bg-white dark:bg-neutral-900 border-black/8 dark:border-white/10 hover:border-google-blue hover:shadow-xs active:scale-[0.99]'
+                      row.tone === 'stop'
+                        ? 'border-red-200 bg-red-50 dark:border-red-900/60 dark:bg-red-950/30'
+                        : row.tone === 'wait'
+                          ? 'border-amber-300 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/30'
+                          : 'border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60'
                     "
                   >
-                    <div class="flex items-start gap-3 min-w-0 flex-1">
-                      <!-- Avatar / Iniciales -->
-                      @if (attendee.avatarUrl) {
-                        <img
-                          [src]="attendee.avatarUrl"
-                          alt=""
-                          class="size-10 rounded-full object-cover shrink-0 mt-0.5"
-                          referrerpolicy="no-referrer"
-                        />
-                      } @else {
-                        <div
-                          class="flex size-10 items-center justify-center rounded-full text-xs font-bold bg-google-blue-light/70 dark:bg-google-blue/20 text-google-blue shrink-0 mt-0.5"
-                        >
-                          {{ attendee.firstName[0] || 'P' }}{{ attendee.lastName[0] || '' }}
-                        </div>
-                      }
-
-                      <div class="flex flex-col min-w-0 flex-1 gap-1">
-                        <!-- Nombre y etiquetas -->
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span
-                            class="font-extrabold text-sm sm:text-base text-text-primary dark:text-neutral-100 leading-tight"
-                          >
-                            {{ attendee.firstName }} {{ attendee.lastName }}
-                          </span>
-                          <p-tag
-                            [value]="translateRole(attendee.role)"
-                            [severity]="getRoleSeverity(attendee.role)"
-                            styleClass="!text-[10px] !px-2 !py-0.5 !rounded-full"
-                          />
-                          <span
-                            class="text-[11px] font-semibold text-text-secondary dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full"
-                          >
-                            {{ attendee.ticketName }}
-                          </span>
-                        </div>
-
-                        <!-- Contacto: Correo, Celular e ID -->
-                        <div
-                          class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary dark:text-neutral-400"
-                        >
-                          @if (attendee.email) {
-                            <span class="inline-flex items-center gap-1 truncate max-w-full">
-                              <span
-                                class="material-symbols-rounded text-sm text-neutral-400"
-                                aria-hidden="true"
-                                >mail</span
-                              >
-                              <span class="truncate">{{ attendee.email }}</span>
-                            </span>
-                          }
-                          @if (attendee.phone) {
-                            <span
-                              class="inline-flex items-center gap-1 font-semibold text-text-primary dark:text-neutral-300"
-                            >
-                              <span
-                                class="material-symbols-rounded text-sm text-google-blue"
-                                aria-hidden="true"
-                                >call</span
-                              >
-                              <span>{{ attendee.phone }}</span>
-                            </span>
-                          }
-                          <span
-                            class="inline-flex items-center gap-1 font-mono text-[11px] text-neutral-400"
-                          >
-                            <span>#{{ attendee.id.substring(0, 8) }}</span>
-                          </span>
-                        </div>
-
-                        <!-- Respuestas del formulario que coincidieron con la búsqueda -->
-                        @if (matchedResponses.length > 0) {
-                          <div class="flex flex-wrap items-center gap-1.5 mt-1">
-                            @for (item of matchedResponses; track item.key) {
-                              <span
-                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-google-blue/10 dark:bg-google-blue/20 text-google-blue text-[11px] font-semibold"
-                              >
-                                <span class="opacity-75">{{ item.label }}:</span>
-                                <strong>{{ item.value }}</strong>
-                              </span>
-                            }
-                          </div>
-                        }
-                      </div>
-                    </div>
-
-                    <!-- Estado / Acción Derecha -->
-                    <div class="flex flex-col items-end justify-center gap-1.5 shrink-0">
-                      @if (attendee.status.toUpperCase() !== 'CONFIRMED') {
-                        <p-tag
-                          [value]="translateStatus(attendee.status)"
-                          [severity]="getStatusSeverity(attendee.status)"
-                          styleClass="!text-[10px] !px-2.5 !py-0.5 !rounded-full"
-                        />
-                      } @else if (alreadyScanned) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        person;
+                        context: { $implicit: attendee, matched: matchedResponses }
+                      "
+                    />
+                    <div class="flex max-w-[45%] shrink-0 flex-col items-end gap-1 text-right">
+                      <span
+                        class="inline-flex items-center gap-1 text-sm font-bold"
+                        [class]="
+                          row.tone === 'stop'
+                            ? 'text-red-800 dark:text-red-300'
+                            : row.tone === 'wait'
+                              ? 'text-amber-900 dark:text-amber-200'
+                              : 'text-green-800 dark:text-green-300'
+                        "
+                      >
+                        <span class="material-symbols-rounded text-base" aria-hidden="true">{{
+                          row.icon
+                        }}</span>
+                        <span>{{ row.label }}</span>
+                      </span>
+                      @if (row.hint) {
                         <span
-                          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-google-green-light/50 dark:bg-google-green/20 text-google-green"
+                          class="text-xs font-medium text-text-secondary dark:text-neutral-300"
+                          >{{ row.hint }}</span
                         >
-                          <span class="material-symbols-rounded text-sm">check_circle</span>
-                          <span>Ya registrado</span>
-                        </span>
-                      } @else {
-                        <span
-                          class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-google-blue text-white shadow-xs"
-                        >
-                          <span>Check-in</span>
-                          <span class="material-symbols-rounded text-sm">chevron_right</span>
-                        </span>
                       }
                     </div>
-                  </button>
+                  </div>
                 }
-
-                @if (filteredAttendees().length > visibleAttendees().length) {
-                  <p class="text-center text-xs text-text-secondary dark:text-neutral-400 py-2">
-                    Mostrando primeros {{ visibleAttendees().length }} de
-                    {{ filteredAttendees().length }} resultados. Escribe más datos para refinar la
-                    búsqueda.
-                  </p>
-                }
-              </div>
+              </li>
             }
-          </div>
+          </ul>
+        }
+      </div>
+    }
+
+    @if (recentScans().length > 0) {
+      <section aria-labelledby="recent-title" class="flex flex-col gap-1.5 pt-1">
+        <h2
+          id="recent-title"
+          class="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-neutral-300"
+        >
+          Últimos registros
+        </h2>
+        <ul class="flex flex-col divide-y divide-neutral-100 dark:divide-neutral-800">
+          @for (scan of recentScans(); track scan.id) {
+            <li class="flex min-h-11 items-center gap-3 py-1.5 text-sm">
+              <span
+                class="material-symbols-rounded shrink-0 text-lg"
+                [class]="
+                  scan.tone === 'go'
+                    ? 'text-green-700 dark:text-green-400'
+                    : scan.tone === 'wait'
+                      ? 'text-amber-700 dark:text-amber-400'
+                      : 'text-red-700 dark:text-red-400'
+                "
+                aria-hidden="true"
+                >{{
+                  scan.tone === 'go' ? 'check_circle' : scan.tone === 'wait' ? 'schedule' : 'block'
+                }}</span
+              >
+              <span
+                class="min-w-0 flex-1 truncate font-semibold text-text-primary dark:text-neutral-100"
+                >{{ scan.name }}</span
+              >
+              <span class="shrink-0 text-xs text-text-secondary dark:text-neutral-300">
+                {{ scan.label }} · {{ scan.at.getHours().toString().padStart(2, '0') }}:{{
+                  scan.at.getMinutes().toString().padStart(2, '0')
+                }}
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</div>
+
+@if (door(); as view) {
+  <div
+    class="door-result fixed inset-0 z-[1100] flex flex-col"
+    [class]="
+      view.state.tone === 'go'
+        ? 'bg-green-700 text-white'
+        : view.state.tone === 'wait'
+          ? 'bg-amber-300 text-neutral-950'
+          : 'bg-red-700 text-white'
+    "
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="door-headline"
+    aria-describedby="door-detail"
+  >
+    <div class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+      <span class="material-symbols-rounded door-icon" aria-hidden="true">{{
+        view.state.icon
+      }}</span>
+      <h2 id="door-headline" class="text-4xl font-black leading-tight">
+        {{ view.state.headline }}
+      </h2>
+
+      <div id="door-detail" class="flex max-w-md flex-col items-center gap-2">
+        @if (view.result.attendee; as person) {
+          <p class="text-2xl font-extrabold leading-snug">{{ view.name }}</p>
+          <p class="text-lg font-semibold">
+            {{ person.ticketName }} · {{ translateRole(person.role) }}
+          </p>
+        }
+        @if (view.state.action) {
+          <p class="text-lg font-semibold">{{ view.state.action }}</p>
+        }
+        @if (undoError(); as text) {
+          <p class="mt-2 rounded-xl bg-black/25 px-4 py-2 text-base font-semibold" role="alert">
+            {{ text }}
+          </p>
         }
       </div>
     </div>
+
+    <div class="flex flex-col gap-3 p-4 pb-6 sm:mx-auto sm:w-full sm:max-w-md">
+      @if (view.state.tone === 'go') {
+        <div
+          class="door-countdown h-1 w-full overflow-hidden rounded-full bg-white/30"
+          aria-hidden="true"
+        >
+          @if (view.state.undoable && !undoing() && !undoError()) {
+            <div class="door-countdown-bar h-full bg-white"></div>
+          }
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          @if (view.state.undoable) {
+            <button
+              type="button"
+              (click)="undo()"
+              [disabled]="undoing()"
+              class="flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-full border-2 border-white text-lg font-bold text-white hover:bg-white/15 disabled:opacity-60"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">undo</span>
+              <span>{{ undoing() ? 'Deshaciendo...' : 'Deshacer' }}</span>
+            </button>
+          }
+          <button
+            #doorPrimary
+            type="button"
+            (click)="dismissDoor()"
+            [class.col-span-2]="!view.state.undoable"
+            class="flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-full bg-white text-lg font-bold text-green-900 hover:bg-green-50"
+          >
+            <span>Siguiente</span>
+          </button>
+        </div>
+      } @else {
+        <button
+          #doorPrimary
+          type="button"
+          (click)="dismissDoor()"
+          [class]="
+            view.state.tone === 'wait'
+              ? 'bg-neutral-950 text-white hover:bg-neutral-800'
+              : 'bg-white text-red-800 hover:bg-red-50'
+          "
+          class="flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-full text-lg font-bold"
+        >
+          <span class="material-symbols-rounded" aria-hidden="true">qr_code_scanner</span>
+          <span>Seguir escaneando</span>
+        </button>
+      }
+    </div>
   </div>
+}
 
-  <!-- Modal de Verificación y Confirmación de Asistente -->
-  <p-dialog
-    [visible]="showConfirmDialog()"
-    [modal]="true"
-    [closable]="true"
-    [draggable]="false"
-    [resizable]="false"
-    [style]="{ width: '90vw', maxWidth: '480px' }"
-    styleClass="checkin-confirm-dialog"
-    header="Verificación de Credencial"
-    (onHide)="cancelCheckin()"
-  >
-    @if (scanResult(); as result) {
-      <div class="flex flex-col items-center text-center w-full py-2">
-        <!-- Icono de Estado -->
-        <div class="mb-4">
-          @if (pendingConfirmCode()) {
-            <!-- Confirmación Pendiente -->
-            <div
-              class="size-16 rounded-full bg-google-blue/10 dark:bg-google-blue/20 text-google-blue flex items-center justify-center shadow-sm"
-            >
-              <span class="material-symbols-rounded text-3xl">person</span>
-            </div>
-          } @else if (result.success && !result.alreadyScanned) {
-            <!-- Registro Exitoso -->
-            <div
-              class="size-16 rounded-full bg-google-green/10 dark:bg-google-green/20 text-google-green flex items-center justify-center shadow-sm animate-scale-up"
-            >
-              <span class="material-symbols-rounded text-3xl">check</span>
-            </div>
-          } @else if (result.alreadyScanned) {
-            <!-- Ya Registrado -->
-            <div
-              class="size-16 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center shadow-sm"
-            >
-              <span class="material-symbols-rounded text-3xl">warning</span>
-            </div>
-          } @else {
-            <!-- Error / No Registrado -->
-            <div
-              class="size-16 rounded-full bg-google-red/10 dark:bg-google-red/20 text-google-red flex items-center justify-center shadow-sm"
-            >
-              <span class="material-symbols-rounded text-3xl">close</span>
-            </div>
-          }
-        </div>
-
-        <!-- Título del Estado -->
-        <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">
-          @if (pendingConfirmCode()) {
-            Confirmar Registro
-          } @else if (result.success && !result.alreadyScanned) {
-            ¡Registro Exitoso!
-          } @else if (result.alreadyScanned) {
-            Asistencia Ya Registrada
-          } @else {
-            Error de Registro
-          }
-        </h2>
-
-        <!-- Rol y Ticket (Si hay asistente) -->
-        @if (result.attendee) {
-          <div class="flex items-center gap-2 mt-2 flex-wrap justify-center">
-            <p-tag
-              [value]="translateRole(result.attendee.role)"
-              [severity]="getRoleSeverity(result.attendee.role)"
-              styleClass="!text-xs !px-2.5 !py-0.5 !rounded-full"
-            />
-            <p-tag
-              [value]="result.attendee.ticketName"
-              severity="secondary"
-              styleClass="!text-xs !px-2.5 !py-0.5 !rounded-full !bg-neutral-100 !text-neutral-600 dark:!bg-neutral-800 dark:!text-neutral-300"
-            />
-          </div>
-
-          <!-- Nombre Completo -->
-          <h3 class="text-xl font-black text-text-primary dark:text-neutral-50 mt-3 leading-snug">
-            {{ result.attendee.firstName }} {{ result.attendee.lastName }}
-          </h3>
-        } @else {
-          <!-- Mensaje de Error en caso de que no haya asistente -->
-          <p
-            class="text-sm font-semibold text-google-red dark:text-red-400 mt-2 px-4 leading-relaxed"
-          >
-            {{ result.message }}
-          </p>
-        }
-
-        <!-- Caja de Detalles Técnicos -->
-        <div
-          class="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200/60 dark:border-neutral-800/80 rounded-2xl p-4 mt-4 space-y-2.5 text-left text-xs sm:text-sm"
-        >
-          <!-- Evento -->
-          @if (selectedEvent(); as event) {
-            <div class="flex items-start gap-2.5">
-              <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5">bookmark</span>
-              <div class="min-w-0 flex-1">
-                <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
-                  >Evento</span
-                >
-                <span
-                  class="font-semibold text-text-primary dark:text-neutral-200 block truncate"
-                  >{{ event.title }}</span
-                >
-              </div>
-            </div>
-          }
-
-          <!-- Control -->
-          <div
-            class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
-          >
-            <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5"
-              >calendar_month</span
-            >
-            <div class="min-w-0 flex-1">
-              <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
-                >Control / Propósito</span
-              >
-              <span class="font-semibold text-text-primary dark:text-neutral-200 block truncate">{{
-                result.scanTypeLabel || 'Check-in General'
-              }}</span>
-            </div>
-          </div>
-
-          @if (result.attendee) {
-            <!-- Correo -->
-            <div
-              class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
-            >
-              <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5">mail</span>
-              <div class="min-w-0 flex-1">
-                <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
-                  >Correo</span
-                >
-                <span class="text-text-primary dark:text-neutral-200 block truncate font-medium">{{
-                  result.attendee.email
-                }}</span>
-              </div>
-            </div>
-
-            <!-- Celular (si existe) -->
-            @if (result.attendee.phone) {
-              <div
-                class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
-              >
-                <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5">call</span>
-                <div class="min-w-0 flex-1">
-                  <span
-                    class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
-                    >Celular</span
-                  >
-                  <span
-                    class="text-text-primary dark:text-neutral-200 block truncate font-medium"
-                    >{{ result.attendee.phone }}</span
-                  >
-                </div>
-              </div>
-            }
-          }
-
-          <!-- Código / ID de Inscripción -->
-          @if (result.scannedCode) {
-            <div
-              class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
-            >
-              <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5">qr_code</span>
-              <div class="min-w-0 flex-1">
-                <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider"
-                  >ID de Inscripción</span
-                >
-                <span
-                  class="font-mono text-xs text-text-primary dark:text-neutral-300 block truncate"
-                  >{{ result.scannedCode }}</span
-                >
-              </div>
-            </div>
-          }
-
-          <!-- Fecha / Hora del escaneo -->
-          @if (result.scannedAt) {
-            <div
-              class="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5"
-            >
-              <span class="material-symbols-rounded text-sm text-neutral-400 mt-0.5 font-normal"
-                >schedule</span
-              >
-              <div class="min-w-0 flex-1">
-                <span class="block text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-                  {{ pendingConfirmCode() ? 'Hora de Verificación' : 'Hora de Registro' }}
-                </span>
-                <span class="text-text-secondary dark:text-neutral-400 block font-medium">
-                  {{ result.scannedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
-                </span>
-              </div>
-            </div>
-          }
-        </div>
-
-        <!-- Mensajes informativos de estado -->
-        @if (pendingConfirmCode()) {
-          <div
-            class="mt-4 p-3 bg-google-blue/5 border border-google-blue/15 rounded-xl w-full flex items-start gap-2 text-left"
-          >
-            <span class="material-symbols-rounded text-sm text-google-blue mt-0.5 shrink-0"
-              >help_outline</span
-            >
-            <p class="text-xs text-google-blue font-semibold leading-relaxed">
-              Verificación exitosa. Confirma a continuación para realizar el registro en la base de
-              datos.
-            </p>
-          </div>
-        } @else if (result.alreadyScanned || !result.success) {
-          <div
-            class="mt-4 p-3 bg-google-red/5 border border-google-red/15 rounded-xl w-full flex items-start gap-2 text-left"
-          >
-            <span class="material-symbols-rounded text-sm text-google-red mt-0.5 shrink-0"
-              >info</span
-            >
-            <p class="text-xs text-google-red dark:text-red-400 font-semibold leading-relaxed">
-              {{ result.message }}
-            </p>
-          </div>
-        } @else {
-          <div
-            class="mt-4 p-3 bg-google-green/5 border border-google-green/15 rounded-xl w-full flex items-start gap-2 text-left"
-          >
-            <span class="material-symbols-rounded text-sm text-google-green mt-0.5 shrink-0"
-              >check_circle</span
-            >
-            <p class="text-xs text-google-green font-semibold leading-relaxed font-medium">
-              El check-in se ha registrado físicamente con éxito.
-            </p>
-          </div>
-        }
-
-        <!-- Botones de Acción -->
-        <div
-          class="flex items-center gap-3 w-full pt-6 border-t border-neutral-100 dark:border-neutral-800/80 mt-6"
-        >
-          @if (pendingConfirmCode()) {
-            <button
-              type="button"
-              (click)="cancelCheckin()"
-              [disabled]="isProcessing()"
-              class="flex-1 flex items-center justify-center gap-1.5 px-5 py-3 rounded-full font-bold text-sm bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <span class="material-symbols-rounded text-lg">cancel</span>
-              <span>Cancelar</span>
-            </button>
-            <button
-              type="button"
-              (click)="confirmCheckin()"
-              [disabled]="isProcessing()"
-              class="flex-1 flex items-center justify-center gap-1.5 px-5 py-3 rounded-full font-bold text-sm bg-google-green text-white hover:bg-green-600 transition-colors shadow-md disabled:opacity-50 cursor-pointer"
-            >
-              @if (isProcessing()) {
-                <div class="gdg-spinner !size-4 !border-white !border-t-transparent"></div>
-              } @else {
-                <span class="material-symbols-rounded text-lg">check_circle</span>
-              }
-              <span>Confirmar Registro</span>
-            </button>
-          } @else {
-            <button
-              type="button"
-              (click)="cancelCheckin()"
-              class="w-full flex items-center justify-center gap-1.5 px-5 py-3 rounded-full font-bold text-sm bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
-            >
-              <span class="material-symbols-rounded text-lg">close</span>
-              <span>Cerrar</span>
-            </button>
-          }
-        </div>
-      </div>
+<ng-template #person let-attendee let-matched="matched">
+  <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+    <span
+      class="truncate text-base font-extrabold leading-tight text-text-primary dark:text-neutral-100"
+    >
+      {{ attendee.firstName }} {{ attendee.lastName }}
+    </span>
+    <span class="truncate text-xs text-text-secondary dark:text-neutral-300">
+      {{ attendee.ticketName }} · {{ translateRole(attendee.role) }}
+      @if (attendee.phone) {
+        · {{ attendee.phone }}
+      }
+    </span>
+    @if (attendee.email) {
+      <span class="truncate text-xs text-text-secondary dark:text-neutral-300">{{
+        attendee.email
+      }}</span>
     }
-  </p-dialog>
-</div>
+    @if (matched.length > 0) {
+      <span class="mt-0.5 flex flex-wrap gap-1">
+        @for (item of matched; track item.key) {
+          <span
+            class="rounded-lg bg-google-blue/10 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:text-blue-300"
+          >
+            {{ item.label }}: <strong>{{ item.value }}</strong>
+          </span>
+        }
+      </span>
+    }
+  </div>
+</ng-template>

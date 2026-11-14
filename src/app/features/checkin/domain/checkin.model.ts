@@ -13,9 +13,22 @@ export interface Session {
   displayLabel?: string;
 }
 
+/** Por qué no se pudo registrar: la puerta decide el color y la indicación según esto. */
+export type ScanFailureReason =
+  | 'invalid_code'
+  | 'not_found'
+  | 'other_event'
+  | 'pending'
+  | 'cancelled'
+  | 'already_scanned'
+  | 'session_required'
+  | 'not_in_session'
+  | 'error';
+
 export interface ScanResult {
   success: boolean;
   message: string;
+  reason?: ScanFailureReason;
   alreadyScanned?: boolean;
   scannedAt?: Date;
   attendee?: {
@@ -29,5 +42,19 @@ export interface ScanResult {
   scanTypeLabel?: string;
   scannedCode?: string;
   registrationDbId?: string;
+  /** Fila de `scan_logs` creada; sirve para deshacer durante unos segundos. */
+  scanLogId?: string;
   userId?: string | null;
+}
+
+export interface UndoScanInput {
+  scanLogId: string;
+  mode: ScanMode;
+  sessionId: string | null;
+  userId: string | null;
+}
+
+export interface UndoScanResult {
+  ok: boolean;
+  message: string;
 }

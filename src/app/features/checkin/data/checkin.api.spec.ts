@@ -21,8 +21,10 @@ function fakeSupabase(results: {
   existingScan?: Result;
   sessionRegistration?: Result;
   insertScan?: Result;
+  deleteScan?: Result;
 }) {
   const inserts: unknown[] = [];
+  const deletes: string[] = [];
   const legacyUpdates: unknown[] = [];
   const chain = (final: () => Result) => {
     const c: Record<string, unknown> = {};
@@ -43,6 +45,18 @@ function fakeSupabase(results: {
             inserts.push(row);
             return Promise.resolve(results.insertScan ?? { data: null, error: null });
           }),
+          delete: vi.fn(() => {
+            const c = {
+              eq: vi.fn((_col: string, id: string) => {
+                deletes.push(id);
+                return c;
+              }),
+              select: vi.fn(() =>
+                Promise.resolve(results.deleteScan ?? { data: [{ id: 'x' }], error: null }),
+              ),
+            };
+            return c;
+          }),
         };
       case 'inscripciones_sessions':
         return {
@@ -59,7 +73,7 @@ function fakeSupabase(results: {
         throw new Error(`tabla inesperada ${table}`);
     }
   });
-  return { client: { from }, inserts, legacyUpdates };
+  return { client: { from }, inserts, legacyUpdates, deletes };
 }
 
 function registration(status: string) {
@@ -96,7 +110,8 @@ describe('CheckinApi — estado de la inscripción', () => {
         'op1',
       );
       expect(result.success).toBe(false);
-      expect(result.message).toBe('La inscripción está anulada: no puede registrar asistencia.');
+      expect(result.reason).toBe('cancelled');
+      expect(result.message).toBe('La inscripción está anulada. No puede registrar asistencia.');
       expect(inserts).toHaveLength(0);
     },
   );
@@ -105,8 +120,8 @@ describe('CheckinApi — estado de la inscripción', () => {
     const { api, inserts } = setup({ registration: registration('PENDING') });
     const result = await api.registerScan(REG_ID, EVENT_ID, 'checkin', null, 'op1');
     expect(result.success).toBe(false);
-    expect(result.message).toContain('Pendiente de pago');
-    expect(result.message).toContain('Debe estar Confirmado');
+    expect(result.reason).toBe('pending');
+    expect(result.message).toContain('pendiente de pago');
     expect(inserts).toHaveLength(0);
   });
 
@@ -117,6 +132,8 @@ describe('CheckinApi — estado de la inscripción', () => {
     expect(inserts).toEqual([
       expect.objectContaining({ registration_id: REG_ID, scan_type: 'checkin', scanned_by: 'op1' }),
     ]);
+    expect(result.scanLogId).toBeTruthy();
+    expect(inserts[0]).toMatchObject({ id: result.scanLogId });
   });
 
   it('CONFIRMED registra ingreso a sesión si está inscrito en ella', async () => {
@@ -140,6 +157,7 @@ describe('CheckinApi — estado de la inscripción', () => {
     const result = await api.registerScan(REG_ID, EVENT_ID, 'refrigerio', null, 'op1');
     expect(result.success).toBe(false);
     expect(result.alreadyScanned).toBe(true);
+    expect(result.reason).toBe('already_scanned');
     expect(inserts).toHaveLength(0);
   });
 
@@ -158,5 +176,66 @@ describe('CheckinApi — estado de la inscripción', () => {
     const result = await api.registerScan(REG_ID, EVENT_ID, 'session', SESSION_ID, 'op1');
     expect(result.success).toBe(false);
     expect(legacyUpdates).toHaveLength(0);
+  });
+});
+
+describe('CheckinApi — deshacer', () => {
+  function setup(results: Parameters<typeof fakeSupabase>[0]) {
+    const fake = fakeSupabase(results);
+    TestBed.configureTestingModule({ providers: [{ provide: SUPABASE, useValue: fake.client }] });
+    return { api: TestBed.inject(CheckinApi), ...fake };
+  }
+
+  it('borra el registro por id', async () => {
+    const { api, deletes } = setup({ registration: registration('CONFIRMED') });
+    const result = await api.undoScan({
+      scanLogId: 'log-1',
+      mode: 'checkin',
+      sessionId: null,
+      userId: null,
+    });
+    expect(result.ok).toBe(true);
+    expect(deletes).toEqual(['log-1']);
+  });
+
+  it('si RLS no deja borrar (pasaron más de 60 s o no es suyo) lo explica', async () => {
+    const { api } = setup({
+      registration: registration('CONFIRMED'),
+      deleteScan: { data: [], error: null },
+    });
+    const result = await api.undoScan({
+      scanLogId: 'log-1',
+      mode: 'checkin',
+      sessionId: null,
+      userId: null,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('Ya no se puede deshacer');
+  });
+
+  it('en sesión también revierte la asistencia sincronizada', async () => {
+    const { api, legacyUpdates } = setup({ registration: registration('CONFIRMED') });
+    const result = await api.undoScan({
+      scanLogId: 'log-1',
+      mode: 'session',
+      sessionId: SESSION_ID,
+      userId: 'u1',
+    });
+    expect(result.ok).toBe(true);
+    expect(legacyUpdates).toEqual([{ asistio: false, checked_in_at: null }]);
+  });
+
+  it('un error de la base no se reporta como éxito', async () => {
+    const { api } = setup({
+      registration: registration('CONFIRMED'),
+      deleteScan: { data: null, error: { code: '500', message: 'boom' } },
+    });
+    const result = await api.undoScan({
+      scanLogId: 'log-1',
+      mode: 'checkin',
+      sessionId: null,
+      userId: null,
+    });
+    expect(result.ok).toBe(false);
   });
 });

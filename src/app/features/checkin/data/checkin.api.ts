@@ -1,9 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 import { PostgrestError } from '@supabase/supabase-js';
 import { SUPABASE } from '../../../core/supabase/supabase.client';
-import { blocksAttendance, registrationStatusLabel } from '../../events/domain/registration-status';
+import { blocksAttendance } from '../../events/domain/registration-status';
 import { CheckinRepository } from '../domain/checkin.repository';
-import { Session, ScanResult, ScanMode } from '../domain/checkin.model';
+import {
+  Session,
+  ScanResult,
+  ScanMode,
+  UndoScanInput,
+  UndoScanResult,
+} from '../domain/checkin.model';
 import { Attendee, Event } from '../../events/domain/event.model';
 import { EventsApi } from '../../events/data/events.api';
 
@@ -49,9 +55,9 @@ export class CheckinApi implements CheckinRepository {
     }
 
     return (data || []).map((row) => {
-      const timeStr = row.start_time ? ` (${row.start_time.substring(0, 5)})` : '';
-      const speakerStr = row.speaker ? ` - por ${row.speaker}` : '';
-      const displayLabel = `${row.title}${speakerStr}${timeStr}`;
+      const timeStr = row.start_time ? `${row.start_time.substring(0, 5)} · ` : '';
+      const speakerStr = row.speaker ? ` · ${row.speaker}` : '';
+      const displayLabel = `${timeStr}${row.title}${speakerStr}`;
 
       return {
         id: row.id,
@@ -75,35 +81,27 @@ export class CheckinApi implements CheckinRepository {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const client = this.supabase as any;
 
+    const countScans = (scanType: string) =>
+      client
+        .from('scan_logs')
+        .select('id, registrations!inner(event_id)', { count: 'exact', head: true })
+        .eq('registrations.event_id', eventId)
+        .eq('scan_type', scanType);
+
     try {
-      const [regsRes, logsRes] = await Promise.all([
+      const [regsRes, checkinRes, refrigerioRes] = await Promise.all([
         client
           .from('registrations')
           .select('id', { count: 'exact', head: true })
           .eq('event_id', eventId)
           .eq('status', 'CONFIRMED'),
-        client
-          .from('scan_logs')
-          .select('id, scan_type, registrations!inner(event_id)')
-          .eq('registrations.event_id', eventId),
+        countScans('checkin'),
+        countScans('refrigerio'),
       ]);
 
-      let checkedInCount = 0;
-      let refrigerioCount = 0;
-
-      if (logsRes.data) {
-        logsRes.data.forEach((log: { scan_type: string }) => {
-          if (log.scan_type === 'checkin') {
-            checkedInCount++;
-          } else if (log.scan_type === 'refrigerio') {
-            refrigerioCount++;
-          }
-        });
-      }
-
       return {
-        checkedInCount,
-        refrigerioCount,
+        checkedInCount: checkinRes.count || 0,
+        refrigerioCount: refrigerioRes.count || 0,
         totalRegistered: regsRes.count || 0,
       };
     } catch (err) {
@@ -127,7 +125,8 @@ export class CheckinApi implements CheckinRepository {
     if (!uuidRegex.test(registrationId.trim())) {
       return {
         success: false,
-        message: 'Código QR no válido. Formato de credencial incorrecto.',
+        reason: 'invalid_code',
+        message: 'Este código no es una credencial de inscripción.',
       };
     }
 
@@ -161,14 +160,16 @@ export class CheckinApi implements CheckinRepository {
       console.error('Error fetching registration:', regError);
       return {
         success: false,
-        message: 'Error al consultar la base de datos para la credencial.',
+        reason: 'error',
+        message: 'No se pudo consultar la credencial. Revisa tu conexión y vuelve a intentarlo.',
       };
     }
 
     if (!reg) {
       return {
         success: false,
-        message: 'La credencial no corresponde a ningún registro en el sistema.',
+        reason: 'not_found',
+        message: 'La credencial no corresponde a ninguna inscripción.',
       };
     }
 
@@ -196,6 +197,7 @@ export class CheckinApi implements CheckinRepository {
     if (rawReg.event_id !== eventId) {
       return {
         success: false,
+        reason: 'other_event',
         message: 'Esta credencial pertenece a otro evento.',
         attendee,
       };
@@ -205,9 +207,10 @@ export class CheckinApi implements CheckinRepository {
     if (rawReg.status?.toUpperCase() !== 'CONFIRMED') {
       return {
         success: false,
+        reason: blocksAttendance(rawReg.status) ? 'cancelled' : 'pending',
         message: blocksAttendance(rawReg.status)
-          ? 'La inscripción está anulada: no puede registrar asistencia.'
-          : `El registro del asistente está en estado: ${registrationStatusLabel(rawReg.status)}. Debe estar Confirmado.`,
+          ? 'La inscripción está anulada. No puede registrar asistencia.'
+          : 'La inscripción está pendiente de pago. Envíala a la mesa de pagos.',
         attendee,
       };
     }
@@ -226,7 +229,8 @@ export class CheckinApi implements CheckinRepository {
       if (!sessionId) {
         return {
           success: false,
-          message: 'Debe seleccionar una sesión para registrar el ingreso.',
+          reason: 'session_required',
+          message: 'Elige una sesión para registrar el ingreso.',
           attendee,
         };
       }
@@ -246,7 +250,8 @@ export class CheckinApi implements CheckinRepository {
       console.error('Error checking scan logs:', scanCheckError);
       return {
         success: false,
-        message: 'Error al verificar registros previos de asistencia.',
+        reason: 'error',
+        message: 'No se pudo comprobar si ya estaba registrado. Vuelve a intentarlo.',
         attendee,
       };
     }
@@ -255,7 +260,8 @@ export class CheckinApi implements CheckinRepository {
       return {
         success: false,
         alreadyScanned: true,
-        message: `Ya se registró la asistencia previamente.`,
+        reason: 'already_scanned',
+        message: 'Ya se registró antes.',
         scannedAt: existingScan.scanned_at ? new Date(existingScan.scanned_at) : new Date(),
         attendee,
         scanTypeLabel,
@@ -275,7 +281,8 @@ export class CheckinApi implements CheckinRepository {
         console.error('Error checking session registrations:', sessionRegError);
         return {
           success: false,
-          message: 'Error al validar registro en la sesión.',
+          reason: 'error',
+          message: 'No se pudo validar la inscripción a la sesión. Vuelve a intentarlo.',
           attendee,
         };
       }
@@ -283,7 +290,8 @@ export class CheckinApi implements CheckinRepository {
       if (!sessionReg) {
         return {
           success: false,
-          message: 'El asistente no se encuentra registrado para participar en esta sesión.',
+          reason: 'not_in_session',
+          message: 'No está inscrito en esta sesión.',
           attendee,
           scanTypeLabel,
         };
@@ -334,8 +342,10 @@ export class CheckinApi implements CheckinRepository {
       scanTypeLabel = 'Ingreso a Sesión';
     }
 
-    // 2. Registrar el escaneo en `scan_logs`
+    // 2. Registrar el escaneo en `scan_logs`. El id se genera aquí para poder deshacerlo.
+    const scanLogId = crypto.randomUUID();
     const { error: insertScanError } = await client.from('scan_logs').insert({
+      id: scanLogId,
       registration_id: verification.registrationDbId,
       scan_type: scanType,
       scanned_by: operatorUserId,
@@ -344,10 +354,20 @@ export class CheckinApi implements CheckinRepository {
 
     if (insertScanError) {
       console.error('Error saving scan log:', insertScanError);
+      // 23505: otro operador lo registró un instante antes. P0001: la inscripción se anuló.
+      const reason =
+        insertScanError.code === '23505'
+          ? 'already_scanned'
+          : insertScanError.code === 'P0001'
+            ? 'cancelled'
+            : 'error';
       return {
         success: false,
-        message: 'No se pudo guardar el registro de asistencia en la base de datos.',
+        reason,
+        alreadyScanned: reason === 'already_scanned',
+        message: 'No se pudo guardar el registro. Vuelve a intentarlo.',
         attendee: verification.attendee,
+        scanTypeLabel,
       };
     }
 
@@ -378,6 +398,56 @@ export class CheckinApi implements CheckinRepository {
       attendee: verification.attendee,
       scannedAt: new Date(),
       scanTypeLabel,
+      scanLogId,
     };
+  }
+
+  async undoScan(input: UndoScanInput): Promise<UndoScanResult> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = this.supabase as any;
+
+    const { data, error } = await client
+      .from('scan_logs')
+      .delete()
+      .eq('id', input.scanLogId)
+      .select('id');
+
+    if (error) {
+      console.error('Error undoing scan:', error);
+      return { ok: false, message: 'No se pudo deshacer. Vuelve a intentarlo.' };
+    }
+
+    // RLS solo deja borrar tu propio registro de los últimos 60 s: sin filas = ya no se puede.
+    if (!data || data.length === 0) {
+      return {
+        ok: false,
+        message: 'Ya no se puede deshacer. Pídele a un organizador que lo corrija en Asistentes.',
+      };
+    }
+
+    if (input.mode === 'session' && input.sessionId && input.userId) {
+      const { error: syncError } = await client
+        .from('inscripciones_sessions')
+        .update({ asistio: false, checked_in_at: null })
+        .eq('usuario_id', input.userId)
+        .eq('session_id', input.sessionId);
+
+      if (syncError) {
+        console.error('Warning: could not sync inscripciones_sessions:', syncError);
+      }
+    }
+
+    return { ok: true, message: 'Registro deshecho.' };
+  }
+
+  async getAssignedEventIds(): Promise<string[]> {
+    const { data, error } = await this.supabase.from('event_staff_assignments').select('event_id');
+
+    if (error) {
+      console.error('Error fetching staff assignments:', error);
+      throw error;
+    }
+
+    return (data ?? []).map((row) => row.event_id);
   }
 }
