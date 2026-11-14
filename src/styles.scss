@@ -1,6 +1,5 @@
 @use './styles/layers';
 @use 'tailwindcss';
-@use 'primeicons/primeicons.css';
 @use './styles/variables';
 @use './styles/tokens';
 @plugin "tailwindcss-primeui";
@@ -248,6 +247,15 @@
     &:focus-within {
       border-color: var(--color-action);
       box-shadow: 0 0 0 2.5px rgba(66, 133, 244, 0.2);
+    }
+  }
+
+  /* Objetivo táctil de 44 px en móvil/tablet (las utilidades `h-*` de cada pantalla ganan). */
+  @media (max-width: 768px) {
+    .p-select,
+    .p-inputtext,
+    .p-datepicker-input {
+      height: 2.75rem;
     }
   }
 

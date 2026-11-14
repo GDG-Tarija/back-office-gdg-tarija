@@ -1,198 +1,131 @@
 ---
 name: design-system
-description: Sistema visual del Back Office GDG Tarija con PrimeNG Aura, Tailwind CSS v4, tablas CRUD, formularios y accesibilidad.
+description: Sistema visual del Back Office GDG Tarija con PrimeNG Aura, Tailwind CSS v4, capas CSS, Material Symbols, DialogFrame, FeedbackService, tablas que pasan a tarjetas en móvil y vocabulario único.
 ---
 
 # Sistema De Diseño
 
-Usar esta skill cuando la tarea toque UI, layout, PrimeNG, Tailwind, tablas, formularios, diálogos, navegación o experiencia administrativa.
+Usar esta skill cuando la tarea toque UI, layout, PrimeNG, Tailwind, tablas, formularios, diálogos, navegación o experiencia administrativa. La descripción completa de tokens y patrones está en `DESIGN.md` (raíz); el producto y sus usuarios en `PRODUCT.md`. Modo Impeccable: **Operate** (familiaridad, consistencia y densidad útil por encima de expresión).
 
 ---
 
 ## Principios
 
-- Back-office administrativo, denso y claro.
-- Priorizar lectura de datos, acciones rápidas y feedback explícito.
-- PrimeNG para componentes ricos; Tailwind para composición visual.
-- Evitar UI genérica de landing pública salvo que se pida explícitamente.
-- Mantener consistencia antes que introducir nuevos patrones visuales.
+- Back-office administrativo, denso y claro; PrimeNG para componentes ricos, Tailwind para composición.
+- Consistencia antes que patrones nuevos: antes de crear algo, buscar el equivalente en `shared/` o en otra pantalla.
+- Cero pérdida de datos silenciosa: lo editable avisa antes de descartar.
+- Móvil de verdad: sin scroll horizontal de página a 390 px y objetivos táctiles de 44 px.
 
 ---
 
 ## Stack UI
 
-- **PrimeNG 21** con preset Aura.
-- **PrimeIcons** para iconografía.
-- **Tailwind CSS v4** para spacing, flex/grid, responsive y ajustes.
-- **tailwindcss-primeui** para tokens integrados.
-- CSS layers configuradas como `tailwind, primeng`.
+- **PrimeNG 21** con preset propio sobre Aura (`core/config/primeng-preset.ts`, escala de azul GDG).
+- **Tailwind CSS v4** (`@theme static` en `src/styles/_tokens.scss`) + **tailwindcss-primeui**.
+- **Material Symbols Rounded** como único set de iconos: `<span class="material-symbols-rounded" aria-hidden="true">add</span>`. **No usar PrimeIcons** (`pi pi-*`); en `p-button` usar `<ng-template #icon>` y en `MenuItem` un `<ng-template #item>` que pinte el glifo.
+- **Google Sans** (400/500/700). `font-semibold|extrabold|black` se resuelven a 700.
 
-Archivo global actual:
+### Capas CSS
 
-```scss
-@use 'tailwindcss';
-@use 'primeicons/primeicons.css';
-@plugin "tailwindcss-primeui";
+`src/styles/_layers.css` declara `@layer theme, base, primeng, components, utilities;` y `app.config.ts` lo respeta con `cssLayer: { name: 'primeng', order: … }`. Consecuencias:
 
-@layer tailwind, primeng;
-```
+- Las utilidades de Tailwind **ganan** a PrimeNG sin `!`. No escribir `!rounded-xl`, `!px-*`, `!important`.
+- Overrides globales de PrimeNG: en `@layer components` dentro de `styles.scss`, no en SCSS de componente con `::ng-deep` + `!important`.
+- Excepciones aceptadas: reducción de movimiento, tamaño de icono en `p-datatable` y el `<video>` del lector QR (CSS de librería sin capas).
 
----
+### Tokens
 
-## Uso De PrimeNG
-
-Usar PrimeNG para:
-
-- `p-table` en listados CRUD.
-- `p-dialog` para crear/editar/ver detalles.
-- `p-confirmdialog` o `ConfirmationService` para eliminaciones.
-- `p-toast` o `MessageService` para feedback.
-- `p-button`, `p-inputtext`, `p-select`, `p-datepicker`, `p-tag`, `p-menu` según necesidad.
-- `p-toolbar` o layout propio con Tailwind para encabezados de página.
-
-No usar Angular Material ni Bootstrap.
+- Colores de marca `--color-google-*` (+ `-light` pastel, `-dark` para texto AA). Los alias `--gdg-google-*` ya no existen.
+- Semánticos: `action`/`on-action`, `accent-text`, `danger-text`, `success|warning|error|info-{bg,text}`, `surface-main|paper`, `border`, `text-primary|secondary|muted`. Tema oscuro en `[data-theme='dark']` (`_variables.scss`), variante `dark:` en Tailwind.
+- Texto de color sobre fondo claro: `google-*-dark` o los pares semánticos, nunca `google-*` puro.
 
 ---
 
-## Layout Administrativo
-
-Estructura típica de página:
+## Layout administrativo
 
 ```html
-<section class="flex flex-col gap-4">
-  <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+<div class="space-y-6 p-4 sm:p-8">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h1 class="text-2xl font-semibold text-surface-900">Eventos</h1>
-      <p class="text-sm text-surface-600">Gestiona los eventos de la comunidad.</p>
+      <h1 class="text-2xl font-bold tracking-tight text-text-primary dark:text-neutral-100">
+        Eventos
+      </h1>
+      <p class="mt-1 text-sm text-text-secondary dark:text-neutral-400">Subtítulo de una línea.</p>
     </div>
-
-    <p-button label="Nuevo evento" icon="pi pi-plus" />
+    <a
+      class="inline-flex min-h-11 items-center gap-2 rounded-full bg-action px-5 text-sm font-semibold text-on-action"
+      >…</a
+    >
   </header>
-
-  <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 shadow-sm">
-    <!-- filtros + tabla -->
-  </div>
-</section>
+  …
+</div>
 ```
 
-Preferir:
-
-- Encabezado claro con título, descripción y acción primaria.
-- Contenedor de tabla con borde suave y `shadow-sm`.
-- Acciones destructivas visualmente diferenciadas.
-- Estados `loading`, `empty`, `error` explícitos.
+- Un `h1` por pantalla, mismo estilo en Inicio, Eventos, Nuevo evento y Gestión (sin degradados ni tarjetas anidadas).
+- **Cabecera de evento** (`EventHeader`): migas, título, tag Publicado/Borrador, fechas y acciones proyectadas con `<ng-content>`. Debajo, `EventSectionNav` (pestañas en gestión, pasos con `setup=1` durante el alta). La pestaña vive en `?tab=` (`parseEventTab`, `EVENT_TABS` en `domain/event-tabs.ts`).
+- Estados `loading`, `empty` y `error` explícitos en cada lista.
 
 ---
 
-## Tablas CRUD
+## Tablas y tarjetas en móvil
 
-Patrón base:
-
-- Filtro de búsqueda arriba.
-- Paginación habilitada.
-- Ordenamiento en columnas importantes.
-- Columna final de acciones.
-- Estado vacío cuando no hay resultados.
-- Skeleton/loading cuando la carga no es inmediata.
-
-Ejemplo:
-
-```html
-<p-table
-  [value]="items()"
-  [loading]="loading()"
-  [paginator]="true"
-  [rows]="10"
-  [rowsPerPageOptions]="[10, 25, 50]"
-  dataKey="id"
-  responsiveLayout="scroll"
->
-  <ng-template pTemplate="header">
-    <tr>
-      <th pSortableColumn="name">Nombre <p-sortIcon field="name" /></th>
-      <th>Estado</th>
-      <th class="w-40 text-right">Acciones</th>
-    </tr>
-  </ng-template>
-
-  <ng-template pTemplate="body" let-item>
-    <tr>
-      <td>{{ item.name }}</td>
-      <td><p-tag [value]="item.status" /></td>
-      <td class="text-right">
-        <p-button icon="pi pi-eye" text rounded ariaLabel="Ver detalle" />
-        <p-button icon="pi pi-pencil" text rounded ariaLabel="Editar" />
-        <p-button icon="pi pi-trash" text rounded severity="danger" ariaLabel="Eliminar" />
-      </td>
-    </tr>
-  </ng-template>
-
-  <ng-template pTemplate="emptymessage">
-    <tr>
-      <td colspan="3" class="py-8 text-center text-surface-500">No hay registros.</td>
-    </tr>
-  </ng-template>
-</p-table>
-```
+- `p-table` con paginación, orden, filtro y estado vacío; columna de acciones al final con botones solo-icono con `aria-label`.
+- **≤ 768 px las filas pasan a tarjetas** (Eventos, Asistentes): `readonly isMobile = mediaQuerySignal(MOBILE_QUERY)` (`shared/utils/media-query.ts`) y `@if (isMobile()) { …tarjetas… } @else { <p-table> }`. Nunca depender de scroll horizontal para acciones.
+- Tags de estado con `p-tag`: texto + `severity`; las opciones salen del dominio (`REGISTRATION_STATUS_OPTIONS`, `ATTENDEE_ROLE_OPTIONS`), no se escriben a mano.
 
 ---
 
 ## Formularios
 
-Reglas:
-
-- Labels en español si son visibles para usuario final/admin.
-- Variables, clases, métodos y archivos en inglés.
-- Mostrar errores cerca del campo.
-- Deshabilitar submit durante guardado.
-- Mantener crear/editar en el mismo diálogo si el formulario es similar.
-
-Evitar formularios enormes en una sola columna en desktop. Usar grids simples:
-
-```html
-<div class="grid gap-4 md:grid-cols-2">
-  <div class="flex flex-col gap-2">
-    <label for="name">Nombre</label>
-    <input id="name" pInputText />
-  </div>
-</div>
-```
+- Labels visibles y asociados; errores junto al campo; `ErrorSummary` (`shared/components/error-summary`) para resumir y enlazar errores.
+- Submit deshabilitado mientras guarda. Inputs de 44 px de alto en táctil (regla global en `styles.scss`).
+- Variables, clases y archivos en inglés; textos visibles en español.
+- Formularios con trabajo sin guardar: implementan `CanLeave` y usan `unsavedChangesGuard` en la ruta (`canDeactivate`); el aviso "Guardar / Descartar / Seguir editando" es `UnsavedChangesDialog` con `UnsavedPrompt`. Cambiar de pestaña con cambios también pregunta (`runGuardsAndResolvers: 'always'`).
+- Errores del servidor: `toUserMessage(err, 'No se pudo guardar el paquete.', 'ticket_type')` (`events/data/postgres-error.mapper.ts`), nunca el mensaje crudo de Postgres.
 
 ---
 
-## Diálogos
+## Diálogos y feedback
 
-Usar `p-dialog` para:
+- **Diálogos de formulario/detalle**: `<app-dialog-frame>` (`shared/components/dialog-frame`) sobre `p-dialog`. Entradas `title`, `icon`, `initialSize` (`sm|md|lg`) y **`dirty`**: con `dirty` en `true`, X, Escape o clic en la máscara piden confirmación antes de emitir `closeDialog`. Footer con Cancelar + acción primaria; cerrar solo tras guardar con éxito.
+- **Toasts y confirmaciones**: inyectar `FeedbackService` (`core/services/feedback.service.ts`): `success(msg)`, `error(msg)` y `confirm({ titulo, mensaje, aceptar, peligro })` que devuelve `Promise<boolean>`. `p-toast` y `p-confirmdialog` ya viven en `AdminLayout`; no agregar otros ni usar `MessageService`/`ConfirmationService` directamente.
+- Confirmar siempre acciones destructivas nombrando la entidad y su consecuencia ("Despublicar con N personas inscritas").
+- Escape cierra drawer y diálogos; el foco vuelve al disparador.
 
-- Crear/editar registros.
-- Vista de detalle cuando no requiere ruta propia.
-- Confirmaciones complejas si `p-confirmdialog` no alcanza.
+---
 
-Buenas prácticas:
+## Vocabulario y tono (obligatorio)
 
-- Título específico: `Nuevo evento`, `Editar evento`, `Detalle del evento`.
-- Footer con cancelar + acción primaria.
-- `modal="true"`.
-- Ancho responsive con Tailwind o `style` controlado.
-- Cerrar solo al completar guardado exitoso.
+- Interfaz 100 % en español, **tuteo** (nada de voseo ni usted).
+- Moneda: pipe `bs` (`shared/pipes/bs.pipe.ts`, `formatBs`) → "Bs 20". Nunca "BOB".
+- **Capacidad** del evento; **Cupo** de paquete o fase.
+- Inscripción: **Confirmada / Pendiente de pago / Anulada** (plural Confirmadas / Pendientes de pago / Anuladas). Acción **"Anular"**, no "Cancelar inscripción".
+- Personas: "personas inscritas" / "inscripciones"; roles: Asistente, Expositor, … (`ATTENDEE_ROLE_OPTIONS`). Evento: Publicado / Borrador.
+- Términos del dominio que se mantienen: "Check-in", "Staff". Sin "Dashboard" (se llama **Inicio**), "WORKSHOP", etc.
+
+---
+
+## Check-in
+
+Un QR válido de una inscripción Confirmada se registra al instante: resultado verde a pantalla completa, vibración y "Deshacer" unos segundos. Pendiente, Anulada, Ya registrado u otro evento muestran resultado ámbar/rojo con motivo y qué hacer. STAFF entra directo a `/checkin` con su evento preseleccionado (`domain/event-preselection.ts`); el Inicio queda oculto para STAFF (`homeGuard`).
 
 ---
 
 ## Accesibilidad
 
-- Todo botón solo-icono debe tener `aria-label` o `ariaLabel`.
-- Inputs deben tener `label` asociado.
-- No comunicar estados solo por color.
-- Mantener foco razonable al abrir/cerrar diálogos.
-- Textos de acción claros: `Eliminar`, `Guardar cambios`, `Cancelar`.
+- Botón solo-icono con `aria-label`; iconos decorativos `aria-hidden="true"`.
+- Objetivos táctiles ≥ 44 px (`min-h-11`, `size-11`), incluido el shell (logo, cerrar menú, "Saltar al contenido").
+- Estados nunca solo por color; foco visible y razonable al abrir/cerrar overlays.
+- Contraste AA en claro y oscuro: usar solo los tokens documentados.
 
 ---
 
-## Anti-Patrones UI
+## Anti-patrones
 
-- Copiar el template inicial de Angular en páginas reales.
-- Usar tablas sin estado vacío.
-- Usar iconos sin label accesible.
-- Crear CSS global para un caso local.
-- Meter toda la pantalla en un único componente cuando hay tabla, diálogo y formulario con responsabilidades separables.
-- Introducir estilos arbitrarios complejos antes de intentar resolver con PrimeNG + Tailwind estándar.
+- `!important` / `!clase` para ganar a PrimeNG (ya no hace falta).
+- PrimeIcons, Angular Material, Bootstrap u otra librería de UI.
+- `h1` con degradado, tarjetas dentro de tarjetas, hex sueltos, `google-*` como color de texto.
+- Diálogos propios con `position: fixed` en lugar de `DialogFrame`; toasts con `MessageService` directo.
+- Tablas que fuerzan scroll horizontal en móvil.
+- Textos con "BOB", voseo, "Cancelar inscripción" o "Dashboard".
+- CSS global para un caso local; pantallas gigantes sin dividir en componentes.

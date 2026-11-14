@@ -55,11 +55,14 @@
   @if (selectedEventId() || selectedRole() || selectedDateRange()) {
     <p-button
       label="Limpiar filtros"
-      icon="pi pi-filter-slash"
       severity="secondary"
       [text]="true"
       size="small"
       (onClick)="onReset()"
-    />
+    >
+      <ng-template #icon>
+        <span class="material-symbols-rounded text-base" aria-hidden="true">filter_alt_off</span>
+      </ng-template>
+    </p-button>
   }
 </div>

@@ -938,7 +938,18 @@
   [popup]="true"
   appendTo="body"
   ariaLabel="Exportar inscripciones"
-/>
+>
+  <ng-template #item let-item>
+    <a
+      class="p-menu-item-link flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium whitespace-nowrap"
+    >
+      <span class="material-symbols-rounded text-lg leading-none shrink-0" aria-hidden="true">{{
+        item.icon
+      }}</span>
+      <span>{{ item.label }}</span>
+    </a>
+  </ng-template>
+</p-menu>
 
 <app-payment-proof-dialog
   [attendee]="proofAttendee()"

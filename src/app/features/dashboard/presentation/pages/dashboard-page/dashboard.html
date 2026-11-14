@@ -23,7 +23,11 @@
           warning
         </span>
         <p class="text-sm text-google-red font-semibold text-center">{{ error() }}</p>
-        <p-button label="Reintentar" icon="pi pi-refresh" size="small" (onClick)="load()" />
+        <p-button label="Reintentar" size="small" (onClick)="load()">
+          <ng-template #icon>
+            <span class="material-symbols-rounded text-base" aria-hidden="true">refresh</span>
+          </ng-template>
+        </p-button>
       </div>
     } @else {
       <app-dashboard-attention [proofs]="proofs()" [drafts]="drafts()" [upcoming]="upcoming()" />
