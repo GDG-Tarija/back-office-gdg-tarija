@@ -16,8 +16,8 @@ describe('toDomainError', () => {
   it('mapea restrict_violation y FK a "tiene inscritos"', () => {
     const a = toDomainError({ code: '23001' }, 'event');
     expect(a.code).toBe('HAS_REGISTRATIONS');
-    expect(a.message).toContain('inscritos');
-    expect(toDomainError({ code: '23503' }, 'session').message).toContain('inscritos');
+    expect(a.message).toContain('inscritas');
+    expect(toDomainError({ code: '23503' }, 'session').message).toContain('inscritas');
   });
   it('mapea permisos RLS', () => {
     expect(toDomainError({ code: '42501' }, 'track').code).toBe('FORBIDDEN');

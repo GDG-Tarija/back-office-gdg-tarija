@@ -35,11 +35,11 @@ const DUPLICATE_MESSAGES: Record<ErrorContext, { message: string; field?: string
 };
 
 const REGISTRATIONS_MESSAGES: Record<ErrorContext, string> = {
-  event: 'No se puede eliminar un evento con inscritos. Despublícalo en su lugar.',
-  ticket_type: 'No se puede eliminar un paquete con inscritos.',
+  event: 'No se puede eliminar un evento con personas inscritas. Despublícalo en su lugar.',
+  ticket_type: 'No se puede eliminar un paquete con personas inscritas.',
   ticket_phase: 'No se puede eliminar una fase con inscripciones.',
   track: 'No se puede eliminar el track porque tiene elementos asociados.',
-  session: 'No se puede eliminar una sesión con inscritos.',
+  session: 'No se puede eliminar una sesión con personas inscritas.',
   coupon: 'No se puede eliminar un cupón que ya fue utilizado.',
   staff: 'No se puede eliminar la asignación porque tiene elementos asociados.',
   asset: 'No se puede eliminar el archivo.',

@@ -99,7 +99,7 @@ describe('session-form', () => {
 
   it('mensaje de borrado de track con conteo', () => {
     expect(trackDeleteMessage({ name: 'Web' }, 0)).not.toContain('sin track');
-    expect(trackDeleteMessage({ name: 'Web' }, 4)).toContain('4 sesión(es)');
+    expect(trackDeleteMessage({ name: 'Web' }, 4)).toContain('Sus 4 sesiones quedarán');
   });
 
   it('agrupa por día, track y hora', () => {

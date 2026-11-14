@@ -8,19 +8,32 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 // Signal Forms es experimental en Angular 21.2; ver nota en event-basics-form.
 import { FormField, form } from '@angular/forms/signals';
 
+import { DatePickerModule } from 'primeng/datepicker';
 import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 
+import { FeedbackService } from '../../../../../core/services/feedback.service';
+import { ErrorSummary } from '../../../../../shared/components/error-summary/error-summary';
+import { ErrorSummaryItem, buildErrorSummary } from '../../../../../shared/utils/error-summary';
+import { focusField } from '../../../../../shared/utils/focus';
 import { DialogFrame } from '../../../../../shared/components/dialog-frame/dialog-frame';
+import { errorField, toUserMessage } from '../../../data/postgres-error.mapper';
 import { SessionsApi } from '../../../data/sessions.api';
 import { SessionRegistrationsApi } from '../../../data/session-registrations.api';
 import { TracksApi } from '../../../data/tracks.api';
 import { AssetCleanupTracker } from '../../../domain/asset-cleanup';
 import { AssetsRepository } from '../../../domain/assets.repository';
 import { Event } from '../../../domain/event.model';
+import {
+  dateStringToDate,
+  dateToDateString,
+  dateToTimeString,
+  timeStringToDate,
+} from '../../../domain/event-form';
 import {
   SessionSlot,
   ValidationIssue,
@@ -59,7 +72,16 @@ export type TracksSessionsEvent = Pick<Event, 'dateStart' | 'dateEnd' | 'capacit
 @Component({
   selector: 'app-tracks-sessions-editor',
   standalone: true,
-  imports: [FormField, InputTextModule, TooltipModule, DialogFrame, ImageUploader],
+  imports: [
+    FormField,
+    FormsModule,
+    DatePickerModule,
+    InputTextModule,
+    TooltipModule,
+    DialogFrame,
+    ErrorSummary,
+    ImageUploader,
+  ],
   providers: [
     { provide: TracksRepository, useClass: TracksApi },
     { provide: SessionsRepository, useClass: SessionsApi },
@@ -72,6 +94,7 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
   private readonly sessionsRepo = inject(SessionsRepository);
   private readonly registrationsRepo = inject(SessionRegistrationsRepository);
   private readonly assets = inject(AssetsRepository);
+  private readonly feedback = inject(FeedbackService);
 
   readonly eventId = input.required<string>();
   readonly event = input.required<TracksSessionsEvent>();
@@ -86,7 +109,6 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
   readonly counts = signal<Record<string, number>>({});
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
-  readonly notice = signal<string | null>(null);
 
   readonly agenda = computed(() => groupAgenda(this.sessions(), this.tracks()));
   readonly trackName = computed(() => {
@@ -128,6 +150,13 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
       },
     ),
   );
+
+  private readonly trackServerIssue = signal<ValidationIssue | null>(null);
+  readonly trackSummary = computed<ErrorSummaryItem[]>(() => {
+    if (!this.trackSubmitted()) return [];
+    const issue = this.trackServerIssue() ?? this.trackValidation().errors[0];
+    return issue ? [{ id: 'tk-name', label: 'Nombre', message: issue.message }] : [];
+  });
 
   readonly trackToDelete = signal<Track | null>(null);
   readonly trackDeleting = signal(false);
@@ -187,9 +216,31 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
     return { errors, warnings };
   });
 
+  private readonly sessionServerIssue = signal<ValidationIssue | null>(null);
+  readonly sessionErrors = computed(() => {
+    const server = this.sessionServerIssue();
+    return server ? [...this.sessionValidation().errors, server] : this.sessionValidation().errors;
+  });
   readonly canSaveSession = computed(
-    () => this.sessionValidation().errors.length === 0 && !this.sessionSaving(),
+    () => this.sessionErrors().length === 0 && !this.sessionSaving(),
   );
+  readonly sessionSummary = computed<ErrorSummaryItem[]>(() =>
+    this.sessionSubmitted()
+      ? buildErrorSummary(this.sessionErrors(), {
+          title: { id: 'se-title', label: 'Título' },
+          date: { id: 'se-date', label: 'Fecha' },
+          startTime: { id: 'se-start', label: 'Hora de inicio' },
+          endTime: { id: 'se-end', label: 'Hora de fin' },
+          capacity: { id: 'se-cap', label: 'Capacidad' },
+          trackId: { id: 'se-track', label: 'Track' },
+          level: { id: 'se-level', label: 'Nivel' },
+        })
+      : [],
+  );
+
+  readonly sessionDate = computed(() => dateStringToDate(this.sessionModel().date));
+  readonly sessionStart = computed(() => timeStringToDate(this.sessionModel().startTime));
+  readonly sessionEnd = computed(() => timeStringToDate(this.sessionModel().endTime));
 
   ngOnInit(): void {
     void this.load();
@@ -213,9 +264,7 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
       this.counts.set(counts);
       this.sessionsChange.emit(sessions);
     } catch (err) {
-      this.loadError.set(
-        err instanceof Error ? err.message : 'No se pudieron cargar los tracks y sesiones.',
-      );
+      this.loadError.set(toUserMessage(err, 'No se pudieron cargar los tracks y sesiones.'));
     } finally {
       this.loading.set(false);
     }
@@ -232,8 +281,7 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
   // ---------------------------------------------------------------- Tracks
 
   trackFieldError(): string | null {
-    if (!this.trackSubmitted()) return null;
-    return this.trackValidation().errors[0]?.message ?? null;
+    return this.trackSummary()[0]?.message ?? null;
   }
 
   openCreateTrack(): void {
@@ -250,7 +298,12 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
 
   async saveTrack(): Promise<void> {
     this.trackSubmitted.set(true);
-    if (this.trackValidation().errors.length > 0 || this.trackSaving()) return;
+    this.trackServerIssue.set(null);
+    if (this.trackSaving()) return;
+    if (this.trackValidation().errors.length > 0) {
+      focusField('tk-name');
+      return;
+    }
     const v = this.trackModel();
     const input = { name: v.name.trim(), description: v.description.trim() || null };
     this.trackSaving.set(true);
@@ -264,11 +317,12 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
         editing ? list.map((t) => (t.id === saved.id ? saved : t)) : [...list, saved],
       );
       this.trackDialogOpen.set(false);
-      this.notice.set(editing ? 'Track actualizado.' : 'Track creado.');
+      this.feedback.success(editing ? 'Track actualizado.' : 'Track creado.');
     } catch (err) {
-      this.trackDialogError.set(
-        err instanceof Error ? err.message : 'No se pudo guardar el track.',
-      );
+      const message = toUserMessage(err, 'No se pudo guardar el track.', 'track');
+      if (errorField(err)) this.trackServerIssue.set({ field: 'name', message });
+      else this.trackDialogError.set(message);
+      if (errorField(err)) focusField('tk-name');
     } finally {
       this.trackSaving.set(false);
     }
@@ -298,15 +352,13 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
       );
       if (affected > 0) this.sessionsChange.emit(this.sessions());
       this.trackToDelete.set(null);
-      this.notice.set(
+      this.feedback.success(
         affected > 0
-          ? `Track eliminado. ${affected} sesión(es) quedaron sin track.`
+          ? `Track eliminado. ${affected} ${affected === 1 ? 'sesión quedó' : 'sesiones quedaron'} sin track.`
           : 'Track eliminado.',
       );
     } catch (err) {
-      this.trackDeleteError.set(
-        err instanceof Error ? err.message : 'No se pudo eliminar el track.',
-      );
+      this.trackDeleteError.set(toUserMessage(err, 'No se pudo eliminar el track.', 'track'));
     } finally {
       this.trackDeleting.set(false);
     }
@@ -317,8 +369,8 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
     this.trackModel.set(value);
     this.trackBaseline.set(JSON.stringify(value));
     this.trackSubmitted.set(false);
+    this.trackServerIssue.set(null);
     this.trackDialogError.set(null);
-    this.notice.set(null);
     this.trackDialogOpen.set(true);
   }
 
@@ -326,11 +378,19 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
 
   sessionFieldError(field: string): string | null {
     if (!this.sessionSubmitted()) return null;
-    return this.sessionValidation().errors.find((e) => e.field === field)?.message ?? null;
+    return this.sessionErrors().find((e) => e.field === field)?.message ?? null;
   }
 
   sessionFieldWarning(field: string): string | null {
     return this.sessionValidation().warnings.find((w) => w.field === field)?.message ?? null;
+  }
+
+  setSessionDate(value: Date | null): void {
+    this.sessionModel.update((v) => ({ ...v, date: dateToDateString(value) }));
+  }
+
+  setSessionTime(key: 'startTime' | 'endTime', value: Date | null): void {
+    this.sessionModel.update((v) => ({ ...v, [key]: dateToTimeString(value) }));
   }
 
   openCreateSession(): void {
@@ -360,7 +420,12 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
 
   async saveSession(): Promise<void> {
     this.sessionSubmitted.set(true);
-    if (!this.canSaveSession()) return;
+    this.sessionServerIssue.set(null);
+    if (!this.canSaveSession()) {
+      const first = this.sessionSummary()[0];
+      if (first) focusField(first.id);
+      return;
+    }
     const input = formValueToSessionInput(this.sessionModel());
     this.sessionSaving.set(true);
     this.sessionDialogError.set(null);
@@ -375,11 +440,12 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
       this.sessionsChange.emit(this.sessions());
       await this.cleanup.commit();
       this.sessionDialogOpen.set(false);
-      this.notice.set(editing ? 'Sesión actualizada.' : 'Sesión creada.');
+      this.feedback.success(editing ? 'Sesión actualizada.' : 'Sesión creada.');
     } catch (err) {
-      this.sessionDialogError.set(
-        err instanceof Error ? err.message : 'No se pudo guardar la sesión.',
-      );
+      const message = toUserMessage(err, 'No se pudo guardar la sesión.', 'session');
+      const field = errorField(err);
+      if (field) this.sessionServerIssue.set({ field, message });
+      else this.sessionDialogError.set(message);
     } finally {
       this.sessionSaving.set(false);
     }
@@ -411,12 +477,10 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
         await tracker.commit();
       }
       this.sessionToDelete.set(null);
-      this.notice.set('Sesión eliminada.');
+      this.feedback.success('Sesión eliminada.');
     } catch (err) {
       // DomainError (p. ej. inscritos agregados entretanto) trae un mensaje legible.
-      this.sessionDeleteError.set(
-        err instanceof Error ? err.message : 'No se pudo eliminar la sesión.',
-      );
+      this.sessionDeleteError.set(toUserMessage(err, 'No se pudo eliminar la sesión.', 'session'));
     } finally {
       this.sessionDeleting.set(false);
     }
@@ -428,8 +492,8 @@ export class TracksSessionsEditor implements OnInit, OnDestroy {
     this.sessionModel.set(value);
     this.sessionBaseline.set(JSON.stringify(value));
     this.sessionSubmitted.set(false);
+    this.sessionServerIssue.set(null);
     this.sessionDialogError.set(null);
-    this.notice.set(null);
     this.sessionDialogOpen.set(true);
   }
 

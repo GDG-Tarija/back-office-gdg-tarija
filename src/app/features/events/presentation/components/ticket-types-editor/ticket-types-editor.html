@@ -3,7 +3,8 @@
     <div>
       <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">Paquetes</h2>
       <p class="text-sm text-text-secondary dark:text-neutral-400">
-        Tipos de entrada del evento. Se necesita al menos uno para publicar.
+        Opciones de entrada del evento, con su propio precio y cupo. Se necesita al menos una para
+        publicar.
       </p>
     </div>
     <button
@@ -16,15 +17,6 @@
     </button>
   </div>
 
-  @if (notice(); as msg) {
-    <div
-      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
-      role="status"
-    >
-      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
-      <span>{{ msg }}</span>
-    </div>
-  }
   @for (w of capacityWarnings(); track w.message) {
     <div
       class="flex items-center gap-3 rounded-2xl bg-google-yellow-light/40 p-3 text-sm font-medium text-text-primary dark:text-neutral-200"
@@ -93,10 +85,10 @@
               {{ t.name }}
             </p>
             <p class="text-sm text-text-secondary dark:text-neutral-400">
-              {{ t.price === 0 ? 'Gratis' : 'Bs ' + t.price.toFixed(2) }} ·
-              {{ registered(t) }} inscrito(s)
+              {{ t.price === 0 ? 'Gratis' : 'Bs ' + t.price.toFixed(2) }} · {{ registered(t) }}
+              {{ registered(t) === 1 ? 'persona inscrita' : 'personas inscritas' }}
               @if (t.ticketCapacity !== null) {
-                de {{ t.ticketCapacity }} cupos
+                de {{ t.ticketCapacity }} de cupo
               } @else {
                 · sin cupo propio
               }
@@ -138,7 +130,7 @@
                 class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 [attr.aria-label]="
                   deleteBlockReason(t)
-                    ? 'Eliminar paquete ' + t.name + ' (no disponible: tiene inscritos)'
+                    ? 'Eliminar paquete ' + t.name + ' (no disponible: tiene personas inscritas)'
                     : 'Eliminar paquete ' + t.name
                 "
                 [disabled]="!!deleteBlockReason(t)"
@@ -162,7 +154,16 @@
     [dirty]="dirty()"
     (closeDialog)="closeDialog()"
   >
-    <form id="ticket-form" class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
+    <form
+      id="ticket-form"
+      class="flex flex-col gap-5"
+      novalidate
+      (submit)="$event.preventDefault(); save()"
+    >
+      <p class="text-xs text-text-secondary dark:text-neutral-400">
+        <span aria-hidden="true">*</span> obligatorio
+      </p>
+      <app-error-summary [items]="summary()" />
       <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div class="flex flex-col gap-1.5 md:col-span-2">
           <label for="tt-name" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
@@ -174,10 +175,12 @@
             pInputText
             class="w-full !rounded-xl"
             [formField]="f.name"
+            aria-required="true"
             [attr.aria-invalid]="!!fieldError('name')"
+            [attr.aria-describedby]="fieldError('name') ? 'tt-name-error' : null"
           />
           @if (fieldError('name'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            <small class="font-medium text-google-red" id="tt-name-error">{{ err }}</small>
           }
         </div>
 
@@ -232,10 +235,12 @@
               pInputText
               class="w-full !rounded-xl"
               [formField]="f.price"
+              aria-required="true"
               [attr.aria-invalid]="!!fieldError('price')"
+              [attr.aria-describedby]="fieldError('price') ? 'tt-price-error' : null"
             />
             @if (fieldError('price'); as err) {
-              <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+              <small class="font-medium text-google-red" id="tt-price-error">{{ err }}</small>
             }
             @if (fieldWarning('price'); as warn) {
               <small class="font-medium text-text-secondary dark:text-neutral-400" role="status">{{
@@ -258,14 +263,15 @@
             placeholder="Sin cupo propio"
             [formField]="f.ticketCapacity"
             [attr.aria-invalid]="!!fieldError('ticketCapacity')"
+            [attr.aria-describedby]="fieldError('ticketCapacity') ? 'tt-cap-error' : null"
           />
           @if (editing() && editingCount() > 0) {
             <small class="text-text-secondary dark:text-neutral-400"
-              >Mínimo {{ editingCount() }} (inscritos actuales).</small
+              >Mínimo {{ editingCount() }} (personas inscritas hoy).</small
             >
           }
           @if (fieldError('ticketCapacity'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            <small class="font-medium text-google-red" id="tt-cap-error">{{ err }}</small>
           }
         </div>
 
@@ -285,6 +291,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h3
                 id="tt-phases-title"
+                tabindex="-1"
                 class="text-sm font-bold text-text-primary dark:text-neutral-100"
               >
                 Fases
@@ -324,9 +331,10 @@
                         class="text-xs font-semibold text-text-secondary dark:text-neutral-400"
                         role="status"
                       >
-                        {{ a.sold }} vendido(s)
+                        {{ a.sold }} {{ a.sold === 1 ? 'inscrita' : 'inscritas' }}
                         @if (a.remaining !== null) {
-                          · {{ a.remaining }} restante(s)
+                          · {{ a.remaining }}
+                          {{ a.remaining === 1 ? 'cupo libre' : 'cupos libres' }}
                         } @else {
                           · sin límite
                         }
@@ -396,11 +404,17 @@
                       class="w-full !rounded-xl"
                       placeholder="Preventa"
                       [value]="ph.name"
+                      aria-required="true"
                       [attr.aria-invalid]="!!phaseError(i, 'name')"
+                      [attr.aria-describedby]="
+                        phaseError(i, 'name') ? 'ph-name-' + i + '-error' : null
+                      "
                       (input)="updatePhase(i, { name: $any($event.target).value })"
                     />
                     @if (phaseError(i, 'name'); as err) {
-                      <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+                      <small class="font-medium text-google-red" [id]="'ph-name-' + i + '-error'">{{
+                        err
+                      }}</small>
                     }
                   </div>
                   <div class="flex flex-col gap-1.5">
@@ -416,11 +430,19 @@
                       pInputText
                       class="w-full !rounded-xl"
                       [value]="ph.price"
+                      aria-required="true"
                       [attr.aria-invalid]="!!phaseError(i, 'price')"
+                      [attr.aria-describedby]="
+                        phaseError(i, 'price') ? 'ph-price-' + i + '-error' : null
+                      "
                       (input)="updatePhase(i, { price: $any($event.target).value })"
                     />
                     @if (phaseError(i, 'price'); as err) {
-                      <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+                      <small
+                        class="font-medium text-google-red"
+                        [id]="'ph-price-' + i + '-error'"
+                        >{{ err }}</small
+                      >
                     }
                   </div>
                   <div class="flex flex-col gap-1.5">
@@ -437,16 +459,22 @@
                       class="w-full !rounded-xl"
                       [placeholder]="last ? 'Sin límite' : ''"
                       [value]="ph.capacity"
+                      [attr.aria-required]="!last"
                       [attr.aria-invalid]="!!phaseError(i, 'capacity')"
+                      [attr.aria-describedby]="
+                        phaseError(i, 'capacity') ? 'ph-cap-' + i + '-error' : null
+                      "
                       (input)="updatePhase(i, { capacity: $any($event.target).value })"
                     />
                     @if (phaseSold(ph.id) > 0) {
                       <small class="text-text-secondary dark:text-neutral-400"
-                        >Mínimo {{ phaseSold(ph.id) }} (vendidos).</small
+                        >Mínimo {{ phaseSold(ph.id) }} (personas inscritas hoy).</small
                       >
                     }
                     @if (phaseError(i, 'capacity'); as err) {
-                      <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+                      <small class="font-medium text-google-red" [id]="'ph-cap-' + i + '-error'">{{
+                        err
+                      }}</small>
                     }
                   </div>
                 </div>
@@ -456,6 +484,8 @@
                     <app-image-uploader
                       kind="qr"
                       label="QR de pago de esta fase *"
+                      [inputId]="'ph-qr-' + i"
+                      [invalidMessage]="phaseError(i, 'paymentQrUrl')"
                       hint="Obligatorio en fases de pago. JPG, PNG o WebP, máximo 500 KB."
                       [eventId]="eventId()"
                       [value]="ph.paymentQrUrl"
@@ -463,9 +493,6 @@
                       (uploaded)="onImageUploaded($event)"
                       (discarded)="onImageDiscarded($event)"
                     />
-                    @if (phaseError(i, 'paymentQrUrl'); as err) {
-                      <small class="font-medium text-google-red" role="alert">{{ err }}</small>
-                    }
                   </div>
                 }
               </div>
@@ -487,6 +514,8 @@
             <app-image-uploader
               kind="qr"
               label="QR de pago *"
+              inputId="tt-qr"
+              [invalidMessage]="fieldError('paymentQrUrl')"
               hint="Obligatorio en paquetes de pago. JPG, PNG o WebP, máximo 500 KB."
               [eventId]="eventId()"
               [value]="model().paymentQrUrl"
@@ -494,9 +523,6 @@
               (uploaded)="onImageUploaded($event)"
               (discarded)="onImageDiscarded($event)"
             />
-            @if (fieldError('paymentQrUrl'); as err) {
-              <small class="font-medium text-google-red" role="alert">{{ err }}</small>
-            }
           </div>
         }
       </div>
@@ -506,6 +532,12 @@
       }
     </form>
     <ng-container dialog-actions>
+      @if (summary().length) {
+        <p class="mr-auto text-sm font-medium text-google-red">
+          Revisa {{ summary().length }} {{ summary().length === 1 ? 'campo' : 'campos' }} antes de
+          guardar.
+        </p>
+      }
       <button
         type="button"
         class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
@@ -517,7 +549,7 @@
         type="submit"
         form="ticket-form"
         class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        [disabled]="saving() || (submitted() && !canSave())"
+        [disabled]="saving()"
       >
         {{ saving() ? 'Guardando...' : 'Guardar paquete' }}
       </button>

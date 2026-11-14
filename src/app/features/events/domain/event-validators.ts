@@ -1,3 +1,4 @@
+import { plural } from './plural';
 import { COUPON_ROLES, CouponInput } from './coupon.model';
 import { EVENT_TYPES, EventInput, LOCATION_TYPES } from './event.model';
 import { FORM_FIELD_TYPES, FormField } from './form-field.model';
@@ -140,7 +141,7 @@ export function validateEvent(
   if (locked && ctx.originalSlug && input.slug !== ctx.originalSlug) {
     r.errors.push({
       field: 'slug',
-      message: 'El slug no se puede cambiar en un evento publicado o con inscritos.',
+      message: 'El slug no se puede cambiar en un evento publicado o con personas inscritas.',
     });
   }
 
@@ -268,7 +269,7 @@ export function validateTicketType(
     } else if (ctx.registeredCount !== undefined && input.ticketCapacity < ctx.registeredCount) {
       r.errors.push({
         field: 'ticketCapacity',
-        message: `El cupo no puede ser menor a los ${ctx.registeredCount} inscritos actuales.`,
+        message: `El cupo no puede ser menor a las personas inscritas hoy (${ctx.registeredCount}).`,
       });
     }
   }
@@ -306,7 +307,7 @@ function removedPhaseErrors(
     if (!kept.has(e.id) && n > 0) {
       issues.push({
         field: 'phases',
-        message: `No se puede quitar la fase "${e.name}": tiene ${n} inscripción(es).`,
+        message: `No se puede quitar la fase "${e.name}": tiene ${plural(n, 'inscripción', 'inscripciones')}.`,
       });
     }
   }
@@ -780,7 +781,7 @@ export function validatePublish(ctx: PublishContext): ValidationResult {
   if (incomplete.length) {
     r.errors.push({
       field: 'sessions',
-      message: `${incomplete.length} sesión(es) sin fecha u hora completas.`,
+      message: `${plural(incomplete.length, 'sesión', 'sesiones')} sin fecha u hora completas.`,
     });
   }
 
