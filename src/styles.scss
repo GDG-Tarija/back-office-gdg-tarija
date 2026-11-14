@@ -250,6 +250,17 @@
     }
   }
 
+  @media (max-width: 768px) {
+    .p-paginator .p-paginator-first,
+    .p-paginator .p-paginator-prev,
+    .p-paginator .p-paginator-next,
+    .p-paginator .p-paginator-last,
+    .p-paginator .p-paginator-page {
+      min-width: 2.75rem;
+      height: 2.75rem;
+    }
+  }
+
   /* Objetivo táctil de 44 px en móvil/tablet (las utilidades `h-*` de cada pantalla ganan). */
   @media (max-width: 768px) {
     .p-select,

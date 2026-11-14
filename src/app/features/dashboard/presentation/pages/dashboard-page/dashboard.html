@@ -19,10 +19,10 @@
         class="flex flex-col items-center justify-center py-10 gap-3 border border-google-red/20 rounded-2xl p-6"
         role="alert"
       >
-        <span class="material-symbols-rounded text-4xl text-google-red" aria-hidden="true">
+        <span class="material-symbols-rounded text-4xl text-danger-text" aria-hidden="true">
           warning
         </span>
-        <p class="text-sm text-google-red font-semibold text-center">{{ error() }}</p>
+        <p class="text-sm text-danger-text font-semibold text-center">{{ error() }}</p>
         <p-button label="Reintentar" size="small" (onClick)="load()">
           <ng-template #icon>
             <span class="material-symbols-rounded text-base" aria-hidden="true">refresh</span>

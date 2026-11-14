@@ -20,7 +20,7 @@
         </button>
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          class="inline-flex items-center gap-1.5 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90"
           (click)="add()"
         >
           <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
@@ -63,7 +63,7 @@
 
   @if (notice(); as msg) {
     <div
-      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
+      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-success-text"
       role="status"
     >
       <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
@@ -125,7 +125,7 @@
                   </button>
                   <button
                     type="button"
-                    class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
+                    class="flex size-11 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/30 disabled:opacity-40"
                     [attr.aria-label]="'Quitar ' + fieldTitle(f, i)"
                     [disabled]="!canRemove(f)"
                     [title]="
@@ -162,7 +162,7 @@
                 />
                 <div [id]="'ff-label-err-' + f.uid">
                   @for (m of fieldErrors(i, 'label'); track m) {
-                    <small class="font-medium text-google-red">{{ m }}</small>
+                    <small class="font-medium text-danger-text">{{ m }}</small>
                   }
                 </div>
               </div>
@@ -213,7 +213,7 @@
                   }
                 </small>
                 @for (m of fieldErrors(i, 'key'); track m) {
-                  <small class="font-medium text-google-red">{{ m }}</small>
+                  <small class="font-medium text-danger-text">{{ m }}</small>
                 }
               </div>
 
@@ -293,7 +293,7 @@
                       </button>
                       <button
                         type="button"
-                        class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
+                        class="flex size-11 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/30 disabled:opacity-40"
                         [attr.aria-label]="'Quitar opción ' + (j + 1)"
                         [disabled]="f.options.length <= 2"
                         (click)="removeOption(i, j)"
@@ -306,12 +306,12 @@
                   </div>
                 }
                 @for (m of fieldErrors(i, 'options'); track m) {
-                  <small class="font-medium text-google-red">{{ m }}</small>
+                  <small class="font-medium text-danger-text">{{ m }}</small>
                 }
                 @if (!readonly()) {
                   <button
                     type="button"
-                    class="self-start text-sm font-semibold text-google-blue hover:underline"
+                    class="self-start text-sm font-semibold text-accent-text hover:underline"
                     (click)="addOption(i)"
                   >
                     + Agregar opción
@@ -387,7 +387,7 @@
   </div>
 
   @if (saveError(); as err) {
-    <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+    <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
   }
 
   @if (!readonly()) {
@@ -407,7 +407,7 @@
       }
       <button
         type="button"
-        class="min-h-11 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        class="min-h-11 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="!canSave()"
         (click)="save()"
       >
@@ -456,7 +456,7 @@
         @if (otherEventsLoading()) {
           <p class="text-sm" role="status">Cargando eventos...</p>
         } @else if (otherEventsError(); as err) {
-          <p class="text-sm font-medium text-google-red" role="alert">
+          <p class="text-sm font-medium text-danger-text" role="alert">
             {{ err }}
             <button type="button" class="underline" (click)="loadOtherEvents()">Reintentar</button>
           </p>
@@ -528,7 +528,7 @@
       </button>
       <button
         type="button"
-        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+        class="rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90"
         (click)="confirmPending()"
       >
         {{ pendingMode() === 'replace' ? 'Reemplazar' : 'Agregar' }}

@@ -1,13 +1,13 @@
 <div class="flex flex-col gap-8">
   @if (loading()) {
     <div class="flex justify-center p-8" role="status" aria-label="Cargando agenda">
-      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
         >progress_activity</span
       >
     </div>
   } @else if (loadError(); as err) {
     <div
-      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-google-red"
+      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-danger-text"
       role="alert"
     >
       <span>{{ err }}</span>
@@ -30,7 +30,7 @@
         </div>
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          class="inline-flex items-center gap-1.5 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-opacity hover:opacity-90"
           (click)="openCreateTrack()"
         >
           <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
@@ -62,7 +62,7 @@
               </div>
               <button
                 type="button"
-                class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+                class="flex size-11 items-center justify-center rounded-full text-accent-text hover:bg-google-blue-light/60"
                 [attr.aria-label]="'Editar track ' + t.name"
                 (click)="openEditTrack(t)"
               >
@@ -70,7 +70,7 @@
               </button>
               <button
                 type="button"
-                class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40"
+                class="flex size-11 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/40"
                 [attr.aria-label]="'Eliminar track ' + t.name"
                 (click)="askDeleteTrack(t)"
               >
@@ -98,7 +98,7 @@
         </div>
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          class="inline-flex items-center gap-1.5 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-opacity hover:opacity-90"
           (click)="openCreateSession()"
         >
           <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
@@ -170,7 +170,7 @@
                         }
                       </div>
                       <div class="min-w-0 flex-1">
-                        <p class="text-xs font-semibold text-google-blue">
+                        <p class="text-xs font-semibold text-accent-text">
                           {{ s.startTime ?? '--:--' }} - {{ s.endTime ?? '--:--' }}
                         </p>
                         <p
@@ -196,7 +196,7 @@
                       <div class="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
-                          class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+                          class="flex size-11 items-center justify-center rounded-full text-accent-text hover:bg-google-blue-light/60"
                           [attr.aria-label]="'Editar sesión ' + s.title"
                           (click)="openEditSession(s)"
                         >
@@ -210,7 +210,7 @@
                         >
                           <button
                             type="button"
-                            class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            class="flex size-11 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             [attr.aria-label]="
                               deleteBlockReason(s)
                                 ? 'Eliminar sesión ' + s.title + ' (no disponible: tiene inscritas)'
@@ -272,7 +272,7 @@
           [attr.aria-describedby]="trackFieldError() ? 'tk-name-error' : null"
         />
         @if (trackFieldError(); as err) {
-          <small class="font-medium text-google-red" id="tk-name-error">{{ err }}</small>
+          <small class="font-medium text-danger-text" id="tk-name-error">{{ err }}</small>
         }
       </div>
       <div class="flex flex-col gap-1.5">
@@ -288,7 +288,7 @@
         ></textarea>
       </div>
       @if (trackDialogError(); as err) {
-        <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+        <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
       }
     </form>
     <ng-container dialog-actions>
@@ -302,7 +302,7 @@
       <button
         type="submit"
         form="track-form"
-        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        class="rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="trackSaving()"
       >
         {{ trackSaving() ? 'Guardando...' : 'Guardar track' }}
@@ -321,7 +321,7 @@
     <div class="flex flex-col gap-3 text-sm text-text-primary dark:text-neutral-200">
       <p>{{ trackDeleteText() }}</p>
       @if (trackDeleteError(); as err) {
-        <p class="font-medium text-google-red" role="alert">{{ err }}</p>
+        <p class="font-medium text-danger-text" role="alert">{{ err }}</p>
       }
     </div>
     <ng-container dialog-actions>
@@ -382,7 +382,7 @@
             [attr.aria-describedby]="sessionFieldError('title') ? 'se-title-error' : null"
           />
           @if (sessionFieldError('title'); as err) {
-            <small class="font-medium text-google-red" id="se-title-error">{{ err }}</small>
+            <small class="font-medium text-danger-text" id="se-title-error">{{ err }}</small>
           }
         </div>
 
@@ -438,7 +438,7 @@
             }
           </select>
           @if (sessionFieldError('level'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            <small class="font-medium text-danger-text" role="alert">{{ err }}</small>
           }
 
           <label
@@ -513,7 +513,7 @@
           </div>
           @for (f of ['date', 'startTime', 'endTime']; track f) {
             @if (sessionFieldError(f); as err) {
-              <small class="font-medium text-google-red">{{ err }}</small>
+              <small class="font-medium text-danger-text">{{ err }}</small>
             }
           }
           @if (sessionFieldWarning('startTime'); as warn) {
@@ -544,7 +544,7 @@
             >
           }
           @if (sessionFieldError('capacity'); as err) {
-            <small class="font-medium text-google-red" id="se-cap-error">{{ err }}</small>
+            <small class="font-medium text-danger-text" id="se-cap-error">{{ err }}</small>
           }
           @if (sessionFieldWarning('capacity'); as warn) {
             <small class="font-medium text-text-secondary dark:text-neutral-400" role="status">{{
@@ -566,13 +566,13 @@
             }
           </select>
           @if (sessionFieldError('trackId'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            <small class="font-medium text-danger-text" role="alert">{{ err }}</small>
           }
         </div>
       </div>
 
       @if (sessionDialogError(); as err) {
-        <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+        <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
       }
     </form>
     <ng-container dialog-actions>
@@ -586,7 +586,7 @@
       <button
         type="submit"
         form="session-form"
-        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        class="rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="sessionSaving()"
       >
         {{ sessionSaving() ? 'Guardando...' : 'Guardar sesión' }}
@@ -608,7 +608,7 @@
         >? Esta acción es permanente.
       </p>
       @if (sessionDeleteError(); as err) {
-        <p class="font-medium text-google-red" role="alert">{{ err }}</p>
+        <p class="font-medium text-danger-text" role="alert">{{ err }}</p>
       }
     </div>
     <ng-container dialog-actions>

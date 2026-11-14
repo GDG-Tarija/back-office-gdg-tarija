@@ -1,7 +1,7 @@
 <a
   href="#contenido"
   (click)="skipToContent($event)"
-  class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-full focus:bg-action focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-on-action focus:shadow-lg"
+  class="sr-only focus:not-sr-only focus:inline-flex focus:min-h-11 focus:items-center focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-full focus:bg-action focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-on-action focus:shadow-lg"
 >
   Saltar al contenido
 </a>
@@ -33,7 +33,7 @@
       <button
         #closeButton
         type="button"
-        class="flex size-11 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden transition-colors"
+        class="flex size-11 shrink-0 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden transition-colors"
         (click)="closeSidebar()"
         aria-label="Cerrar menú"
       >

@@ -37,7 +37,7 @@
       />
       <button
         type="submit"
-        class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="adding()"
       >
         <span class="material-symbols-rounded text-base" aria-hidden="true">person_add</span>
@@ -45,23 +45,23 @@
       </button>
     </div>
     @if (emailError(); as err) {
-      <small id="staff-email-error" class="font-medium text-google-red">{{ err }}</small>
+      <small id="staff-email-error" class="font-medium text-danger-text">{{ err }}</small>
     }
   </form>
 
   @if (actionError(); as err) {
-    <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+    <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
   }
 
   @if (loading()) {
     <div class="flex justify-center p-8" role="status" aria-label="Cargando staff asignado">
-      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
         >progress_activity</span
       >
     </div>
   } @else if (loadError(); as err) {
     <div
-      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-google-red"
+      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-danger-text"
       role="alert"
     >
       <span>{{ err }}</span>
@@ -93,7 +93,7 @@
           >
           <button
             type="button"
-            class="flex size-9 shrink-0 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40"
+            class="flex size-9 shrink-0 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40"
             [attr.aria-label]="'Quitar a ' + a.staffEmail + ' del evento'"
             [disabled]="removingId() !== null"
             (click)="remove(a)"

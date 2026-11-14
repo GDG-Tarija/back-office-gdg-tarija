@@ -13,14 +13,14 @@
       class="flex flex-col items-center gap-3 rounded-2xl border border-google-red/25 bg-google-red-light/30 p-6 text-center"
       role="alert"
     >
-      <span class="material-symbols-rounded text-3xl text-google-red" aria-hidden="true"
+      <span class="material-symbols-rounded text-3xl text-danger-text" aria-hidden="true"
         >error</span
       >
       <p class="text-sm font-bold text-text-primary dark:text-neutral-100">{{ err }}</p>
       <button
         type="button"
         (click)="loadEvents()"
-        class="min-h-11 cursor-pointer rounded-full bg-google-blue px-5 text-sm font-bold text-white hover:opacity-90"
+        class="min-h-11 cursor-pointer rounded-full bg-action px-5 text-sm font-bold text-on-action hover:opacity-90"
       >
         Reintentar
       </button>
@@ -137,7 +137,7 @@
       >
         @if (counter(); as text) {
           <span
-            class="material-symbols-rounded align-middle text-lg text-google-blue"
+            class="material-symbols-rounded align-middle text-lg text-accent-text"
             aria-hidden="true"
             >groups</span
           >
@@ -301,7 +301,7 @@
               (click)="loadAttendees(event.id, true)"
               [disabled]="loadingAttendees()"
               aria-label="Actualizar lista de inscritas"
-              class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 hover:text-google-blue disabled:opacity-50 dark:hover:bg-neutral-800"
+              class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 hover:text-accent-text disabled:opacity-50 dark:hover:bg-neutral-800"
             >
               <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
             </button>
@@ -338,7 +338,7 @@
             <button
               type="button"
               (click)="loadAttendees(selectedEvent()!.id, true)"
-              class="min-h-11 cursor-pointer rounded-full bg-google-blue px-5 text-sm font-bold text-white hover:opacity-90"
+              class="min-h-11 cursor-pointer rounded-full bg-action px-5 text-sm font-bold text-on-action hover:opacity-90"
             >
               Reintentar
             </button>
