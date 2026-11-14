@@ -91,10 +91,14 @@ export function buildAttendeeExport(
   return { headers, rows };
 }
 
-/** Evita que Excel interprete texto del usuario como fórmula (=, +, -, @). */
+const FORMULA_START = /^[=+\-@\t\r]/;
+/** Número completo (teléfono con +, monto con signo): Excel lo lee como dato, no como fórmula. */
+const PURE_NUMBER = /^[+-]?\d+([.,]\d+)?$/;
+
+/** Evita que Excel interprete texto del usuario como fórmula (=, +, -, @, TAB, CR). */
 function escapeCsv(value: string): string {
   let str = value;
-  if (/^[=+\-@]/.test(str) && !/^[+-]?\d/.test(str)) str = `'${str}`;
+  if (FORMULA_START.test(str) && !PURE_NUMBER.test(str)) str = `'${str}`;
   str = str.replace(/"/g, '""');
   return /[",\n\r\t]/.test(str) ? `"${str}"` : str;
 }

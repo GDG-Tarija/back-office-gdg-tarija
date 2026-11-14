@@ -61,6 +61,26 @@ describe('attendee-export', () => {
     expect(csv).toBe('a,b\n\'=1+1,"uno, dos"');
   });
 
+  it.each([
+    ['+1-1', "'+1-1"],
+    ["-1+cmd|' /C calc'!A0", "'-1+cmd|' /C calc'!A0"],
+    ['=HYPERLINK("http://x","y")', '"\'=HYPERLINK(""http://x"",""y"")"'],
+    ['@SUM(1)', "'@SUM(1)"],
+    ['\t=1', '"\'\t=1"'],
+    ['\r=1', '"\'\r=1"'],
+  ])('neutraliza el valor malicioso %j', (value, expected) => {
+    expect(toCsv({ headers: ['a'], rows: [[value]] })).toBe(`a\n${expected}`);
+  });
+
+  it.each([
+    ['+59170000001', '+59170000001'],
+    ['-10', '-10'],
+    ['10.50', '10.50'],
+    ['10,50', '"10,50"'],
+  ])('deja pasar el número puro %s', (value, expected) => {
+    expect(toCsv({ headers: ['a'], rows: [[value]] })).toBe(`a\n${expected}`);
+  });
+
   it('devuelve cadena vacía para fechas inválidas', () => {
     expect(formatExportDate(null)).toBe('');
     expect(formatExportDate(new Date('x'))).toBe('');
