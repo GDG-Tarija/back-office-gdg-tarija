@@ -14,7 +14,7 @@
   contentStyleClass="!px-5 !pb-5 sm:!px-6"
 >
   <ng-template #header let-labelledBy="ariaLabelledBy">
-    <div class="flex w-full min-w-0 items-center justify-between gap-3">
+    <div class="flex w-full min-w-0 items-center justify-between gap-3 px-5 pt-3 pb-1 sm:px-6">
       <div class="flex min-w-0 items-center gap-3">
         <span class="material-symbols-rounded text-xl text-google-blue" aria-hidden="true">{{
           icon()
@@ -49,7 +49,9 @@
   <ng-content />
 
   <ng-template #footer>
-    <div class="flex w-full flex-wrap items-center justify-end gap-3 [&_button]:min-h-11">
+    <div
+      class="flex w-full flex-wrap items-center justify-end gap-3 px-5 pt-2 pb-4 sm:px-6 [&_button]:min-h-11"
+    >
       <ng-content select="[dialog-actions]" />
     </div>
   </ng-template>
@@ -70,13 +72,13 @@
     [style]="{ width: 'min(calc(100vw - 1rem), 24rem)' }"
   >
     <ng-template #header let-labelledBy="ariaLabelledBy">
-      <h2 [id]="labelledBy" class="text-base font-semibold">¿Descartar los cambios?</h2>
+      <h2 [id]="labelledBy" class="px-5 pt-4 text-base font-semibold">¿Descartar los cambios?</h2>
     </ng-template>
-    <p class="text-sm text-text-primary dark:text-neutral-200">
+    <p class="px-5 text-sm text-text-primary dark:text-neutral-200">
       Lo que cambiaste en este formulario se perderá.
     </p>
     <ng-template #footer>
-      <div class="flex w-full flex-wrap items-center justify-end gap-3">
+      <div class="flex w-full flex-wrap items-center justify-end gap-3 px-5 pt-2 pb-4">
         <button
           type="button"
           class="min-h-11 rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
