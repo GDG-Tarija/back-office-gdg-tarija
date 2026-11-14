@@ -5,7 +5,15 @@
     <span
       class="text-xs font-bold tracking-wider text-text-secondary dark:text-neutral-400 uppercase"
     >
-      {{ title() }}
+      @if (link(); as href) {
+        <a
+          [routerLink]="href"
+          class="inline-flex min-h-11 items-center hover:underline focus-visible:underline"
+          >{{ title() }}</a
+        >
+      } @else {
+        {{ title() }}
+      }
     </span>
     <div
       class="flex size-11 items-center justify-center rounded-2xl shrink-0 transition-transform hover:scale-105"

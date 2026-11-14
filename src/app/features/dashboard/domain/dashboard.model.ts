@@ -14,18 +14,8 @@ export interface DashboardRegistration {
   eventId: string;
   role: string;
   status: string;
-  price: number;
-  createdAt: Date;
-}
-
-export interface RecentRegistration {
-  id: string;
-  userName: string;
-  userEmail: string;
-  avatarUrl: string | null;
-  userInitials: string;
-  eventTitle: string;
-  role: string;
-  status: string;
+  /** Monto real de la inscripción (fase y cupón aplicados). */
+  amountDue: number;
+  hasProof: boolean;
   createdAt: Date;
 }
