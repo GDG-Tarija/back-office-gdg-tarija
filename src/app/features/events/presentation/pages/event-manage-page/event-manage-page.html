@@ -22,7 +22,7 @@
       @if (ws.event(); as e) {
         <a
           [routerLink]="['/events', e.id, 'attendees']"
-          class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-blue-light/60 px-4 py-2 text-sm font-semibold text-google-blue transition-colors hover:bg-google-blue-light dark:bg-google-blue/20"
+          class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-blue-light/60 px-4 py-2 text-sm font-semibold text-accent-text transition-colors hover:bg-google-blue-light dark:bg-google-blue/20"
         >
           <span class="material-symbols-rounded text-base" aria-hidden="true">group</span>
           Asistentes
@@ -30,7 +30,7 @@
         @if (canDelete()) {
           <button
             type="button"
-            class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-red-light/40 px-4 py-2 text-sm font-semibold text-google-red transition-colors hover:bg-google-red-light/70"
+            class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-red-light/40 px-4 py-2 text-sm font-semibold text-danger-text transition-colors hover:bg-google-red-light/70"
             (click)="openDelete()"
           >
             <span class="material-symbols-rounded text-base" aria-hidden="true">delete</span>
@@ -50,7 +50,7 @@
 
   @if (error(); as err) {
     <div
-      class="flex items-center gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-google-red"
+      class="flex items-center gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-danger-text"
       role="alert"
     >
       <span class="material-symbols-rounded text-xl" aria-hidden="true">error</span>
@@ -60,7 +60,7 @@
 
   @if (loading()) {
     <div class="flex justify-center p-12" role="status" aria-label="Cargando evento">
-      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
         >progress_activity</span
       >
     </div>
@@ -171,7 +171,7 @@
           @if (tab() !== 'publicacion') {
             <button
               type="button"
-              class="min-h-11 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+              class="min-h-11 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90"
               (click)="next()"
             >
               Siguiente
@@ -223,7 +223,7 @@
         (input)="deleteConfirm.set($any($event.target).value)"
       />
       @if (deleteError(); as err) {
-        <p id="delete-slug-error" class="font-medium text-google-red" role="alert">{{ err }}</p>
+        <p id="delete-slug-error" class="font-medium text-danger-text" role="alert">{{ err }}</p>
       }
     </div>
     <ng-container dialog-actions>

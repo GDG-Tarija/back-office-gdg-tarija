@@ -29,7 +29,7 @@
       </button>
       <button
         type="button"
-        class="min-h-11 rounded-full bg-google-red-light/40 px-4 py-2 text-sm font-semibold text-google-red hover:bg-google-red-light/70"
+        class="min-h-11 rounded-full bg-google-red-light/40 px-4 py-2 text-sm font-semibold text-danger-text hover:bg-google-red-light/70"
         [disabled]="saving()"
         (click)="choose.emit('discard')"
       >
@@ -37,7 +37,7 @@
       </button>
       <button
         type="button"
-        class="min-h-11 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+        class="min-h-11 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90 disabled:opacity-50"
         [disabled]="saving()"
         (click)="choose.emit('save')"
       >

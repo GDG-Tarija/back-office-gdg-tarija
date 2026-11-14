@@ -118,7 +118,7 @@
           <div class="flex shrink-0 items-center gap-1">
             <button
               type="button"
-              class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+              class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
               [attr.aria-label]="'Editar paquete ' + t.name"
               (click)="openEdit(t)"
             >
@@ -127,7 +127,7 @@
             <span [pTooltip]="deleteBlockReason(t) ?? ''" [tooltipDisabled]="!deleteBlockReason(t)">
               <button
                 type="button"
-                class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 [attr.aria-label]="
                   deleteBlockReason(t)
                     ? 'Eliminar paquete ' + t.name + ' (no disponible: tiene personas inscritas)'
@@ -348,7 +348,7 @@
                   <div class="flex items-center gap-1">
                     <button
                       type="button"
-                      class="flex size-8 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-neutral-800"
+                      class="flex size-11 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-neutral-800"
                       [attr.aria-label]="'Subir fase ' + (i + 1)"
                       [disabled]="first"
                       (click)="shiftPhase(i, -1)"
@@ -359,7 +359,7 @@
                     </button>
                     <button
                       type="button"
-                      class="flex size-8 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-neutral-800"
+                      class="flex size-11 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-neutral-800"
                       [attr.aria-label]="'Bajar fase ' + (i + 1)"
                       [disabled]="last"
                       (click)="shiftPhase(i, 1)"
@@ -374,7 +374,7 @@
                     >
                       <button
                         type="button"
-                        class="flex size-8 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                         [attr.aria-label]="
                           phaseDeleteBlockReason(ph)
                             ? 'Quitar fase ' + (i + 1) + ' (no disponible: tiene inscripciones)'

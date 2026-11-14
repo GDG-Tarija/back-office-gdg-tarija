@@ -479,4 +479,14 @@
       font-size: 0.8125rem;
     }
   }
+
+  /* Datepicker de los formularios de evento: objetivos táctiles de 44 px. */
+  .p-datepicker-input {
+    min-height: 2.75rem;
+  }
+
+  .p-datepicker-dropdown {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 }

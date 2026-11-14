@@ -62,7 +62,7 @@
               </div>
               <button
                 type="button"
-                class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+                class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
                 [attr.aria-label]="'Editar track ' + t.name"
                 (click)="openEditTrack(t)"
               >
@@ -70,7 +70,7 @@
               </button>
               <button
                 type="button"
-                class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40"
+                class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40"
                 [attr.aria-label]="'Eliminar track ' + t.name"
                 (click)="askDeleteTrack(t)"
               >
@@ -196,7 +196,7 @@
                       <div class="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
-                          class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+                          class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
                           [attr.aria-label]="'Editar sesión ' + s.title"
                           (click)="openEditSession(s)"
                         >
@@ -210,7 +210,7 @@
                         >
                           <button
                             type="button"
-                            class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             [attr.aria-label]="
                               deleteBlockReason(s)
                                 ? 'Eliminar sesión ' + s.title + ' (no disponible: tiene inscritos)'

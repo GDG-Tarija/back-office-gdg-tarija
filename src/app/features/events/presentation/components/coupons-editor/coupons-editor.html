@@ -83,7 +83,7 @@
           <div class="flex shrink-0 items-center gap-1">
             <button
               type="button"
-              class="flex size-9 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              class="flex size-11 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:hover:bg-neutral-800"
               [attr.aria-label]="'Copiar código ' + c.code"
               (click)="copy(c)"
             >
@@ -91,7 +91,7 @@
             </button>
             <button
               type="button"
-              class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+              class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
               [attr.aria-label]="'Editar cupón ' + c.code"
               (click)="openEdit(c)"
             >
@@ -100,7 +100,7 @@
             <span [pTooltip]="deleteBlockReason(c) ?? ''" [tooltipDisabled]="!deleteBlockReason(c)">
               <button
                 type="button"
-                class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 [attr.aria-label]="
                   deleteBlockReason(c)
                     ? 'Eliminar cupón ' + c.code + ' (no disponible: ya fue usado)'

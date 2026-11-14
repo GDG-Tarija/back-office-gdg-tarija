@@ -103,7 +103,7 @@
                 <div class="flex items-center gap-1">
                   <button
                     type="button"
-                    class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                    class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
                     [attr.aria-label]="'Subir ' + fieldTitle(f, i)"
                     [attr.aria-disabled]="first"
                     (click)="move(i, -1)"
@@ -114,7 +114,7 @@
                   </button>
                   <button
                     type="button"
-                    class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                    class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
                     [attr.aria-label]="'Bajar ' + fieldTitle(f, i)"
                     [attr.aria-disabled]="last"
                     (click)="move(i, 1)"
@@ -125,7 +125,7 @@
                   </button>
                   <button
                     type="button"
-                    class="flex size-8 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
+                    class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
                     [attr.aria-label]="'Quitar ' + fieldTitle(f, i)"
                     [disabled]="!canRemove(f)"
                     [title]="
@@ -271,7 +271,7 @@
                     @if (!readonly()) {
                       <button
                         type="button"
-                        class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                        class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
                         [attr.aria-label]="'Subir opción ' + (j + 1)"
                         [attr.aria-disabled]="oFirst"
                         (click)="moveOption(i, j, -1)"
@@ -282,7 +282,7 @@
                       </button>
                       <button
                         type="button"
-                        class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                        class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
                         [attr.aria-label]="'Bajar opción ' + (j + 1)"
                         [attr.aria-disabled]="oLast"
                         (click)="moveOption(i, j, 1)"
@@ -293,7 +293,7 @@
                       </button>
                       <button
                         type="button"
-                        class="flex size-8 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
+                        class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
                         [attr.aria-label]="'Quitar opción ' + (j + 1)"
                         [disabled]="f.options.length <= 2"
                         (click)="removeOption(i, j)"

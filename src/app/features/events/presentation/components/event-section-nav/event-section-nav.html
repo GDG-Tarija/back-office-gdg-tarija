@@ -9,9 +9,9 @@
             class="flex min-h-11 items-center gap-2 rounded-full border text-sm font-semibold transition-colors max-sm:size-11 max-sm:justify-center sm:px-4"
             [class]="
               current() === t.id
-                ? 'border-google-blue bg-google-blue-light/60 text-google-blue dark:bg-google-blue/20'
+                ? 'border-google-blue bg-google-blue-light/60 text-accent-text dark:bg-google-blue/20'
                 : isFlagged(t.id)
-                  ? 'border-google-red/40 bg-white text-google-red dark:bg-neutral-900'
+                  ? 'border-google-red/40 bg-white text-danger-text dark:bg-neutral-900'
                   : 'border-black/5 bg-white text-text-secondary hover:bg-neutral-100 dark:border-white/5 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
             "
             [attr.aria-current]="current() === t.id ? 'step' : null"
@@ -60,7 +60,7 @@
           class="min-h-11 shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
           [class]="
             current() === t.id
-              ? 'border-google-blue bg-google-blue-light/60 text-google-blue dark:bg-google-blue/20'
+              ? 'border-google-blue bg-google-blue-light/60 text-accent-text dark:bg-google-blue/20'
               : 'border-black/5 bg-white text-text-secondary hover:bg-neutral-100 dark:border-white/5 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
           "
           (click)="sectionChange.emit(t.id)"
