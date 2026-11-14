@@ -1,3 +1,5 @@
+import { startOfLaPazDay as startOfDay } from '../../../shared/utils/la-paz-time';
+
 export interface PreselectableEvent {
   id: string;
   dateStart: Date;
@@ -10,10 +12,6 @@ export interface PreselectionContext {
   /** Último evento usado en este dispositivo. */
   lastUsedId: string | null;
   now: Date;
-}
-
-function startOfDay(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
 /** El evento es de hoy si hoy cae entre el día de inicio y el día de fin (ambos incluidos). */

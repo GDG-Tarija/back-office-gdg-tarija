@@ -13,6 +13,7 @@ import { DialogFrame } from './dialog-frame';
         title="Nuevo paquete"
         [initialSize]="size()"
         [dirty]="dirty()"
+        [busy]="busy()"
         (closeDialog)="closed()"
       >
         <input id="first" type="text" />
@@ -26,6 +27,7 @@ import { DialogFrame } from './dialog-frame';
 class HostComponent {
   readonly open = signal(true);
   readonly dirty = signal(false);
+  readonly busy = signal(false);
   readonly size = signal<'sm' | 'md' | 'lg'>('md');
   readonly closed = vi.fn();
 }
@@ -76,6 +78,40 @@ describe('DialogFrame', () => {
 
   it('Escape cierra el diálogo', async () => {
     const fixture = await setup();
+    pressEscape();
+    expect(fixture.componentInstance.closed).toHaveBeenCalledTimes(1);
+    fixture.destroy();
+  });
+
+  it('mientras guarda (busy) ignora Esc y la X', async () => {
+    const fixture = await setup();
+    fixture.componentInstance.busy.set(true);
+    fixture.detectChanges();
+
+    pressEscape();
+    button('Cerrar').click();
+
+    expect(fixture.componentInstance.closed).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
+
+  it('con una confirmación o lista abierta encima, Esc no cierra el diálogo de abajo', async () => {
+    const fixture = await setup();
+    const confirm = document.createElement('div');
+    confirm.className = 'p-dialog-mask p-confirmdialog-mask';
+    document.body.appendChild(confirm);
+
+    pressEscape();
+    expect(fixture.componentInstance.closed).not.toHaveBeenCalled();
+
+    confirm.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'p-select-overlay';
+    document.body.appendChild(overlay);
+    pressEscape();
+    expect(fixture.componentInstance.closed).not.toHaveBeenCalled();
+
+    overlay.remove();
     pressEscape();
     expect(fixture.componentInstance.closed).toHaveBeenCalledTimes(1);
     fixture.destroy();

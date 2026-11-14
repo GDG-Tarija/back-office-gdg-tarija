@@ -57,4 +57,6 @@ export interface UndoScanInput {
 export interface UndoScanResult {
   ok: boolean;
   message: string;
+  /** `expired`: pasó la ventana de 60 s (o ya no existe); `error`: red/servidor, se puede reintentar. */
+  reason?: 'expired' | 'error';
 }

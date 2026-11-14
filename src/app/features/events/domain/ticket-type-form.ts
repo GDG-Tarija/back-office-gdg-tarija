@@ -1,4 +1,4 @@
-import { inscritas, plural } from './plural';
+import { plural } from './plural';
 import { TicketPhase, TicketPhaseInput } from './ticket-phase.model';
 import { TicketType, TicketTypeInput } from './ticket-type.model';
 
@@ -148,9 +148,11 @@ export function formValueToTicketTypeInput(v: TicketTypeFormValue): TicketTypeIn
   };
 }
 
-/** Un paquete con inscritos no se puede eliminar (espejo del FK RESTRICT). */
-export function ticketDeleteBlockReason(registeredCount: number): string | null {
-  return registeredCount > 0 ? `No se puede eliminar: tiene ${inscritas(registeredCount)}.` : null;
+/** Un paquete con inscripciones (también anuladas) no se puede eliminar (espejo del FK RESTRICT). */
+export function ticketDeleteBlockReason(totalRegistrations: number): string | null {
+  return totalRegistrations > 0
+    ? `No se puede eliminar: tiene ${plural(totalRegistrations, 'inscripción', 'inscripciones')} (las anuladas también cuentan).`
+    : null;
 }
 
 /** Un paquete gratuito no lleva QR: se descarta el QR (devuelto para limpiarlo). */

@@ -4,6 +4,8 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 
+import { CheckinApi } from './features/checkin/data/checkin.api';
+import { CheckinRepository } from './features/checkin/domain/checkin.repository';
 import { supabaseProvider } from './core/supabase/supabase.client';
 import { provideAppLocale } from './core/config/locale';
 import { PRIMENG_ES } from './core/config/primeng-es';
@@ -38,5 +40,7 @@ export const appConfig: ApplicationConfig = {
     MessageService,
     ConfirmationService,
     supabaseProvider,
+    // Contrato de check-in compartido (p. ej. asignaciones de STAFF en la lista de eventos).
+    { provide: CheckinRepository, useExisting: CheckinApi },
   ],
 };

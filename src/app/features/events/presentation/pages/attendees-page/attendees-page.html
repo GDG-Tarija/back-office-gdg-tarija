@@ -41,7 +41,7 @@
       <strong class="text-text-primary dark:text-neutral-100"
         >{{ stats().active }} de {{ ev.capacity }}</strong
       >
-      inscripciones (confirmadas y pendientes de pago).
+      inscritas (confirmadas y pendientes de pago).
       @if (!statusCtl.canEdit()) {
         <span class="block sm:ml-1 sm:inline">
           Estás en modo lectura: solo un superadministrador puede cambiar el estado.
@@ -275,7 +275,7 @@
       }
 
       <p class="text-sm text-text-secondary dark:text-neutral-300" aria-live="polite">
-        Mostrando {{ filteredAttendees().length }} de {{ attendees().length }} inscripciones
+        Mostrando {{ filteredAttendees().length }} de {{ attendees().length }} inscritas
       </p>
     </div>
 
@@ -294,7 +294,7 @@
           >
           @if (attendees().length === 0) {
             <span class="text-lg font-bold text-text-primary dark:text-neutral-100"
-              >No hay inscripciones todavía</span
+              >No hay inscritas todavía</span
             >
             <span class="max-w-sm text-sm">Nadie se ha registrado a este evento aún.</span>
           } @else {
@@ -427,7 +427,7 @@
                       <p-tag
                         [value]="roleLabel(attendee.role)"
                         [severity]="roleSeverity(attendee.role)"
-                        styleClass="text-[11px] px-2 py-0"
+                        styleClass="text-xs px-2 py-0"
                       />
                     }
                   </div>
@@ -937,7 +937,7 @@
   [model]="exportItems()"
   [popup]="true"
   appendTo="body"
-  ariaLabel="Exportar inscripciones"
+  ariaLabel="Exportar inscritas"
 >
   <ng-template #item let-item>
     <a

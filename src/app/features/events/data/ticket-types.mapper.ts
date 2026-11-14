@@ -33,10 +33,17 @@ export function toTicketTypeRow(input: TicketTypeInput): Omit<TicketTypeInsert, 
   };
 }
 
-/** Agrupa filas de registrations por paquete (ticket_type_id -> cantidad). */
-export function countByTicketType(rows: { ticket_type_id: string }[]): Record<string, number> {
+/**
+ * Agrupa filas de registrations por paquete (ticket_type_id -> cantidad). Con `activeOnly` se
+ * saltan las anuladas, que liberan cupo y no cuentan como inscritas.
+ */
+export function countByTicketType(
+  rows: { ticket_type_id: string; status?: string }[],
+  { activeOnly = false }: { activeOnly?: boolean } = {},
+): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const row of rows) {
+    if (activeOnly && row.status?.toUpperCase() === 'CANCELLED') continue;
     counts[row.ticket_type_id] = (counts[row.ticket_type_id] ?? 0) + 1;
   }
   return counts;

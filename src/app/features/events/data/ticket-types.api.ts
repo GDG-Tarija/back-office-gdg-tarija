@@ -71,6 +71,15 @@ export class TicketTypesApi implements TicketTypesRepository {
     return countByTicketType(data ?? []);
   }
 
+  async getActiveRegistrationCounts(eventId: string): Promise<Record<string, number>> {
+    const { data, error } = await this.supabase
+      .from('registrations')
+      .select('ticket_type_id, status')
+      .eq('event_id', eventId);
+    if (error) throw toDomainError(error, 'ticket_type');
+    return countByTicketType(data ?? [], { activeOnly: true });
+  }
+
   async getPhaseAvailability(eventId: string): Promise<Record<string, PhaseAvailability>> {
     const { data, error } = await this.supabase.rpc('get_ticket_availability', {
       p_event_id: eventId,

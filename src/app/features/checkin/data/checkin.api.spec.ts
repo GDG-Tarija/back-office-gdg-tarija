@@ -6,6 +6,7 @@ import { CheckinApi } from './checkin.api';
 const REG_ID = '00000000-0000-4000-8000-000000000201';
 const EVENT_ID = '00000000-0000-4000-8000-0000000000e2';
 const SESSION_ID = 'd3d3d3d3-0000-4000-8000-000000000003';
+const SERVER_SCANNED_AT = '2026-11-20T09:15:00.000Z';
 
 interface Result {
   data: unknown;
@@ -43,7 +44,16 @@ function fakeSupabase(results: {
           ...chain(() => results.existingScan ?? { data: null, error: null }),
           insert: vi.fn((row: unknown) => {
             inserts.push(row);
-            return Promise.resolve(results.insertScan ?? { data: null, error: null });
+            return {
+              select: vi.fn(() =>
+                Promise.resolve(
+                  results.insertScan ?? {
+                    data: [{ scanned_at: SERVER_SCANNED_AT }],
+                    error: null,
+                  },
+                ),
+              ),
+            };
           }),
           delete: vi.fn(() => {
             const c = {
@@ -136,6 +146,13 @@ describe('CheckinApi — estado de la inscripción', () => {
     expect(inserts[0]).toMatchObject({ id: result.scanLogId });
   });
 
+  it('no manda scanned_at: la hora la pone el servidor y es la que se devuelve', async () => {
+    const { api, inserts } = setup({ registration: registration('CONFIRMED') });
+    const result = await api.registerScan(REG_ID, EVENT_ID, 'checkin', null, 'op1');
+    expect(inserts[0]).not.toHaveProperty('scanned_at');
+    expect(result.scannedAt?.toISOString()).toBe(SERVER_SCANNED_AT);
+  });
+
   it('CONFIRMED registra ingreso a sesión si está inscrito en ella', async () => {
     const { api, inserts, legacyUpdates } = setup({
       registration: registration('CONFIRMED'),
@@ -210,7 +227,11 @@ describe('CheckinApi — deshacer', () => {
       userId: null,
     });
     expect(result.ok).toBe(false);
-    expect(result.message).toContain('Ya no se puede deshacer');
+    expect(result.reason).toBe('expired');
+    expect(result.message).toBe(
+      'No se pudo deshacer (pasaron más de 60 s). Avisa a un organizador para corregirlo.',
+    );
+    expect(result.message).not.toContain('Asistentes');
   });
 
   it('en sesión también revierte la asistencia sincronizada', async () => {
@@ -237,5 +258,39 @@ describe('CheckinApi — deshacer', () => {
       userId: null,
     });
     expect(result.ok).toBe(false);
+    expect(result.reason).toBe('error');
+    expect(result.message).toContain('conexión');
+  });
+});
+
+describe('CheckinApi — contador', () => {
+  function setupStats(counts: { error?: unknown; count?: number }[]) {
+    let i = 0;
+    const chain = () => {
+      const res = counts[i++] ?? { count: 0 };
+      const c: Record<string, unknown> = {};
+      for (const m of ['select', 'eq']) c[m] = vi.fn(() => c);
+      c['then'] = (resolve: (v: unknown) => void) =>
+        resolve({ count: res.count ?? 0, error: res.error ?? null });
+      return c;
+    };
+    TestBed.configureTestingModule({
+      providers: [{ provide: SUPABASE, useValue: { from: vi.fn(() => chain()) } }],
+    });
+    return TestBed.inject(CheckinApi);
+  }
+
+  it('devuelve los conteos cuando todo responde bien', async () => {
+    const api = setupStats([{ count: 10 }, { count: 4 }, { count: 1 }]);
+    expect(await api.getCheckinStats(EVENT_ID)).toEqual({
+      totalRegistered: 10,
+      checkedInCount: 4,
+      refrigerioCount: 1,
+    });
+  });
+
+  it('si una consulta devuelve error, devuelve null (no "0 de 0")', async () => {
+    const api = setupStats([{ count: 10 }, { error: { code: '42501' } }, { count: 1 }]);
+    expect(await api.getCheckinStats(EVENT_ID)).toBeNull();
   });
 });

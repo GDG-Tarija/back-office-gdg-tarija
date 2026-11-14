@@ -67,12 +67,20 @@ describe('proofsToReview', () => {
       reg({ status: 'PENDING' }),
       reg({ status: 'PENDING' }),
       reg({ status: 'PENDING', hasProof: false }),
-      reg({ status: 'PENDING', amountDue: 0 }),
       reg({ status: 'CONFIRMED' }),
+      reg({ status: 'CANCELLED' }),
     ];
     expect(proofsToReview([event()], regs)).toEqual([
       { eventId: 'e1', title: 'DevFest', count: 2 },
     ]);
+  });
+
+  it('usa el mismo criterio que el filtro de Asistentes: cuenta cualquier rol y monto', () => {
+    const regs = [
+      reg({ status: 'PENDING', role: 'SPEAKER' }),
+      reg({ status: 'PENDING', amountDue: 0 }),
+    ];
+    expect(proofsToReview([event()], regs)[0].count).toBe(2);
   });
 });
 

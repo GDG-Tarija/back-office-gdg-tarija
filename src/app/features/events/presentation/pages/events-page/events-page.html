@@ -143,7 +143,7 @@
             >calendar_month</span
           >
           <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">
-            Todavía no hay eventos
+            {{ isSuperadmin() ? 'Todavía no hay eventos' : 'No tienes eventos asignados' }}
           </h2>
           @if (isSuperadmin()) {
             <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
@@ -158,7 +158,8 @@
             </a>
           } @else {
             <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
-              Cuando un organizador cree un evento, aparecerá aquí.
+              No tienes eventos asignados. Pídele a un organizador que te asigne a uno y vuelve a
+              abrir esta pantalla.
             </p>
           }
         </div>
@@ -203,7 +204,7 @@
                   timingLabel(event)
                 }}</span>
                 <span class="ml-auto text-text-secondary dark:text-neutral-300"
-                  >Inscripciones
+                  >Inscritas
                   <strong class="text-text-primary dark:text-neutral-100">{{
                     registeredLabel(event)
                   }}</strong></span
@@ -234,7 +235,7 @@
               <th scope="col" class="min-w-[18rem]">Evento</th>
               <th scope="col">Tipo</th>
               <th scope="col">Fecha</th>
-              <th scope="col" class="text-center">Inscripciones</th>
+              <th scope="col" class="text-center">Inscritas</th>
               <th scope="col">Estado</th>
               <th scope="col"><span class="sr-only">Acciones</span></th>
             </tr>

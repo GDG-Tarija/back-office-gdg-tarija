@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { REDIRECT_KEY, safeRedirect } from '../../../core/auth/redirect';
+import { ACCESS_CHECK_URL, RoleLookupError } from '../../../core/auth/role-lookup-error';
 import { AuthService } from '../../../core/auth/services/auth.service';
 
 @Component({
@@ -24,9 +25,17 @@ export class Callback implements OnInit {
     this.auth
       .getSession()
       .then(async (session) => {
-        if (session && !(await this.auth.resolveRole())) {
-          await this.auth.denyAccess(session.user?.email);
-          return;
+        if (session) {
+          try {
+            if (!(await this.auth.resolveRole())) {
+              await this.auth.denyAccess(session.user?.email);
+              return;
+            }
+          } catch (err) {
+            if (!(err instanceof RoleLookupError)) throw err;
+            await this.router.navigateByUrl(ACCESS_CHECK_URL);
+            return;
+          }
         }
         const redirectTo = safeRedirect(sessionStorage.getItem(REDIRECT_KEY));
         sessionStorage.removeItem(REDIRECT_KEY);

@@ -213,7 +213,7 @@
                             class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             [attr.aria-label]="
                               deleteBlockReason(s)
-                                ? 'Eliminar sesión ' + s.title + ' (no disponible: tiene inscritos)'
+                                ? 'Eliminar sesión ' + s.title + ' (no disponible: tiene inscritas)'
                                 : 'Eliminar sesión ' + s.title
                             "
                             [disabled]="!!deleteBlockReason(s)"
@@ -244,6 +244,7 @@
     icon="route"
     initialSize="sm"
     [dirty]="trackDirty()"
+    [busy]="trackSaving()"
     (closeDialog)="closeTrackDialog()"
   >
     <form
@@ -350,6 +351,7 @@
     icon="event_note"
     initialSize="lg"
     [dirty]="sessionDirty()"
+    [busy]="sessionSaving()"
     (closeDialog)="closeSessionDialog()"
   >
     <form

@@ -4,6 +4,7 @@ import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/ro
 
 import { BackofficeRole } from '../../models/role.model';
 import { REDIRECT_KEY } from '../redirect';
+import { RoleLookupError } from '../role-lookup-error';
 import { AuthService } from '../services/auth.service';
 import { authGuard } from './auth.guard';
 import { loginGuard } from './login.guard';
@@ -58,6 +59,19 @@ describe('guards de acceso', () => {
       resolveRole.mockResolvedValue(null);
       expect(await runAuth('/events')).toBe(false);
       expect(denyAccess).toHaveBeenCalledWith('a@b.com');
+    });
+  });
+
+  describe('authGuard con error al leer el rol', () => {
+    it('no cierra la sesión: guarda la URL y envía a la pantalla de reintento', async () => {
+      getSession.mockResolvedValue({ user: { email: 'a@b.com' } });
+      resolveRole.mockRejectedValue(new RoleLookupError());
+
+      expect(await runAuth('/checkin')).toBe(tree);
+
+      expect(denyAccess).not.toHaveBeenCalled();
+      expect(createUrlTree).toHaveBeenCalledWith(['/auth/verificar']);
+      expect(sessionStorage.getItem(REDIRECT_KEY)).toBe('/checkin');
     });
   });
 

@@ -198,6 +198,14 @@ export class AttendeesPage implements OnInit {
     });
   }
 
+  /** Un `?entrada=` que no existe en este evento dejaría la lista vacía sin explicación. */
+  private dropUnknownEntryFilter(): void {
+    const filters = this.filters();
+    if (!filters.entry) return;
+    if (this.entryOptions().some((o) => o.value === filters.entry)) return;
+    this.applyFilters({ ...filters, entry: '' });
+  }
+
   private advancedFilterCount(f: AttendeeFilters): number {
     return [f.role !== '', f.entry !== '', f.checkin !== 'ALL', f.proof !== 'ALL'].filter(Boolean)
       .length;
@@ -303,6 +311,7 @@ export class AttendeesPage implements OnInit {
 
       this.event.set(eventData);
       this.attendees.set(attendeesData);
+      this.dropUnknownEntryFilter();
     } catch (err) {
       console.error(err);
       if (token === this.loadToken) {
@@ -545,7 +554,7 @@ export class AttendeesPage implements OnInit {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      this.feedback.success(`CSV descargado: ${list.length} inscritos.`);
+      this.feedback.success(`CSV descargado: ${list.length} inscritas.`);
     } catch (err) {
       console.error('Error al exportar a CSV:', err);
       this.feedback.error('No se pudo generar el CSV. Inténtalo de nuevo.');
@@ -562,7 +571,7 @@ export class AttendeesPage implements OnInit {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Asistentes');
       XLSX.writeFile(workbook, this.exportName('xlsx'));
-      this.feedback.success(`Excel descargado: ${list.length} inscritos.`);
+      this.feedback.success(`Excel descargado: ${list.length} inscritas.`);
     } catch (err) {
       console.error('Error al exportar a Excel:', err);
       this.feedback.error('No se pudo generar el Excel. Inténtalo de nuevo.');
