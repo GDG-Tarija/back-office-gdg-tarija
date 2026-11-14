@@ -42,6 +42,25 @@ export class AssetCleanupTracker {
     await Promise.all(urls.map((u) => this.removeQuietly(u)));
   }
 
+  /**
+   * Tras un guardado fallido a medias: contrasta con lo que la BD referencia de verdad.
+   * Lo subido que ya está referenciado pasa a ser permanente (nunca se borra); lo reemplazado que
+   * ya nadie referencia se borra. `null` = no se pudo leer el servidor: no se borra nada.
+   */
+  async reconcile(referenced: ReadonlySet<string> | null): Promise<void> {
+    if (referenced === null) {
+      this.uploaded.clear();
+      this.pendingDelete.clear();
+      return;
+    }
+    for (const url of [...this.uploaded]) {
+      if (referenced.has(url)) this.uploaded.delete(url);
+    }
+    const orphans = [...this.pendingDelete].filter((url) => !referenced.has(url));
+    orphans.forEach((url) => this.pendingDelete.delete(url));
+    await Promise.all(orphans.map((u) => this.removeQuietly(u)));
+  }
+
   /** Cancelar o salir sin guardar: borra lo subido y conserva lo guardado. */
   async rollback(): Promise<void> {
     const urls = [...this.uploaded];

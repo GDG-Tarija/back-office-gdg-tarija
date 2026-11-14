@@ -379,8 +379,10 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       const field = errorField(err);
       if (field) this.serverIssue.set({ field, message });
       else this.dialogError.set(message);
-      // El guardado de fases no es transaccional: muestra lo que quedó realmente en la BD.
-      await this.refreshQuietly();
+      // El guardado de fases no es transaccional: muestra lo que quedó realmente en la BD y
+      // decide qué archivos limpiar según lo que la BD referencia (nunca borrar un archivo en uso).
+      const refreshed = await this.refreshQuietly();
+      await this.cleanup.reconcile(refreshed ? this.referencedUrls() : null);
     } finally {
       this.saving.set(false);
     }
@@ -430,7 +432,7 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   }
 
   /** Recarga paquetes y disponibilidad sin spinner; un fallo aquí no debe tapar el resultado. */
-  private async refreshQuietly(): Promise<void> {
+  private async refreshQuietly(): Promise<boolean> {
     try {
       const [tickets, availability] = await Promise.all([
         this.repo.list(this.eventId()),
@@ -439,9 +441,22 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       this.tickets.set(tickets);
       this.availability.set(availability);
       this.ticketsChange.emit(tickets);
+      return true;
     } catch {
       // La lista queda como estaba; "Reintentar" recarga todo.
+      return false;
     }
+  }
+
+  /** Todas las imágenes y QR que algún paquete o fase guardado referencia ahora mismo. */
+  private referencedUrls(): Set<string> {
+    const urls = new Set<string>();
+    for (const t of this.tickets()) {
+      for (const url of [t.imageUrl, t.paymentQrUrl, ...t.phases.map((p) => p.paymentQrUrl)]) {
+        if (url) urls.add(url);
+      }
+    }
+    return urls;
   }
 
   private openDialog(ticket: TicketType | null, value: TicketTypeFormValue): void {

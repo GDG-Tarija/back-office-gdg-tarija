@@ -274,4 +274,35 @@ describe('TicketTypesEditor', () => {
       expect(cmp.model().phases[0].paymentQrUrl).toBeNull();
     });
   });
+
+  describe('guardado parcial (la BD ya apunta al archivo nuevo)', () => {
+    async function failPartialSave(listAfter: TicketType[] | Error) {
+      const fixture = await create();
+      const cmp = fixture.componentInstance;
+      cmp.openEdit(base);
+      cmp.onImageUploaded('qr-new');
+      cmp.setImage('paymentQrUrl', 'qr-new');
+      repo.update.mockRejectedValue(new DomainError('Falló una fase.', 'UNKNOWN'));
+      if (listAfter instanceof Error) repo.list.mockRejectedValue(listAfter);
+      else repo.list.mockResolvedValue(listAfter);
+      await cmp.save();
+      await cmp.closeDialog();
+      return cmp;
+    }
+
+    it('si el UPDATE ya guardó la URL nueva, cancelar después NO borra el archivo', async () => {
+      await failPartialSave([{ ...base, paymentQrUrl: 'qr-new' }]);
+      expect(remove).not.toHaveBeenCalledWith('qr-new');
+    });
+
+    it('si el UPDATE no llegó a guardar nada, cancelar borra el archivo subido', async () => {
+      await failPartialSave([base]);
+      expect(remove).toHaveBeenCalledWith('qr-new');
+    });
+
+    it('si no se puede releer el servidor, no se borra nada por seguridad', async () => {
+      await failPartialSave(new Error('red'));
+      expect(remove).not.toHaveBeenCalled();
+    });
+  });
 });
