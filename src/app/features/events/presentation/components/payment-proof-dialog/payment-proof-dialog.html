@@ -10,7 +10,7 @@
   [focusTrap]="true"
   [style]="{ width: '96vw', 'max-width': '70rem' }"
   [breakpoints]="{ '768px': '100vw' }"
-  styleClass="max-md:!h-dvh max-md:!max-h-dvh max-md:!rounded-none [&_.p-dialog-header]:!p-4 [&_.p-dialog-footer]:!p-4"
+  styleClass="max-md:h-dvh max-md:max-h-dvh max-md:rounded-none [&_.p-dialog-header]:!p-4 [&_.p-dialog-footer]:!p-4"
   [contentStyle]="{ padding: '0' }"
 >
   @if (attendee(); as a) {
@@ -201,7 +201,7 @@
             <p-tag
               [value]="statusLabel()"
               [severity]="statusSeverity()"
-              styleClass="!text-[11px] !px-2 !py-0.5"
+              styleClass="text-[11px] px-2 py-0.5"
             />
           </dd>
         </dl>

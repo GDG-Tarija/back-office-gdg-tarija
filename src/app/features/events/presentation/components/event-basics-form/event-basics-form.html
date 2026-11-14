@@ -17,7 +17,7 @@
         id="ev-title"
         type="text"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         autocomplete="off"
         aria-required="true"
         [formField]="f.title"
@@ -39,7 +39,7 @@
         id="ev-slug"
         type="text"
         pInputText
-        class="w-full !rounded-xl font-mono"
+        class="w-full rounded-xl font-mono"
         autocomplete="off"
         aria-required="true"
         [formField]="f.slug"
@@ -72,7 +72,7 @@
       <select
         id="ev-type"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         aria-required="true"
         [formField]="f.eventType"
         [attr.aria-invalid]="!!fieldError('eventType')"
@@ -96,7 +96,7 @@
         id="ev-category"
         type="text"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         list="ev-category-list"
         placeholder="Ej. Inteligencia Artificial"
         [formField]="f.category"
@@ -119,7 +119,7 @@
       <select
         id="ev-mode"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         [formField]="f.locationType"
         [attr.aria-invalid]="!!fieldError('locationType')"
         [attr.aria-describedby]="describedBy('locationType')"
@@ -143,7 +143,7 @@
         type="text"
         inputmode="numeric"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         aria-required="true"
         [formField]="f.capacity"
         [attr.aria-invalid]="!!fieldError('capacity')"
@@ -170,7 +170,7 @@
         id="ev-place"
         type="text"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         placeholder="Ej. Auditorio UAJMS"
         [formField]="f.locationName"
       />
@@ -185,7 +185,7 @@
         id="ev-link"
         type="url"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         placeholder="https://..."
         [formField]="f.addressLink"
         [attr.aria-invalid]="!!fieldError('addressLink')"
@@ -299,7 +299,7 @@
         id="ev-desc"
         pInputText
         rows="5"
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         [formField]="f.description"
       ></textarea>
     </div>

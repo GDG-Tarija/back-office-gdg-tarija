@@ -209,7 +209,7 @@ export class CheckinPage implements OnInit, OnDestroy {
       this.loadedAttendeesEventId = eventId;
     } catch (err) {
       console.error('Error loading attendees for manual check-in:', err);
-      this.attendeesError.set('No se pudo cargar la lista de inscritos. Reintenta.');
+      this.attendeesError.set('No se pudo cargar la lista de personas inscritas. Reintenta.');
     } finally {
       this.loadingAttendees.set(false);
     }

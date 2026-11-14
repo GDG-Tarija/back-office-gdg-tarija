@@ -53,7 +53,7 @@
         placeholder="Elige un evento"
         ariaLabel="Evento"
         [style]="{ minHeight: '2.75rem' }"
-        styleClass="w-full text-sm !rounded-xl"
+        styleClass="w-full text-sm rounded-xl"
         (onChange)="onEventChange()"
         appendTo="body"
       />
@@ -88,7 +88,7 @@
           <label for="session-select" class="sr-only">Sesión</label>
           @if (loadingSessions()) {
             <div class="flex min-h-11 items-center gap-2 text-xs text-text-secondary" role="status">
-              <div class="gdg-spinner !size-5"></div>
+              <div class="gdg-spinner size-5"></div>
               <span>Cargando sesiones...</span>
             </div>
           } @else if (sessions().length === 0) {
@@ -104,7 +104,7 @@
               placeholder="Elige la sesión"
               ariaLabel="Sesión"
               [style]="{ minHeight: '2.75rem' }"
-              styleClass="w-full text-sm !rounded-xl"
+              styleClass="w-full text-sm rounded-xl"
               appendTo="body"
             />
           }
@@ -249,7 +249,7 @@
         <div class="flex items-center gap-2">
           <div class="relative min-w-0 flex-1">
             <label for="manual-checkin-search" class="sr-only">
-              Buscar inscrito por nombre, celular, correo o ID
+              Buscar persona por nombre, celular, correo o ID
             </label>
             <span
               class="material-symbols-rounded pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xl text-text-secondary"
@@ -265,7 +265,7 @@
               [disabled]="!selectedEvent() || loadingAttendees()"
               (input)="onSearchInput($any($event.target).value)"
               placeholder="Nombre, celular, correo o ID"
-              class="min-h-11 w-full !rounded-2xl !pl-11 !pr-11 text-base [&::-webkit-search-cancel-button]:hidden"
+              class="min-h-11 w-full rounded-2xl pl-11 pr-11 text-base [&::-webkit-search-cancel-button]:hidden"
             />
             @if (searchQuery()) {
               <button
@@ -283,7 +283,7 @@
               type="button"
               (click)="loadAttendees(event.id, true)"
               [disabled]="loadingAttendees()"
-              aria-label="Actualizar lista de inscritos"
+              aria-label="Actualizar lista de personas inscritas"
               class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 hover:text-google-blue disabled:opacity-50 dark:hover:bg-neutral-800"
             >
               <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
@@ -293,7 +293,7 @@
 
         @if (!loadingAttendees() && attendees().length > 0) {
           <p class="text-xs font-semibold text-text-secondary dark:text-neutral-300">
-            {{ filteredAttendees().length }} de {{ attendees().length }} inscritos
+            {{ filteredAttendees().length }} de {{ attendees().length }} personas inscritas
           </p>
         }
 
@@ -309,7 +309,7 @@
           <div class="flex items-center justify-center gap-3 py-12" role="status">
             <div class="gdg-spinner"></div>
             <span class="text-sm font-semibold text-text-secondary dark:text-neutral-400">
-              Cargando inscritos...
+              Cargando personas inscritas...
             </span>
           </div>
         } @else if (attendeesError(); as err) {
@@ -330,7 +330,7 @@
           <p
             class="rounded-2xl border border-dashed border-neutral-300 p-8 text-center text-sm font-semibold text-text-secondary dark:border-neutral-700 dark:text-neutral-300"
           >
-            Este evento aún no tiene inscritos.
+            Este evento aún no tiene personas inscritas.
           </p>
         } @else if (filteredAttendees().length === 0) {
           <div
@@ -351,7 +351,7 @@
             </button>
           </div>
         } @else {
-          <ul class="flex flex-col gap-2" aria-label="Resultados de inscritos">
+          <ul class="flex flex-col gap-2" aria-label="Resultados de personas inscritas">
             @for (attendee of visibleAttendees(); track attendee.id) {
               @let row = rowState(attendee);
               @let matchedResponses = getMatchedResponses(attendee);

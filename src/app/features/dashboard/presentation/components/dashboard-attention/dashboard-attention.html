@@ -87,7 +87,7 @@
             <span class="font-semibold">{{ u.event.title }}</span>
             <span class="text-text-secondary dark:text-neutral-400">
               {{ u.isToday ? 'Hoy' : (u.event.dateStart | date: 'EEE d MMM') }} ·
-              {{ u.registered }} de {{ u.event.capacity }} inscritos
+              {{ u.registered }} de {{ u.event.capacity }} cupos ocupados
             </span>
             <span class="flex flex-wrap gap-x-4">
               <a

@@ -264,7 +264,7 @@
           id="tk-name"
           type="text"
           pInputText
-          class="w-full !rounded-xl"
+          class="w-full rounded-xl"
           [formField]="tf.name"
           aria-required="true"
           [attr.aria-invalid]="!!trackFieldError()"
@@ -282,7 +282,7 @@
           id="tk-desc"
           rows="3"
           pInputText
-          class="w-full !rounded-xl"
+          class="w-full rounded-xl"
           [formField]="tf.description"
         ></textarea>
       </div>
@@ -373,7 +373,7 @@
             id="se-title"
             type="text"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             [formField]="sf.title"
             aria-required="true"
             [attr.aria-invalid]="!!sessionFieldError('title')"
@@ -394,7 +394,7 @@
             id="se-speaker"
             type="text"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             [formField]="sf.speaker"
           />
         </div>
@@ -407,7 +407,7 @@
             id="se-city"
             type="text"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             [formField]="sf.city"
           />
         </div>
@@ -429,7 +429,7 @@
             class="text-sm font-semibold text-text-primary dark:text-neutral-200"
             >Nivel</label
           >
-          <select id="se-level" pInputText class="w-full !rounded-xl" [formField]="sf.level">
+          <select id="se-level" pInputText class="w-full rounded-xl" [formField]="sf.level">
             <option value="">Sin nivel</option>
             @for (l of levels; track l) {
               <option [value]="l">{{ l }}</option>
@@ -448,7 +448,7 @@
             id="se-topics"
             type="text"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             placeholder="IA, Web, Cloud"
             [formField]="sf.topics"
           />
@@ -530,7 +530,7 @@
             type="text"
             inputmode="numeric"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             [formField]="sf.capacity"
             aria-required="true"
             [attr.aria-invalid]="!!sessionFieldError('capacity')"
@@ -557,7 +557,7 @@
             class="text-sm font-semibold text-text-primary dark:text-neutral-200"
             >Track</label
           >
-          <select id="se-track" pInputText class="w-full !rounded-xl" [formField]="sf.trackId">
+          <select id="se-track" pInputText class="w-full rounded-xl" [formField]="sf.trackId">
             <option value="">Sin track</option>
             @for (t of tracks(); track t.id) {
               <option [value]="t.id">{{ t.name }}</option>

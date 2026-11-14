@@ -174,7 +174,7 @@
             id="tt-name"
             type="text"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             [formField]="f.name"
             aria-required="true"
             [attr.aria-invalid]="!!fieldError('name')"
@@ -193,7 +193,7 @@
             id="tt-desc"
             rows="3"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             [formField]="f.description"
           ></textarea>
         </div>
@@ -234,7 +234,7 @@
               type="text"
               inputmode="decimal"
               pInputText
-              class="w-full !rounded-xl"
+              class="w-full rounded-xl"
               [formField]="f.price"
               aria-required="true"
               [attr.aria-invalid]="!!fieldError('price')"
@@ -260,7 +260,7 @@
             type="text"
             inputmode="numeric"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             placeholder="Sin cupo propio"
             [formField]="f.ticketCapacity"
             [attr.aria-invalid]="!!fieldError('ticketCapacity')"
@@ -402,7 +402,7 @@
                       [id]="'ph-name-' + i"
                       type="text"
                       pInputText
-                      class="w-full !rounded-xl"
+                      class="w-full rounded-xl"
                       placeholder="Preventa"
                       [value]="ph.name"
                       aria-required="true"
@@ -429,7 +429,7 @@
                       type="text"
                       inputmode="decimal"
                       pInputText
-                      class="w-full !rounded-xl"
+                      class="w-full rounded-xl"
                       [value]="ph.price"
                       aria-required="true"
                       [attr.aria-invalid]="!!phaseError(i, 'price')"
@@ -457,7 +457,7 @@
                       type="text"
                       inputmode="numeric"
                       pInputText
-                      class="w-full !rounded-xl"
+                      class="w-full rounded-xl"
                       [placeholder]="last ? 'Sin límite' : ''"
                       [value]="ph.capacity"
                       [attr.aria-required]="!last"

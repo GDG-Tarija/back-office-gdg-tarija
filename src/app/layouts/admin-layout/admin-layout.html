@@ -21,7 +21,7 @@
       <a
         [routerLink]="homeLink()"
         (click)="closeSidebarOnMobile()"
-        class="flex items-center gap-2 rounded-lg"
+        class="flex min-h-11 items-center gap-2 rounded-lg"
         aria-label="GDG Tarija, ir al inicio"
       >
         <img [src]="logo.src" alt="" class="h-7 w-auto" />
@@ -158,7 +158,11 @@
         >
           <span class="material-symbols-rounded text-2xl" aria-hidden="true">menu</span>
         </button>
-        <a [routerLink]="homeLink()" aria-label="GDG Tarija, ir al inicio" class="rounded-lg">
+        <a
+          [routerLink]="homeLink()"
+          aria-label="GDG Tarija, ir al inicio"
+          class="flex min-h-11 items-center rounded-lg"
+        >
           <img [src]="logo.src" alt="" class="h-6 w-auto" />
         </a>
       </div>

@@ -33,7 +33,7 @@
   <p class="sr-only" role="status" aria-live="polite">{{ announcement() }}</p>
 
   @if (countLoading()) {
-    <p class="text-sm text-text-secondary" role="status">Comprobando inscritos...</p>
+    <p class="text-sm text-text-secondary" role="status">Comprobando personas inscritas...</p>
   } @else if (countError(); as err) {
     <div
       class="flex items-center justify-between gap-3 rounded-2xl bg-google-yellow-light/40 p-3 text-sm font-medium text-text-primary dark:text-neutral-200"
