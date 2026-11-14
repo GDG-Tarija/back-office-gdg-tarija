@@ -24,7 +24,7 @@
   }
 }
 
-::ng-deep {
+:host ::ng-deep {
   // Force scroll strictly inside the PrimeNG table wrapper
   .p-datatable-wrapper {
     overflow-x: auto !important;
@@ -143,7 +143,7 @@
     }
   }
 
-  [data-theme='dark'] {
+  @at-root :host-context([data-theme='dark']) ::ng-deep {
     .p-datatable {
       .p-datatable-thead > tr > th {
         border-bottom-color: rgba(255, 255, 255, 0.08) !important;

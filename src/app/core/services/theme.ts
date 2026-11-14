@@ -1,9 +1,14 @@
-import { Injectable, computed, effect, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 
 export type Theme = 'dark' | 'light';
 
-const STORAGE_KEY = 'mecha-theme';
-const DEFAULT_THEME: Theme = 'light';
+export const THEME_STORAGE_KEY = 'mecha-theme';
+
+/** Misma lógica que el script inline de index.html: guardado > preferencia del sistema > claro. */
+export function resolveInitialTheme(stored: string | null, prefersDark: boolean): Theme {
+  if (stored === 'light' || stored === 'dark') return stored;
+  return prefersDark ? 'dark' : 'light';
+}
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -13,30 +18,42 @@ export class ThemeService {
   readonly isDark = computed(() => this.selectedTheme() === 'dark');
 
   constructor() {
-    effect(() => {
-      this.applyTheme(this.selectedTheme());
-    });
+    this.applyTheme(this.selectedTheme());
   }
 
   toggle(): void {
-    this.selectedTheme.set(this.selectedTheme() === 'dark' ? 'light' : 'dark');
+    this.setTheme(this.selectedTheme() === 'dark' ? 'light' : 'dark');
   }
 
   setTheme(theme: Theme): void {
     this.selectedTheme.set(theme);
+    this.applyTheme(theme);
+    this.persist(theme);
   }
 
   private loadTheme(): Theme {
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    return stored === 'light' || stored === 'dark' ? stored : DEFAULT_THEME;
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(THEME_STORAGE_KEY);
+    } catch {
+      // Almacenamiento bloqueado: se usa la preferencia del sistema.
+    }
+    const prefersDark =
+      typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+    return resolveInitialTheme(stored, prefersDark);
   }
 
   private applyTheme(theme: Theme): void {
     const html = document.documentElement;
-
     if (theme === 'dark') html.setAttribute('data-theme', 'dark');
     else html.removeAttribute('data-theme');
+  }
 
-    localStorage.setItem(STORAGE_KEY, theme);
+  private persist(theme: Theme): void {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Sin persistencia: el tema vale solo para esta sesión.
+    }
   }
 }
