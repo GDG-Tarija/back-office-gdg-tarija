@@ -7,18 +7,18 @@
   [closeOnEscape]="false"
   appendTo="body"
   role="alertdialog"
-  [style]="{ width: 'min(calc(100vw - 1rem), 26rem)' }"
+  [style]="{ width: 'min(calc(100vw - 1rem), 30rem)' }"
   (onShow)="focusStay()"
   (keydown.escape)="choose.emit('stay')"
 >
   <ng-template #header let-labelledBy="ariaLabelledBy">
-    <h2 [id]="labelledBy" class="px-5 pt-4 text-base font-semibold">Tienes cambios sin guardar</h2>
+    <h2 [id]="labelledBy" class="text-base font-semibold">Tienes cambios sin guardar</h2>
   </ng-template>
-  <p class="px-5 text-sm text-text-primary dark:text-neutral-200">
+  <p class="text-sm text-text-primary dark:text-neutral-200">
     Si sales ahora, perderás lo que escribiste en esta sección.
   </p>
   <ng-template #footer>
-    <div class="flex w-full flex-wrap items-center justify-end gap-2 px-5 pt-2 pb-4">
+    <div class="flex w-full flex-wrap items-center justify-end gap-2">
       <button
         id="unsaved-stay"
         type="button"
