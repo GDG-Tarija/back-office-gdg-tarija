@@ -61,7 +61,7 @@
         height: 2.25rem !important;
         border-radius: 50% !important;
         background-color: rgba(0, 0, 0, 0.03) !important;
-        color: var(--text-secondary) !important;
+        color: var(--color-text-secondary) !important;
         transition: all 0.2s ease !important;
 
         &:hover {
@@ -71,7 +71,7 @@
     }
   }
 
-  .dark {
+  @at-root :host-context([data-theme='dark']) ::ng-deep {
     .checkin-confirm-dialog {
       background-color: #171717 !important;
       border: 1px solid rgba(255, 255, 255, 0.08) !important;

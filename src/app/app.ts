@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+
+import { ThemeService } from './core/services/theme';
 
 @Component({
   selector: 'app-root',
@@ -7,4 +9,7 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App {}
+export class App {
+  // Se instancia aquí para que el tema funcione también en login y callback.
+  protected readonly theme = inject(ThemeService);
+}
