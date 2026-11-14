@@ -1,12 +1,13 @@
 import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 export type StatBadgeSeverity = 'blue' | 'red' | 'green' | 'yellow' | 'neutral';
 
 @Component({
   selector: 'app-stat-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './stat-card.html',
   styleUrl: './stat-card.scss',
 })
@@ -17,6 +18,8 @@ export class StatCard {
   badge = input<string | null>(null);
   badgeSeverity = input<StatBadgeSeverity>('neutral');
   iconSeverity = input<StatBadgeSeverity>('blue');
+  /** Ruta de la lista que representa la tarjeta. */
+  link = input<string | null>(null);
 
   getIconClasses(): string {
     switch (this.iconSeverity()) {

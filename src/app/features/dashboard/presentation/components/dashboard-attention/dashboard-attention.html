@@ -1,0 +1,108 @@
+<section aria-labelledby="attention-title" class="flex flex-col gap-4">
+  <h2 id="attention-title" class="text-lg font-bold text-text-primary dark:text-neutral-100">
+    Requiere atención
+  </h2>
+
+  @if (isEmpty()) {
+    <p
+      class="rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-5 text-sm text-text-secondary dark:text-neutral-400"
+    >
+      Todo al día: no tienes comprobantes por revisar, borradores sin publicar ni eventos en los
+      próximos 7 días.
+    </p>
+  } @else {
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div
+        class="flex flex-col gap-3 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-5"
+      >
+        <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
+          Comprobantes por revisar
+          @if (totalProofs() > 0) {
+            <span class="ml-1 font-extrabold text-google-red">({{ totalProofs() }})</span>
+          }
+        </h3>
+        @for (p of proofs(); track p.eventId) {
+          <a
+            [routerLink]="['/events', p.eventId, 'attendees']"
+            class="flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          >
+            <span class="truncate">{{ p.title }}</span>
+            <span class="shrink-0 font-bold">
+              {{ p.count }} {{ p.count === 1 ? 'comprobante' : 'comprobantes' }}
+            </span>
+          </a>
+        } @empty {
+          <p class="text-sm text-text-secondary dark:text-neutral-400">
+            No hay inscripciones pendientes de pago con comprobante.
+          </p>
+        }
+      </div>
+
+      <div
+        class="flex flex-col gap-3 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-5"
+      >
+        <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
+          Borradores sin publicar
+          @if (drafts().length > 0) {
+            <span class="ml-1 font-extrabold text-google-red">({{ drafts().length }})</span>
+          }
+        </h3>
+        @for (d of drafts().slice(0, maxDrafts); track d.id) {
+          <a
+            [routerLink]="['/events', d.id, 'edit']"
+            class="flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          >
+            <span class="truncate">{{ d.title }}</span>
+            <span class="shrink-0 text-text-secondary dark:text-neutral-400">
+              {{ d.dateStart | date: 'd MMM' }}
+            </span>
+          </a>
+        } @empty {
+          <p class="text-sm text-text-secondary dark:text-neutral-400">
+            Todos los eventos están publicados.
+          </p>
+        }
+        @if (drafts().length > maxDrafts) {
+          <a routerLink="/events" class="px-3 text-sm font-semibold text-google-blue underline">
+            Ver todos los eventos
+          </a>
+        }
+      </div>
+
+      <div
+        class="flex flex-col gap-3 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-5"
+      >
+        <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
+          Hoy y próximos 7 días
+        </h3>
+        @for (u of upcoming(); track u.event.id) {
+          <div class="flex flex-col gap-1 rounded-xl px-3 py-1 text-sm">
+            <span class="font-semibold">{{ u.event.title }}</span>
+            <span class="text-text-secondary dark:text-neutral-400">
+              {{ u.isToday ? 'Hoy' : (u.event.dateStart | date: 'EEE d MMM') }} ·
+              {{ u.registered }} de {{ u.event.capacity }} inscritos
+            </span>
+            <span class="flex flex-wrap gap-x-4">
+              <a
+                [routerLink]="['/events', u.event.id, 'attendees']"
+                class="inline-flex min-h-11 items-center font-semibold text-google-blue underline"
+              >
+                Asistentes
+              </a>
+              <a
+                routerLink="/checkin"
+                class="inline-flex min-h-11 items-center font-semibold text-google-blue underline"
+              >
+                Check-in
+              </a>
+            </span>
+          </div>
+        } @empty {
+          <p class="text-sm text-text-secondary dark:text-neutral-400">
+            No hay eventos publicados en los próximos 7 días.
+          </p>
+        }
+      </div>
+    </div>
+  }
+</section>
