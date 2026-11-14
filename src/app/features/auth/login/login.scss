@@ -28,7 +28,8 @@
 }
 
 // Para modo oscuro mediante atributo data-theme="dark"
-[data-theme='dark'] {
+// :host-context: el encapsulado de Angular no deja que `[data-theme]` coincida con <html>.
+:host-context([data-theme='dark']) {
   .login-card {
     background: rgba(23, 23, 23, 0.75);
     border: 1px solid rgba(255, 255, 255, 0.08);

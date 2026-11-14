@@ -1,159 +1,174 @@
+<a
+  href="#contenido"
+  (click)="skipToContent($event)"
+  class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-full focus:bg-action focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-on-action focus:shadow-lg"
+>
+  Saltar al contenido
+</a>
+
 <div class="flex min-h-screen bg-surface-main dark:bg-neutral-950 transition-all duration-300">
-  <!-- Sidebar Container (Desktop: fixed, Mobile: drawer) -->
+  <!-- Sidebar (escritorio: fijo; móvil: drawer) -->
   <aside
+    id="menu-lateral"
+    [attr.inert]="drawerInert() ? '' : null"
     [class.translate-x-0]="isSidebarOpen()"
     [class.-translate-x-full]="!isSidebarOpen()"
     class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 transition-transform duration-300 ease-in-out md:translate-x-0"
   >
-    <!-- Logo Header in Sidebar -->
     <div
-      class="flex h-16 items-center justify-between px-6 border-b border-black/5 dark:border-white/5"
+      class="flex h-16 items-center justify-between pl-6 pr-3 border-b border-black/5 dark:border-white/5"
     >
-      <div class="flex items-center gap-2">
-        <img [src]="logo.src" [alt]="logo.alt" class="h-8 w-auto" />
-      </div>
-      <!-- Close button on Mobile -->
+      <a
+        [routerLink]="homeLink()"
+        (click)="closeSidebarOnMobile()"
+        class="flex items-center gap-2 rounded-lg"
+        aria-label="GDG Tarija, ir al inicio"
+      >
+        <img [src]="logo.src" alt="" class="h-7 w-auto" />
+      </a>
       <button
+        #closeButton
         type="button"
-        class="flex size-9 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden transition-colors"
-        (click)="toggleSidebar()"
+        class="flex size-11 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden transition-colors"
+        (click)="closeSidebar()"
         aria-label="Cerrar menú"
       >
-        <span class="material-symbols-rounded text-xl">close</span>
+        <span class="material-symbols-rounded text-xl" aria-hidden="true">close</span>
       </button>
     </div>
 
-    <!-- Navigation List -->
-    <nav class="flex-1 space-y-1 px-4 py-6">
-      <a
-        routerLink="/dashboard"
-        routerLinkActive="bg-google-blue-light/50 dark:bg-google-blue/15 text-google-blue font-semibold shadow-sm"
-        class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
-        (click)="closeSidebarOnMobile()"
-      >
-        <span class="material-symbols-rounded text-xl">dashboard</span>
-        <span>Dashboard</span>
-      </a>
+    <nav aria-label="Principal" class="flex-1 space-y-1 px-4 py-6">
+      @if (isSuperadmin()) {
+        <a
+          routerLink="/dashboard"
+          routerLinkActive="bg-google-blue-light/50 dark:bg-google-blue/15 text-accent-text font-semibold shadow-sm"
+          ariaCurrentWhenActive="page"
+          class="flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
+          (click)="closeSidebarOnMobile()"
+        >
+          <span class="material-symbols-rounded text-xl" aria-hidden="true">dashboard</span>
+          <span>Inicio</span>
+        </a>
+      }
 
       <a
         routerLink="/events"
-        routerLinkActive="bg-google-blue-light/50 dark:bg-google-blue/15 text-google-blue font-semibold shadow-sm"
-        class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
+        routerLinkActive="bg-google-blue-light/50 dark:bg-google-blue/15 text-accent-text font-semibold shadow-sm"
+        ariaCurrentWhenActive="page"
+        class="flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
         (click)="closeSidebarOnMobile()"
       >
-        <span class="material-symbols-rounded text-xl">calendar_month</span>
+        <span class="material-symbols-rounded text-xl" aria-hidden="true">calendar_month</span>
         <span>Eventos</span>
       </a>
 
       <a
         routerLink="/checkin"
-        routerLinkActive="bg-google-blue-light/50 dark:bg-google-blue/15 text-google-blue font-semibold shadow-sm"
-        class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
+        routerLinkActive="bg-google-blue-light/50 dark:bg-google-blue/15 text-accent-text font-semibold shadow-sm"
+        ariaCurrentWhenActive="page"
+        class="flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
         (click)="closeSidebarOnMobile()"
       >
-        <span class="material-symbols-rounded text-xl">qr_code_scanner</span>
+        <span class="material-symbols-rounded text-xl" aria-hidden="true">qr_code_scanner</span>
         <span>Check-in</span>
       </a>
     </nav>
 
-    <!-- Sidebar Footer -->
-    <div class="border-t border-black/5 dark:border-white/5 p-4 flex flex-col gap-3">
+    <div class="border-t border-black/5 dark:border-white/5 p-4 flex flex-col gap-2">
       @if (auth.user(); as user) {
-        <div class="flex items-center justify-between gap-2 px-1">
-          <div class="flex items-center gap-3 min-w-0 flex-1">
-            @if (user.avatar_url) {
-              <img
-                class="size-9 rounded-full object-cover ring-2 ring-google-blue/20 shrink-0"
-                [src]="user.avatar_url"
-                alt="Avatar"
-                referrerpolicy="no-referrer"
-              />
-            } @else {
-              <div
-                class="flex size-9 items-center justify-center rounded-full bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue text-xs font-bold shrink-0"
-              >
-                {{ user.first_name[0] }}{{ user.last_name[0] }}
-              </div>
-            }
-            <div class="flex flex-col min-w-0">
-              <span class="truncate text-xs font-bold text-text-primary dark:text-neutral-200">
-                {{ user.first_name }} {{ user.last_name }}
-              </span>
-              <span class="truncate text-[11px] text-text-secondary dark:text-neutral-400">
-                {{ user.email }}
-              </span>
-              @if (roleLabel(); as role) {
-                <span
-                  class="mt-1 w-fit rounded-full bg-google-blue-light/60 dark:bg-google-blue/15 px-2 py-0.5 text-[10px] font-semibold text-google-blue"
-                >
-                  {{ role }}
-                </span>
-              }
+        <div class="flex items-center gap-3 min-w-0 px-1 pb-2">
+          @if (user.avatar_url) {
+            <img
+              class="size-9 rounded-full object-cover ring-2 ring-google-blue/20 shrink-0"
+              [src]="user.avatar_url"
+              alt=""
+              referrerpolicy="no-referrer"
+            />
+          } @else {
+            <div
+              class="flex size-9 items-center justify-center rounded-full bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue-dark dark:text-accent-text text-xs font-bold shrink-0"
+              aria-hidden="true"
+            >
+              {{ user.first_name[0] }}{{ user.last_name[0] }}
             </div>
-          </div>
-
-          <div class="flex items-center gap-1 shrink-0">
-            <!-- Subtle Theme Toggle -->
-            <button
-              type="button"
-              (click)="theme.toggle()"
-              class="flex size-8 items-center justify-center rounded-full text-text-secondary dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-              [title]="theme.isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
-              [attr.aria-label]="theme.isDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
-            >
-              <span class="material-symbols-rounded text-lg">
-                {{ theme.isDark() ? 'light_mode' : 'dark_mode' }}
+          }
+          <div class="flex flex-col min-w-0">
+            <span class="truncate text-xs font-bold text-text-primary dark:text-neutral-200">
+              {{ user.first_name }} {{ user.last_name }}
+            </span>
+            <span class="truncate text-xs text-text-secondary dark:text-neutral-400">
+              {{ user.email }}
+            </span>
+            @if (roleLabel(); as role) {
+              <span
+                class="mt-1 w-fit rounded-full bg-google-blue-light/60 dark:bg-google-blue/15 px-2 py-0.5 text-xs font-semibold text-google-blue-dark dark:text-accent-text"
+              >
+                {{ role }}
               </span>
-            </button>
-
-            <!-- Logout -->
-            <button
-              type="button"
-              (click)="auth.signOut()"
-              class="flex size-8 items-center justify-center rounded-full text-text-secondary hover:text-google-red dark:text-neutral-400 dark:hover:text-google-red hover:bg-google-red-light/40 dark:hover:bg-google-red/20 transition-colors"
-              title="Cerrar sesión"
-              aria-label="Cerrar sesión"
-            >
-              <span class="material-symbols-rounded text-lg">logout</span>
-            </button>
+            }
           </div>
         </div>
       }
+
+      <button
+        type="button"
+        (click)="theme.toggle()"
+        [attr.aria-pressed]="theme.isDark()"
+        class="flex min-h-11 w-full items-center gap-3 rounded-2xl px-4 text-sm font-medium text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+      >
+        <span class="material-symbols-rounded text-xl" aria-hidden="true">
+          {{ theme.isDark() ? 'light_mode' : 'dark_mode' }}
+        </span>
+        <span>Modo oscuro</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="auth.signOut()"
+        class="flex min-h-11 w-full items-center gap-3 rounded-2xl px-4 text-sm font-medium text-text-secondary dark:text-neutral-300 hover:text-danger-text hover:bg-google-red-light/40 dark:hover:bg-google-red/20 transition-colors"
+      >
+        <span class="material-symbols-rounded text-xl" aria-hidden="true">logout</span>
+        <span>Cerrar sesión</span>
+      </button>
     </div>
   </aside>
 
-  <!-- Mobile Overlay Backdrop -->
+  <!-- Fondo del drawer móvil: solo mouse/tacto; el teclado cierra con Escape o el botón. -->
   @if (isSidebarOpen()) {
-    <button
-      type="button"
-      class="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm md:hidden w-full h-full cursor-default border-none outline-none"
-      (click)="toggleSidebar()"
-      aria-label="Cerrar menú"
-    ></button>
+    <div
+      class="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm md:hidden"
+      (click)="closeSidebar()"
+      aria-hidden="true"
+    ></div>
   }
 
-  <!-- Main Content Layout Area -->
-  <div class="flex flex-1 flex-col md:pl-64">
-    <!-- Top Mobile Header -->
+  <div class="flex min-w-0 flex-1 flex-col md:pl-64">
     <header
-      class="flex h-16 items-center justify-between border-b border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 px-6 md:hidden"
+      class="flex h-16 items-center justify-between border-b border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 px-4 md:hidden"
     >
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <button
+          #menuButton
           type="button"
-          class="flex size-9 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          class="flex size-11 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           (click)="toggleSidebar()"
-          aria-label="Abrir menú"
+          [attr.aria-expanded]="isSidebarOpen()"
+          aria-controls="menu-lateral"
+          aria-label="Menú principal"
         >
-          <span class="material-symbols-rounded text-2xl">menu</span>
+          <span class="material-symbols-rounded text-2xl" aria-hidden="true">menu</span>
         </button>
-        <img [src]="logo.src" [alt]="logo.alt" class="h-6 w-auto" />
+        <a [routerLink]="homeLink()" aria-label="GDG Tarija, ir al inicio" class="rounded-lg">
+          <img [src]="logo.src" alt="" class="h-6 w-auto" />
+        </a>
       </div>
     </header>
 
-    <!-- Main router content outlet page -->
-    <div class="flex-1">
+    <main #main id="contenido" tabindex="-1" class="min-w-0 flex-1 outline-none">
       <router-outlet />
-    </div>
+    </main>
   </div>
 </div>
+
+<p-toast position="top-right" />
+<p-confirmdialog />
