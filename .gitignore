@@ -53,3 +53,6 @@ src/environments/environment.prod.ts
 
 # Backups locales de Supabase (contienen datos personales reales)
 supabase/backups/
+
+# Snapshots locales de Impeccable (auditoría UX)
+.impeccable/
