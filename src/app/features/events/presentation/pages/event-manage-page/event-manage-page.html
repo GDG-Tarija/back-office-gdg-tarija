@@ -113,8 +113,8 @@
             @if (!canDelete()) {
               <p class="text-xs text-text-secondary dark:text-neutral-400">
                 Este evento tiene {{ ws.registrationCount() }}
-                {{ ws.registrationCount() === 1 ? 'persona inscrita' : 'personas inscritas' }} y no
-                se puede eliminar; despublícalo para ocultarlo.
+                {{ ws.registrationCount() === 1 ? 'inscripción' : 'inscripciones' }} (las anuladas
+                también cuentan) y no se puede eliminar; despublícalo para ocultarlo.
               </p>
             }
           </div>

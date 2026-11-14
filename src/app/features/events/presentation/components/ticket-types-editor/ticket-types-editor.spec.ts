@@ -31,6 +31,7 @@ describe('TicketTypesEditor', () => {
     update: vi.fn(),
     delete: vi.fn(),
     getRegistrationCounts: vi.fn(),
+    getActiveRegistrationCounts: vi.fn(),
     getPhaseAvailability: vi.fn(),
   };
   const remove = vi.fn();
@@ -40,6 +41,7 @@ describe('TicketTypesEditor', () => {
     remove.mockReset().mockResolvedValue(undefined);
     repo.list.mockResolvedValue([base]);
     repo.getRegistrationCounts.mockResolvedValue({ t1: 5 });
+    repo.getActiveRegistrationCounts.mockResolvedValue({ t1: 5 });
     repo.getPhaseAvailability.mockResolvedValue({});
     TestBed.configureTestingModule({
       imports: [TicketTypesEditor],
@@ -80,6 +82,14 @@ describe('TicketTypesEditor', () => {
     expect(cmp.toDelete()).toBeNull();
     const del = fixture.nativeElement.querySelector('button[aria-label^="Eliminar paquete"]');
     expect(del.disabled).toBe(true);
+  });
+
+  it('las anuladas no cuentan como inscritas pero siguen bloqueando el borrado', async () => {
+    repo.getRegistrationCounts.mockResolvedValue({ t1: 3 });
+    repo.getActiveRegistrationCounts.mockResolvedValue({});
+    const cmp = (await create()).componentInstance;
+    expect(cmp.registered(base)).toBe(0);
+    expect(cmp.deleteBlockReason(base)).toContain('3 inscripciones');
   });
 
   it('muestra el DomainError si el servidor rechaza el borrado (RESTRICT)', async () => {

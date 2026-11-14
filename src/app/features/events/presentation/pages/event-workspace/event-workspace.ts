@@ -45,7 +45,10 @@ export class EventWorkspace {
   private readonly sessionsRepo = inject(SessionsRepository);
 
   readonly event = signal<Event | null>(null);
+  /** Con anuladas: bloquea borrar el evento y cambiar el slug. */
   readonly registrationCount = signal(0);
+  /** Sin anuladas: lo que se le muestra a la persona como inscritas. */
+  readonly activeRegistrationCount = signal(0);
   readonly tickets = signal<Pick<TicketType, 'name' | 'ticketCapacity' | 'phases'>[]>([]);
   readonly sessions = signal<Session[]>([]);
 
@@ -68,12 +71,14 @@ export class EventWorkspace {
   async refreshPublishData(): Promise<void> {
     const event = this.event();
     if (!event) return;
-    const [count, tickets, sessions] = await Promise.all([
+    const [count, activeCount, tickets, sessions] = await Promise.all([
       this.eventsRepo.countRegistrations(event.id),
+      this.eventsRepo.countActiveRegistrations(event.id),
       this.ticketsRepo.list(event.id),
       this.sessionsRepo.list(event.id),
     ]);
     this.registrationCount.set(count);
+    this.activeRegistrationCount.set(activeCount);
     this.tickets.set(tickets);
     this.sessions.set(sessions);
   }

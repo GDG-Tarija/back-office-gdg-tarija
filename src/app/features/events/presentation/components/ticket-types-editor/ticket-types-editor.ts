@@ -80,7 +80,10 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   readonly ticketsChange = output<TicketType[]>();
 
   readonly tickets = signal<TicketType[]>([]);
+  /** Inscripciones totales por paquete (con anuladas): bloquean el borrado. */
   readonly counts = signal<Record<string, number>>({});
+  /** Inscritas activas (sin anuladas): ocupan cupo y se muestran al organizador. */
+  readonly activeCounts = signal<Record<string, number>>({});
   /** Vendidos/restantes por fase (ticket_phase_id). */
   readonly availability = signal<Record<string, PhaseAvailability>>({});
   readonly loading = signal(true);
@@ -107,7 +110,7 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
 
   readonly editingCount = computed(() => {
     const t = this.editing();
-    return t ? (this.counts()[t.id] ?? 0) : 0;
+    return t ? (this.activeCounts()[t.id] ?? 0) : 0;
   });
 
   readonly priceIsPaid = computed(() => {
@@ -208,13 +211,15 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const [tickets, counts, availability] = await Promise.all([
+      const [tickets, counts, activeCounts, availability] = await Promise.all([
         this.repo.list(this.eventId()),
         this.repo.getRegistrationCounts(this.eventId()),
+        this.repo.getActiveRegistrationCounts(this.eventId()),
         this.repo.getPhaseAvailability(this.eventId()),
       ]);
       this.tickets.set(tickets);
       this.counts.set(counts);
+      this.activeCounts.set(activeCounts);
       this.availability.set(availability);
       this.ticketsChange.emit(tickets);
     } catch (err) {
@@ -225,11 +230,11 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   }
 
   registered(t: TicketType): number {
-    return this.counts()[t.id] ?? 0;
+    return this.activeCounts()[t.id] ?? 0;
   }
 
   deleteBlockReason(t: TicketType): string | null {
-    return ticketDeleteBlockReason(this.registered(t));
+    return ticketDeleteBlockReason(this.counts()[t.id] ?? 0);
   }
 
   phaseSold(phaseId: string | null): number {
