@@ -1,6 +1,8 @@
 import { Component, HostListener, OnDestroy, computed, input, output, signal } from '@angular/core';
 import { DialogModule } from 'primeng/dialog';
 
+import { hasOverlayAbove } from '../../utils/overlays';
+
 export type DialogSize = 'sm' | 'md' | 'lg';
 
 const SIZE_WIDTH: Record<DialogSize, string> = {
@@ -21,6 +23,8 @@ export class DialogFrame implements OnDestroy {
   initialSize = input<DialogSize>('md');
   /** Con cambios sin guardar, cerrar pide confirmación antes de emitir `closeDialog`. */
   dirty = input<boolean>(false);
+  /** Guardando: Esc, X y clic fuera no cierran (cerrar a medias dejaría el guardado huérfano). */
+  busy = input<boolean>(false);
 
   closeDialog = output<void>();
 
@@ -42,9 +46,11 @@ export class DialogFrame implements OnDestroy {
     if (event.defaultPrevented) return;
     if (this.confirmingDiscard()) {
       this.keepEditing();
-    } else {
-      this.requestClose();
+      return;
     }
+    // Esc le pertenece a lo que esté encima (confirmación, lista desplegable, calendario).
+    if (hasOverlayAbove('.app-dialog-mask')) return;
+    this.requestClose();
   }
 
   @HostListener('document:click', ['$event'])
@@ -61,6 +67,7 @@ export class DialogFrame implements OnDestroy {
   }
 
   requestClose(): void {
+    if (this.busy()) return;
     if (this.dirty()) {
       this.fieldBeforeConfirm = document.activeElement as HTMLElement | null;
       this.confirmingDiscard.set(true);

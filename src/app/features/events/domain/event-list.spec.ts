@@ -1,3 +1,4 @@
+import { afterAll, beforeAll } from 'vitest';
 import { Event } from './event.model';
 import {
   DEFAULT_EVENT_FILTERS,
@@ -109,5 +110,25 @@ describe('filtros en la URL', () => {
   it('ignora valores desconocidos', () => {
     const map = new Map([['estado', 'xx']]);
     expect(parseEventFilters({ get: (k) => map.get(k) ?? null }).status).toBe('ALL');
+  });
+});
+
+describe('zona horaria La Paz', () => {
+  // El spec corre en Node pero el tsconfig no incluye @types/node.
+  const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } })
+    .process.env;
+  const previousTz = env['TZ'];
+  beforeAll(() => {
+    env['TZ'] = 'Asia/Tokyo';
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete env['TZ'];
+    else env['TZ'] = previousTz;
+  });
+
+  it('eventTiming usa el día de La Paz, no el del dispositivo', () => {
+    const event = ev('e', new Date('2026-10-15T14:00:00Z')); // 15-oct 10:00 La Paz
+    const now = new Date('2026-10-15T16:00:00Z'); // 15-oct 12:00 La Paz (16-oct 01:00 en Tokio)
+    expect(eventTiming(event, now)).toBe('TODAY');
   });
 });

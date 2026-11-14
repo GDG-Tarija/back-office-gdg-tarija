@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 
 import { BackofficeRole } from '../../models/role.model';
+import { RoleLookupError } from '../role-lookup-error';
 import { AuthService } from '../services/auth.service';
 import { homeGuard } from './home.guard';
 
@@ -44,5 +45,11 @@ describe('homeGuard', () => {
     resolveRole.mockResolvedValue('STAFF');
     expect(await run()).toBe(tree);
     expect(role()).toBe('STAFF');
+  });
+
+  it('si no puede leer el rol envía al reintento, no a /checkin', async () => {
+    resolveRole.mockRejectedValue(new RoleLookupError());
+    expect(await run()).toBe(tree);
+    expect(createUrlTree).toHaveBeenCalledWith(['/auth/verificar']);
   });
 });

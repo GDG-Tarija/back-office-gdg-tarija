@@ -85,7 +85,7 @@
               {{ t.name }}
             </p>
             <p class="text-sm text-text-secondary dark:text-neutral-400">
-              {{ t.price === 0 ? 'Gratis' : 'Bs ' + t.price.toFixed(2) }} · {{ registered(t) }}
+              {{ t.price === 0 ? 'Gratis' : (t.price | bs) }} · {{ registered(t) }}
               {{ registered(t) === 1 ? 'persona inscrita' : 'personas inscritas' }}
               @if (t.ticketCapacity !== null) {
                 de {{ t.ticketCapacity }} de cupo
@@ -153,6 +153,7 @@
     icon="confirmation_number"
     initialSize="lg"
     [dirty]="dirty()"
+    [busy]="saving()"
     (closeDialog)="closeDialog()"
   >
     <form

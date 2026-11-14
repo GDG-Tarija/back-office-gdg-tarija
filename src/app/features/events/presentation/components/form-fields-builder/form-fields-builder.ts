@@ -152,7 +152,7 @@ export class FormFieldsBuilder {
       const n = await this.repo.countRegistrations(eventId);
       if (this.event().id === eventId) this.registrations.set(n);
     } catch (err) {
-      this.countError.set(toUserMessage(err, 'No se pudo comprobar si hay inscritos.'));
+      this.countError.set(toUserMessage(err, 'No se pudo comprobar si hay inscripciones.'));
     }
   }
 

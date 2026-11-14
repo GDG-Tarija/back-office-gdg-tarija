@@ -176,6 +176,23 @@ describe('AttendeesPage: revisión de comprobantes', () => {
     role.set('SUPERADMIN');
   });
 
+  it('descarta un ?entrada= que no existe en el evento en vez de dejar la lista vacía', async () => {
+    Object.assign(repo, {
+      getEventById: vi.fn().mockResolvedValue({ id: 'e1', title: 'Evento' }),
+      getAttendees: vi.fn().mockResolvedValue([pending]),
+    });
+    const cmp = create([]);
+    cmp.setFilter('entry', 'Entrada que no existe');
+
+    await cmp.loadData('e1');
+
+    expect(cmp.filters().entry).toBe('');
+
+    cmp.setFilter('entry', 'General');
+    await cmp.loadData('e1');
+    expect(cmp.filters().entry).toBe('General');
+  });
+
   it('la cola de revisión solo incluye inscritos filtrados con comprobante', () => {
     const cmp = create([
       withProof('a'),

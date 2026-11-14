@@ -5,6 +5,7 @@ import { PostgrestError } from '@supabase/supabase-js';
 import { Profile } from '../../models/profile.model';
 import { BackofficeRole } from '../../models/role.model';
 import { DEFAULT_REDIRECT, REDIRECT_KEY, accessDeniedMessage } from '../redirect';
+import { RoleLookupError } from '../role-lookup-error';
 import { SUPABASE } from '../../supabase/supabase.client';
 
 type AuthSession = {
@@ -39,9 +40,21 @@ export class AuthService {
   readonly loading = signal(true);
   readonly authError = signal<string | null>(null);
 
+  /** Rol del operador o `null` si no tiene. Lanza `RoleLookupError` si la consulta falla. */
   async resolveRole(): Promise<BackofficeRole | null> {
-    const { data } = await this.rpc('get_my_role');
-    return data ?? null;
+    let result: Awaited<RpcResult<BackofficeRole | null>>;
+    try {
+      result = await this.rpc('get_my_role');
+    } catch (cause) {
+      throw new RoleLookupError({ cause });
+    }
+    if (result.error) throw new RoleLookupError({ cause: result.error });
+    return result.data ?? null;
+  }
+
+  /** Vuelve a habilitar el botón de login si el navegador restaura la página tras ir a Google. */
+  resetLoading(): void {
+    this.loading.set(false);
   }
 
   async denyAccess(email: string | null | undefined): Promise<void> {
@@ -85,15 +98,24 @@ export class AuthService {
     const cleanBase = base.replace(/\/$/, '');
     const redirectTo = `${window.location.origin}${cleanBase}/auth/callback`;
 
-    void this.supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        queryParams: {
-          prompt: 'select_account',
+    const fail = () => {
+      this.loading.set(false);
+      this.authError.set('No pudimos iniciar sesión con Google. Revisa tu conexión y reintenta.');
+    };
+    this.supabase.auth
+      .signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: 'select_account',
+          },
         },
-      },
-    });
+      })
+      .then(({ error }) => {
+        if (error) fail();
+      })
+      .catch(fail);
   }
 
   async signOut(): Promise<void> {
@@ -134,6 +156,21 @@ export class AuthService {
     };
   }
 
+  /**
+   * Como `resolveRole`, pero ante un fallo de red no cierra la sesión: devuelve `undefined`
+   * y deja que el guard/callback muestren el reintento.
+   */
+  private async resolveRoleOrKeepSession(): Promise<BackofficeRole | null | undefined> {
+    try {
+      return await this.resolveRole();
+    } catch (err) {
+      if (!(err instanceof RoleLookupError)) throw err;
+      console.error('No se pudo verificar el rol:', err);
+      this.loading.set(false);
+      return undefined;
+    }
+  }
+
   private async hydrateProfile(session: AuthSession): Promise<void> {
     const partial = this.buildPartial(session);
 
@@ -142,7 +179,8 @@ export class AuthService {
       return;
     }
 
-    const role = await this.resolveRole();
+    const role = await this.resolveRoleOrKeepSession();
+    if (role === undefined) return;
     if (!role) {
       await this.denyAccess(partial.email);
       return;
@@ -172,7 +210,8 @@ export class AuthService {
       return;
     }
 
-    const role = await this.resolveRole();
+    const role = await this.resolveRoleOrKeepSession();
+    if (role === undefined) return;
     if (!role) {
       await this.denyAccess(partial.email);
       return;

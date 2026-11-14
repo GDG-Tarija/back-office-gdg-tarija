@@ -105,6 +105,16 @@ export class EventsApi implements EventsRepository {
     return count ?? 0;
   }
 
+  async countActiveRegistrations(eventId: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .neq('status', 'CANCELLED');
+    if (error) throw toDomainError(error, 'event');
+    return count ?? 0;
+  }
+
   async countActiveRegistrationsByEvent(): Promise<Record<string, number>> {
     const counts: Record<string, number> = {};
     for (let from = 0; ; from += ATTENDEES_PAGE_SIZE) {

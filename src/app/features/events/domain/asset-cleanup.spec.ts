@@ -62,4 +62,33 @@ describe('AssetCleanupTracker', () => {
     tracker.trackUploaded('x');
     await expect(tracker.rollback()).resolves.toBeUndefined();
   });
+
+  describe('reconcile (guardado fallido a medias)', () => {
+    it('lo subido que la BD ya referencia deja de ser borrable', async () => {
+      tracker.trackUploaded('new-qr');
+      tracker.trackUploaded('unsaved');
+      await tracker.reconcile(new Set(['new-qr']));
+      await tracker.rollback();
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(remove).toHaveBeenCalledWith('unsaved');
+    });
+
+    it('borra el reemplazado solo si nadie lo referencia ya', async () => {
+      await tracker.trackDiscarded('old-referenced');
+      await tracker.trackDiscarded('old-orphan');
+      await tracker.reconcile(new Set(['old-referenced']));
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(remove).toHaveBeenCalledWith('old-orphan');
+      expect(tracker.pendingUrls).toEqual(['old-referenced']);
+    });
+
+    it('si no se pudo leer el servidor, no borra nada', async () => {
+      tracker.trackUploaded('new');
+      await tracker.trackDiscarded('old');
+      await tracker.reconcile(null);
+      await tracker.rollback();
+      await tracker.commit();
+      expect(remove).not.toHaveBeenCalled();
+    });
+  });
 });

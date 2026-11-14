@@ -26,6 +26,7 @@
         @for (p of proofs(); track p.eventId) {
           <a
             [routerLink]="['/events', p.eventId, 'attendees']"
+            [queryParams]="{ estado: 'pendiente', comprobante: 'con' }"
             class="flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
             <span class="truncate">{{ p.title }}</span>
@@ -87,7 +88,7 @@
             <span class="font-semibold">{{ u.event.title }}</span>
             <span class="text-text-secondary dark:text-neutral-400">
               {{ u.isToday ? 'Hoy' : (u.event.dateStart | date: 'EEE d MMM') }} ·
-              {{ u.registered }} de {{ u.event.capacity }} inscritos
+              {{ u.registered }} de {{ u.event.capacity }} inscritas
             </span>
             <span class="flex flex-wrap gap-x-4">
               <a

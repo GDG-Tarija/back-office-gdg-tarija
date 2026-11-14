@@ -24,6 +24,7 @@ import {
   buildErrorSummary,
 } from '../../../../../shared/utils/error-summary';
 import { focusField } from '../../../../../shared/utils/focus';
+import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
 import { DialogFrame } from '../../../../../shared/components/dialog-frame/dialog-frame';
 import { errorField, toUserMessage } from '../../../data/postgres-error.mapper';
 import { AssetCleanupTracker } from '../../../domain/asset-cleanup';
@@ -56,7 +57,15 @@ import { ImageUploader } from '../image-uploader/image-uploader';
 @Component({
   selector: 'app-ticket-types-editor',
   standalone: true,
-  imports: [FormField, InputTextModule, TooltipModule, DialogFrame, ErrorSummary, ImageUploader],
+  imports: [
+    BsPipe,
+    FormField,
+    InputTextModule,
+    TooltipModule,
+    DialogFrame,
+    ErrorSummary,
+    ImageUploader,
+  ],
   templateUrl: './ticket-types-editor.html',
 })
 export class TicketTypesEditor implements OnInit, OnDestroy {
@@ -71,7 +80,10 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   readonly ticketsChange = output<TicketType[]>();
 
   readonly tickets = signal<TicketType[]>([]);
+  /** Inscripciones totales por paquete (con anuladas): bloquean el borrado. */
   readonly counts = signal<Record<string, number>>({});
+  /** Inscritas activas (sin anuladas): ocupan cupo y se muestran al organizador. */
+  readonly activeCounts = signal<Record<string, number>>({});
   /** Vendidos/restantes por fase (ticket_phase_id). */
   readonly availability = signal<Record<string, PhaseAvailability>>({});
   readonly loading = signal(true);
@@ -98,7 +110,7 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
 
   readonly editingCount = computed(() => {
     const t = this.editing();
-    return t ? (this.counts()[t.id] ?? 0) : 0;
+    return t ? (this.activeCounts()[t.id] ?? 0) : 0;
   });
 
   readonly priceIsPaid = computed(() => {
@@ -199,13 +211,15 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const [tickets, counts, availability] = await Promise.all([
+      const [tickets, counts, activeCounts, availability] = await Promise.all([
         this.repo.list(this.eventId()),
         this.repo.getRegistrationCounts(this.eventId()),
+        this.repo.getActiveRegistrationCounts(this.eventId()),
         this.repo.getPhaseAvailability(this.eventId()),
       ]);
       this.tickets.set(tickets);
       this.counts.set(counts);
+      this.activeCounts.set(activeCounts);
       this.availability.set(availability);
       this.ticketsChange.emit(tickets);
     } catch (err) {
@@ -216,11 +230,11 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   }
 
   registered(t: TicketType): number {
-    return this.counts()[t.id] ?? 0;
+    return this.activeCounts()[t.id] ?? 0;
   }
 
   deleteBlockReason(t: TicketType): string | null {
-    return ticketDeleteBlockReason(this.registered(t));
+    return ticketDeleteBlockReason(this.counts()[t.id] ?? 0);
   }
 
   phaseSold(phaseId: string | null): number {
@@ -379,8 +393,10 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       const field = errorField(err);
       if (field) this.serverIssue.set({ field, message });
       else this.dialogError.set(message);
-      // El guardado de fases no es transaccional: muestra lo que quedó realmente en la BD.
-      await this.refreshQuietly();
+      // El guardado de fases no es transaccional: muestra lo que quedó realmente en la BD y
+      // decide qué archivos limpiar según lo que la BD referencia (nunca borrar un archivo en uso).
+      const refreshed = await this.refreshQuietly();
+      await this.cleanup.reconcile(refreshed ? this.referencedUrls() : null);
     } finally {
       this.saving.set(false);
     }
@@ -430,7 +446,7 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   }
 
   /** Recarga paquetes y disponibilidad sin spinner; un fallo aquí no debe tapar el resultado. */
-  private async refreshQuietly(): Promise<void> {
+  private async refreshQuietly(): Promise<boolean> {
     try {
       const [tickets, availability] = await Promise.all([
         this.repo.list(this.eventId()),
@@ -439,9 +455,22 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       this.tickets.set(tickets);
       this.availability.set(availability);
       this.ticketsChange.emit(tickets);
+      return true;
     } catch {
       // La lista queda como estaba; "Reintentar" recarga todo.
+      return false;
     }
+  }
+
+  /** Todas las imágenes y QR que algún paquete o fase guardado referencia ahora mismo. */
+  private referencedUrls(): Set<string> {
+    const urls = new Set<string>();
+    for (const t of this.tickets()) {
+      for (const url of [t.imageUrl, t.paymentQrUrl, ...t.phases.map((p) => p.paymentQrUrl)]) {
+        if (url) urls.add(url);
+      }
+    }
+    return urls;
   }
 
   private openDialog(ticket: TicketType | null, value: TicketTypeFormValue): void {

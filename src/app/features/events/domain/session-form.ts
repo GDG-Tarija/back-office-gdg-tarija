@@ -89,7 +89,7 @@ export function validateSessionCapacityFloor(
   if (registeredCount > 0 && Number.isInteger(capacity) && capacity < registeredCount) {
     return {
       field: 'capacity',
-      message: `La capacidad no puede ser menor a los inscritos actuales (${registeredCount}).`,
+      message: `La capacidad no puede ser menor a las inscritas actuales (${registeredCount}).`,
     };
   }
   return null;
