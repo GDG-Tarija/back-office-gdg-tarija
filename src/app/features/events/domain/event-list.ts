@@ -1,3 +1,4 @@
+import { startOfLaPazDay as startOfDay } from '../../../shared/utils/la-paz-time';
 import { Event } from './event.model';
 
 export type EventTiming = 'UPCOMING' | 'TODAY' | 'PAST';
@@ -27,10 +28,6 @@ export const EVENT_TIMING_LABELS: Record<EventTiming, string> = {
 
 export function eventTypeLabel(type: string): string {
   return EVENT_TYPE_LABELS[type] ?? type;
-}
-
-function startOfDay(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
 /** "Hoy" cubre todo el día calendario en el que el evento empieza, o los días que abarca. */
