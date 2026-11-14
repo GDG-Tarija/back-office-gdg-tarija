@@ -1,7 +1,10 @@
+import { registerLocaleData } from '@angular/common';
+import localeEsBo from '@angular/common/locales/es-BO';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Confirmation, ConfirmationService, MessageService } from 'primeng/api';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { of } from 'rxjs';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { DomainError } from '../../../domain/domain-error';
@@ -23,8 +26,6 @@ function pageProviders(repo: object) {
     { provide: EventsRepository, useValue: repo },
     { provide: RegistrationsRepository, useValue: registrationsRepo },
     { provide: CheckinRepository, useValue: checkinRepo },
-    ConfirmationService,
-    MessageService,
     RegistrationStatusController,
   ];
 }
@@ -60,6 +61,8 @@ const pending: Attendee = {
   checkedIn: false,
 };
 
+registerLocaleData(localeEsBo, 'es-BO');
+
 describe('AttendeesPage: cambio de estado desde el detalle', () => {
   const repo = {};
   const role = signal<'SUPERADMIN' | 'STAFF' | null>('SUPERADMIN');
@@ -68,9 +71,17 @@ describe('AttendeesPage: cambio de estado desde el detalle', () => {
     TestBed.configureTestingModule({
       imports: [AttendeesPage],
       providers: [
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: { get: () => null }, queryParamMap: convertToParamMap({}) },
+            queryParamMap: of(convertToParamMap({})),
+          },
+        },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: AuthService, useValue: { role, user: signal(null) } },
+        ConfirmationService,
+        MessageService,
       ],
     }).overrideComponent(AttendeesPage, {
       set: { providers: pageProviders(repo) },
@@ -133,9 +144,17 @@ describe('AttendeesPage: revisión de comprobantes', () => {
     TestBed.configureTestingModule({
       imports: [AttendeesPage],
       providers: [
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: { get: () => null }, queryParamMap: convertToParamMap({}) },
+            queryParamMap: of(convertToParamMap({})),
+          },
+        },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: AuthService, useValue: { role, user: signal(null) } },
+        ConfirmationService,
+        MessageService,
       ],
     }).overrideComponent(AttendeesPage, {
       set: { providers: pageProviders(repo) },
@@ -183,8 +202,29 @@ describe('AttendeesPage: revisión de comprobantes', () => {
     await cmp.confirmPayment(cmp.attendees()[0]);
     expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('a', 'CONFIRMED');
     expect(cmp.attendees()[0].status).toBe('CONFIRMED');
-    expect(cmp.proofAttendee()?.status).toBe('CONFIRMED');
     expect(cmp.proofQueue()).toEqual(['a', 'c']);
+  });
+
+  it('tras confirmar pasa al siguiente comprobante pendiente de la cola', async () => {
+    const cmp = create([withProof('a'), withProof('b', { status: 'CONFIRMED' }), withProof('c')]);
+    cmp.openProof(cmp.attendees()[0]);
+    await cmp.confirmPayment(cmp.attendees()[0]);
+    expect(cmp.proofAttendee()?.id).toBe('c');
+  });
+
+  it('si no quedan pendientes, cierra el visor', async () => {
+    const cmp = create([withProof('a'), withProof('b', { status: 'CONFIRMED' })]);
+    cmp.openProof(cmp.attendees()[0]);
+    await cmp.confirmPayment(cmp.attendees()[0]);
+    expect(cmp.proofAttendee()).toBeNull();
+  });
+
+  it('la cola de pagos pendientes ignora los filtros y los ya revisados', () => {
+    const cmp = create([withProof('a'), withProof('b', { status: 'CONFIRMED' }), withProof('c')]);
+    cmp.setFilter('status', 'CONFIRMED');
+    cmp.openPendingReview();
+    expect(cmp.proofQueue()).toEqual(['a', 'c']);
+    expect(cmp.proofId()).toBe('a');
   });
 
   it('un STAFF no confirma ni cancela desde el visor', async () => {

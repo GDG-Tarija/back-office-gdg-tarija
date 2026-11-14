@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+  AttendeeFilters,
   EMPTY_FILTERS,
+  attendeeFiltersToParams,
+  parseAttendeeFilters,
   attendeeFullName,
   attendeeInitials,
   computeAmountDue,
@@ -139,5 +142,44 @@ describe('expectsProof', () => {
     expect(expectsProof(make())).toBe(true);
     expect(expectsProof(make({ amountDue: 0 }))).toBe(false);
     expect(expectsProof(make({ role: 'SPEAKER' }))).toBe(false);
+  });
+});
+
+describe('filtros en la URL', () => {
+  const params = (q: string) => new URLSearchParams(q);
+
+  it('ida y vuelta de todos los filtros', () => {
+    const filters: AttendeeFilters = {
+      search: 'ana',
+      status: 'PENDING',
+      role: 'STAFF',
+      checkin: 'NOT_CHECKED_IN',
+      entry: 'General · Normal',
+      proof: 'WITH_PROOF',
+    };
+    const out = attendeeFiltersToParams(filters);
+    expect(out['estado']).toBe('pendiente');
+    const search = new URLSearchParams(
+      Object.entries(out).filter((e): e is [string, string] => e[1] !== null),
+    );
+    expect(parseAttendeeFilters(search)).toEqual(filters);
+  });
+
+  it('los valores por defecto no ensucian la URL', () => {
+    expect(Object.values(attendeeFiltersToParams(EMPTY_FILTERS)).every((v) => v === null)).toBe(
+      true,
+    );
+  });
+
+  it('ignora valores desconocidos', () => {
+    expect(parseAttendeeFilters(params('estado=zzz&rol=otro&checkin=x&comprobante=y'))).toEqual(
+      EMPTY_FILTERS,
+    );
+  });
+
+  it('acepta el enlace del dashboard (?estado=pendiente&comprobante=con)', () => {
+    const f = parseAttendeeFilters(params('estado=pendiente&comprobante=con'));
+    expect(f.status).toBe('PENDING');
+    expect(f.proof).toBe('WITH_PROOF');
   });
 });

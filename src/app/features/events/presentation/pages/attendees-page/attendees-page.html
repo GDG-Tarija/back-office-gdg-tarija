@@ -1,1064 +1,956 @@
-<div
-  class="min-h-screen bg-neutral-50/30 dark:bg-neutral-950/20 p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden w-full max-w-full"
->
-  <!-- Loading State -->
+<div class="space-y-6 p-4 sm:p-8">
+  <!-- Carga inicial -->
   @if (loading()) {
-    <div class="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+    <div class="flex min-h-[50vh] flex-col items-center justify-center gap-4" role="status">
       <div class="gdg-spinner"></div>
-      <span class="text-sm font-semibold text-text-secondary dark:text-neutral-400">
-        Cargando información de asistentes...
+      <span class="text-sm font-semibold text-text-secondary dark:text-neutral-300">
+        Cargando asistentes...
       </span>
     </div>
   }
 
-  <!-- Error State -->
+  <!-- Error -->
   @else if (errorMsg()) {
     <div
-      class="flex flex-col items-center justify-center min-h-[50vh] gap-4 max-w-md mx-auto text-center"
+      class="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 text-center"
+      role="alert"
     >
-      <div
-        class="flex size-16 items-center justify-center rounded-3xl bg-google-red-light/60 text-google-red dark:bg-google-red/20"
+      <span class="material-symbols-rounded text-4xl text-danger-text" aria-hidden="true"
+        >warning</span
       >
-        <span class="material-symbols-rounded text-3xl">warning</span>
-      </div>
       <span class="text-base font-bold text-text-primary dark:text-neutral-200">
         {{ errorMsg() }}
       </span>
       <button
         type="button"
         (click)="goBack()"
-        class="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        class="inline-flex min-h-11 items-center gap-2 rounded-full border border-black/15 px-5 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
       >
-        <span class="material-symbols-rounded text-lg">arrow_back</span>
-        <span>Volver a Eventos</span>
+        <span class="material-symbols-rounded text-lg" aria-hidden="true">arrow_back</span>
+        Volver a Eventos
       </button>
     </div>
   }
 
-  <!-- Content State -->
-  @else if (event()) {
-    <app-event-header [event]="event()" section="attendees" />
-    <p class="text-sm text-text-secondary dark:text-neutral-400">
-      Inscritos activos:
-      <strong class="text-text-primary dark:text-neutral-200"
-        >{{ stats().active }} / {{ event()?.capacity ?? '∞' }}</strong
+  <!-- Contenido -->
+  @else if (event(); as ev) {
+    <app-event-header [event]="ev" section="attendees" />
+
+    <p class="text-sm text-text-secondary dark:text-neutral-300">
+      Capacidad:
+      <strong class="text-text-primary dark:text-neutral-100"
+        >{{ stats().active }} de {{ ev.capacity }}</strong
       >
+      inscritas (confirmadas y pendientes de pago).
+      @if (!statusCtl.canEdit()) {
+        <span class="block sm:ml-1 sm:inline">
+          Estás en modo lectura: solo un superadministrador puede cambiar el estado.
+        </span>
+      }
     </p>
 
-    <!-- Attendees List Section -->
-    <div class="space-y-4">
-      <div
-        class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between bg-white dark:bg-neutral-900 p-4 rounded-3xl border border-black/5 dark:border-white/5 shadow-xs"
-      >
-        <div class="flex flex-col gap-3 w-full">
-          <!-- KPIs: un clic filtra por estado -->
-          <div
-            class="grid grid-cols-2 sm:grid-cols-4 gap-2"
-            role="group"
-            aria-label="Resumen por estado"
+    <!-- Resumen: un clic filtra -->
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Resumen por estado">
+      @for (chip of summaryChips(); track chip.label) {
+        <button
+          type="button"
+          (click)="toggleChip(chip)"
+          [attr.aria-pressed]="isChipActive(chip)"
+          class="flex min-h-14 flex-col items-start rounded-xl border px-3 py-2 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800"
+          [class]="
+            isChipActive(chip)
+              ? 'border-accent-text bg-info-bg'
+              : chip.highlight && chip.value > 0
+                ? 'border-warning-text/60 bg-warning-bg'
+                : 'border-black/15 dark:border-white/15'
+          "
+        >
+          <span
+            class="text-xl font-bold"
+            [class]="
+              isChipActive(chip)
+                ? 'text-info-text'
+                : chip.highlight && chip.value > 0
+                  ? 'text-warning-text'
+                  : 'text-text-primary dark:text-neutral-100'
+            "
+            >{{ chip.value }}</span
           >
-            @for (
-              kpi of [
-                { label: 'Confirmados', value: stats().confirmed, status: 'CONFIRMED' },
-                { label: 'Pendientes de pago', value: stats().pending, status: 'PENDING' },
-                { label: 'Cancelados', value: stats().cancelled, status: 'CANCELLED' },
-                { label: 'Con check-in', value: stats().checkedIn, status: '' },
-              ];
-              track kpi.label
-            ) {
-              <button
-                type="button"
-                (click)="
-                  kpi.status
-                    ? setFilter('status', filters().status === kpi.status ? '' : kpi.status)
-                    : setFilter(
-                        'checkin',
-                        filters().checkin === 'CHECKED_IN' ? 'ALL' : 'CHECKED_IN'
-                      )
-                "
-                class="flex flex-col items-start rounded-2xl border px-3 py-2 text-left transition-colors cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                [class]="
-                  (kpi.status && filters().status === kpi.status) ||
-                  (!kpi.status && filters().checkin === 'CHECKED_IN')
-                    ? 'border-google-blue bg-google-blue-light/30 dark:bg-google-blue/15'
-                    : 'border-black/10 dark:border-white/10'
-                "
-                [attr.aria-pressed]="
-                  (kpi.status && filters().status === kpi.status) ||
-                  (!kpi.status && filters().checkin === 'CHECKED_IN')
-                "
-              >
-                <span class="text-lg font-extrabold text-text-primary dark:text-neutral-100">{{
-                  kpi.value
-                }}</span>
-                <span class="text-[11px] font-medium text-text-secondary dark:text-neutral-400">
-                  {{ kpi.label }}
-                  @if (!kpi.status && stats().confirmed > 0) {
-                    ({{ stats().checkinRate }}%)
-                  }
-                </span>
-              </button>
+          <span
+            class="text-xs font-medium"
+            [class]="
+              isChipActive(chip)
+                ? 'text-info-text'
+                : chip.highlight && chip.value > 0
+                  ? 'text-warning-text'
+                  : 'text-text-secondary dark:text-neutral-300'
+            "
+          >
+            {{ chip.label }}
+            @if (!chip.status && stats().confirmed > 0) {
+              ({{ stats().checkinRate }}%)
             }
-          </div>
+          </span>
+        </button>
+      }
+    </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="relative w-full sm:w-72">
-              <span
-                class="material-symbols-rounded absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none"
-                aria-hidden="true"
-                >search</span
-              >
-              <input
-                type="search"
-                pInputText
-                placeholder="Buscar por nombre, celular, correo, ID o respuestas..."
-                aria-label="Buscar por nombre, celular, correo, ID o respuestas del formulario"
-                class="w-full !pl-10 pr-4 text-sm !rounded-xl"
-                [value]="filters().search"
-                (input)="setFilter('search', $any($event.target).value)"
-              />
-            </div>
-            <p-select
-              [options]="statusOptions()"
-              [ngModel]="filters().status"
-              (ngModelChange)="setFilter('status', $event)"
+    <!-- Filtros principales y acciones -->
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex w-full flex-col gap-1 sm:w-80">
+          <label
+            for="att-search"
+            class="text-xs font-semibold text-text-secondary dark:text-neutral-300"
+            >Buscar</label
+          >
+          <input
+            id="att-search"
+            type="search"
+            pInputText
+            placeholder="Nombre, correo, celular, ID o respuestas"
+            class="w-full !rounded-xl !text-sm"
+            [value]="filters().search"
+            (input)="setFilter('search', $any($event.target).value)"
+          />
+        </div>
+        <div class="flex w-full flex-col gap-1 sm:w-60">
+          <label
+            for="att-status"
+            class="text-xs font-semibold text-text-secondary dark:text-neutral-300"
+            >Estado</label
+          >
+          <p-select
+            inputId="att-status"
+            [options]="statusOptions()"
+            [ngModel]="filters().status"
+            (ngModelChange)="setFilter('status', $event)"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="w-full !text-sm"
+          />
+        </div>
+        <button
+          type="button"
+          (click)="moreFiltersOpen.set(!moreFiltersOpen())"
+          [attr.aria-expanded]="moreFiltersOpen()"
+          aria-controls="att-more-filters"
+          class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/15 px-4 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
+        >
+          <span class="material-symbols-rounded text-lg" aria-hidden="true">tune</span>
+          Más filtros{{ advancedCount() ? ' (' + advancedCount() + ')' : '' }}
+        </button>
+        @if (filtersActive()) {
+          <button
+            type="button"
+            (click)="clearFilters()"
+            class="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold text-accent-text hover:bg-info-bg"
+          >
+            <span class="material-symbols-rounded text-lg" aria-hidden="true">filter_alt_off</span>
+            Limpiar filtros
+          </button>
+        }
+
+        <div class="flex w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto">
+          @if (statusCtl.canEdit() && pendingWithProof().length > 0) {
+            <button
+              type="button"
+              (click)="openPendingReview()"
+              class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-action px-4 text-sm font-semibold text-on-action hover:bg-action-hover"
+            >
+              <span class="material-symbols-rounded text-lg" aria-hidden="true">fact_check</span>
+              Revisar pagos pendientes ({{ pendingWithProof().length }})
+            </button>
+          }
+          @if (!isMobile()) {
+            <p-multiselect
+              inputId="att-columns"
+              [options]="optionalColumns"
+              [ngModel]="visibleOptional()"
+              (ngModelChange)="visibleOptional.set($event)"
               optionLabel="label"
-              optionValue="value"
-              ariaLabel="Filtrar por estado"
+              optionValue="key"
+              placeholder="Columnas"
+              ariaLabel="Columnas visibles"
+              [showToggleAll]="false"
+              [maxSelectedLabels]="0"
+              selectedItemsLabel="Columnas ({0})"
               styleClass="!text-sm"
             />
+          }
+          <button
+            type="button"
+            (click)="reload()"
+            [disabled]="refreshing()"
+            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/15 px-4 text-sm font-semibold hover:bg-neutral-100 disabled:opacity-60 dark:border-white/15 dark:hover:bg-neutral-800"
+          >
+            <span
+              class="material-symbols-rounded text-lg"
+              [class.animate-gdg-spin]="refreshing()"
+              aria-hidden="true"
+              >refresh</span
+            >
+            {{ refreshing() ? 'Actualizando...' : 'Actualizar' }}
+          </button>
+          <button
+            type="button"
+            (click)="toggleExportMenu($event)"
+            aria-haspopup="menu"
+            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/15 px-4 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
+          >
+            <span class="material-symbols-rounded text-lg" aria-hidden="true">download</span>
+            Exportar
+            <span class="material-symbols-rounded text-lg" aria-hidden="true">arrow_drop_down</span>
+          </button>
+        </div>
+      </div>
+
+      @if (moreFiltersOpen()) {
+        <div id="att-more-filters" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="flex flex-col gap-1">
+            <label
+              for="att-role"
+              class="text-xs font-semibold text-text-secondary dark:text-neutral-300"
+              >Rol</label
+            >
             <p-select
+              inputId="att-role"
               [options]="roleOptions"
               [ngModel]="filters().role"
               (ngModelChange)="setFilter('role', $event)"
               optionLabel="label"
               optionValue="value"
-              ariaLabel="Filtrar por rol"
-              styleClass="!text-sm"
+              styleClass="w-full !text-sm"
             />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label
+              for="att-entry"
+              class="text-xs font-semibold text-text-secondary dark:text-neutral-300"
+              >Entrada y fase</label
+            >
             <p-select
+              inputId="att-entry"
               [options]="entryOptions()"
               [ngModel]="filters().entry"
               (ngModelChange)="setFilter('entry', $event)"
               optionLabel="label"
               optionValue="value"
-              ariaLabel="Filtrar por paquete y fase"
-              styleClass="!text-sm"
+              styleClass="w-full !text-sm"
             />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label
+              for="att-checkin"
+              class="text-xs font-semibold text-text-secondary dark:text-neutral-300"
+              >Check-in</label
+            >
             <p-select
+              inputId="att-checkin"
               [options]="checkinOptions"
               [ngModel]="filters().checkin"
               (ngModelChange)="setFilter('checkin', $event)"
               optionLabel="label"
               optionValue="value"
-              ariaLabel="Filtrar por check-in"
-              styleClass="!text-sm"
+              styleClass="w-full !text-sm"
             />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label
+              for="att-proof"
+              class="text-xs font-semibold text-text-secondary dark:text-neutral-300"
+              >Comprobante</label
+            >
             <p-select
+              inputId="att-proof"
               [options]="proofOptions"
               [ngModel]="filters().proof"
               (ngModelChange)="setFilter('proof', $event)"
               optionLabel="label"
               optionValue="value"
-              ariaLabel="Filtrar por comprobante"
-              styleClass="!text-sm"
+              styleClass="w-full !text-sm"
             />
-            @if (filtersActive()) {
-              <button
-                type="button"
-                (click)="clearFilters()"
-                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full text-google-blue hover:bg-google-blue-light/40 cursor-pointer"
-              >
-                <span class="material-symbols-rounded text-base">filter_alt_off</span> Limpiar
-                filtros
-              </button>
-            }
           </div>
-          <p class="text-xs text-text-secondary dark:text-neutral-400" aria-live="polite">
-            Mostrando {{ filteredAttendees().length }} de {{ attendees().length }} inscritos
-          </p>
         </div>
+      }
 
-        <!-- Botones de exportación -->
-        <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end shrink-0">
-          <button
-            type="button"
-            (click)="reload()"
-            [disabled]="loading()"
-            class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
-          >
-            <span class="material-symbols-rounded text-base">refresh</span>
-            <span>Actualizar</span>
-          </button>
-          <button
-            type="button"
-            (click)="exportToCSV()"
-            [disabled]="filteredAttendees().length === 0"
-            class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-black/10 dark:border-white/10 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
-          >
-            <span class="material-symbols-rounded text-base">download</span>
-            <span
-              >Exportar CSV{{
-                filtersActive() ? ' (' + filteredAttendees().length + ')' : ''
-              }}</span
-            >
-          </button>
-
-          <button
-            type="button"
-            (click)="exportToExcel()"
-            [disabled]="filteredAttendees().length === 0"
-            class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-google-green text-white hover:bg-green-600 disabled:opacity-50 transition-colors shadow-xs"
-          >
-            <span class="material-symbols-rounded text-base">table_view</span>
-            <span
-              >Exportar Excel{{
-                filtersActive() ? ' (' + filteredAttendees().length + ')' : ''
-              }}</span
-            >
-          </button>
-        </div>
-      </div>
-
-      <!-- Attendees Table -->
-      <div
-        class="border border-black/5 dark:border-white/5 rounded-3xl overflow-hidden bg-white dark:bg-neutral-900 shadow-xs w-full max-w-full"
-      >
-        <div class="overflow-x-auto w-full max-w-full block">
-          <p-table
-            #dtAttendees
-            [value]="filteredAttendees()"
-            dataKey="id"
-            [scrollable]="true"
-            sortField="registeredAt"
-            [sortOrder]="-1"
-            [paginator]="true"
-            [rows]="25"
-            [first]="first()"
-            (onPage)="first.set($event.first)"
-            [rowsPerPageOptions]="[25, 50, 100]"
-            styleClass="p-datatable-striped"
-            [tableStyle]="{ 'min-width': '95rem' }"
-          >
-            <ng-template pTemplate="header">
-              <tr>
-                <th pSortableColumn="id" class="dark:text-neutral-300 w-44">
-                  ID de Registro <p-sortIcon field="id"></p-sortIcon>
-                </th>
-                <th pSortableColumn="firstName" class="dark:text-neutral-300 min-w-[240px]">
-                  Asistente <p-sortIcon field="firstName"></p-sortIcon>
-                </th>
-                <th pSortableColumn="email" class="dark:text-neutral-300">
-                  Contacto <p-sortIcon field="email"></p-sortIcon>
-                </th>
-                <th pSortableColumn="ticketName" class="dark:text-neutral-300">
-                  Entrada <p-sortIcon field="ticketName"></p-sortIcon>
-                </th>
-                <th pSortableColumn="role" class="dark:text-neutral-300">
-                  Rol <p-sortIcon field="role"></p-sortIcon>
-                </th>
-                <th pSortableColumn="status" class="dark:text-neutral-300">
-                  Estado <p-sortIcon field="status"></p-sortIcon>
-                </th>
-                <th pSortableColumn="checkedIn" class="dark:text-neutral-300">
-                  Check-in <p-sortIcon field="checkedIn"></p-sortIcon>
-                </th>
-                <th class="dark:text-neutral-300 font-semibold">Comprobante</th>
-                <th pSortableColumn="registeredAt" class="dark:text-neutral-300">
-                  Registro <p-sortIcon field="registeredAt"></p-sortIcon>
-                </th>
-                @for (key of customResponseKeys(); track key) {
-                  <th class="dark:text-neutral-300 font-semibold">
-                    {{ formatResponseKey(key) }}
-                  </th>
-                }
-                <th
-                  pFrozenColumn
-                  alignFrozen="right"
-                  class="dark:text-neutral-300 font-semibold text-center w-24 attendee-actions-cell"
-                >
-                  Acciones
-                </th>
-              </tr>
-            </ng-template>
-
-            <ng-template pTemplate="body" let-attendee>
-              <tr class="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
-                <td>
-                  <div class="flex items-center gap-1.5 font-mono text-xs">
-                    <span
-                      class="bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg text-text-secondary dark:text-neutral-300 font-bold truncate max-w-[80px]"
-                      [title]="attendee.id"
-                    >
-                      {{ attendee.id.substring(0, 8) }}...
-                    </span>
-                    <button
-                      type="button"
-                      (click)="copyToClipboard(attendee.id)"
-                      class="flex size-6 items-center justify-center rounded-full text-text-secondary hover:text-google-blue hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 transition-colors"
-                      [title]="copiedId() === attendee.id ? '¡Copiado!' : 'Copiar ID completo'"
-                      [attr.aria-label]="
-                        copiedId() === attendee.id ? '¡Copiado!' : 'Copiar ID completo'
-                      "
-                    >
-                      <span class="material-symbols-rounded text-sm">
-                        {{ copiedId() === attendee.id ? 'check' : 'content_copy' }}
-                      </span>
-                    </button>
-                  </div>
-                </td>
-                <td>
-                  <div class="flex items-center gap-3">
-                    @if (attendee.avatarUrl) {
-                      <img
-                        [src]="attendee.avatarUrl"
-                        alt="Avatar"
-                        class="size-8 rounded-full object-cover"
-                        referrerpolicy="no-referrer"
-                      />
-                    } @else {
-                      <div
-                        class="flex size-8 items-center justify-center rounded-full text-xs font-bold shrink-0"
-                        [ngClass]="{
-                          'bg-google-red-light dark:bg-google-red/20 text-google-red':
-                            attendee.role === 'SPEAKER',
-                          'bg-google-yellow-light dark:bg-google-yellow/20 text-google-yellow':
-                            attendee.role === 'VOLUNTEER',
-                          'bg-google-blue-light dark:bg-google-blue/20 text-google-blue':
-                            attendee.role === 'ORGANIZER',
-                          'bg-neutral-100 dark:bg-neutral-800 text-text-secondary':
-                            attendee.role === 'ATTENDEE',
-                        }"
-                      >
-                        {{ initials(attendee) }}
-                      </div>
-                    }
-                    <div class="flex flex-col min-w-0">
-                      <span
-                        class="font-bold text-text-primary dark:text-neutral-200 text-xs sm:text-sm"
-                      >
-                        {{ attendee.firstName }} {{ attendee.lastName }}
-                      </span>
-                      @if (attendee.userId) {
-                        <div class="flex items-center gap-1.5 mt-0.5 font-mono text-[11px]">
-                          <span class="text-text-secondary dark:text-neutral-400">ID:</span>
-                          <span
-                            class="bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded-md text-text-secondary dark:text-neutral-300 font-bold truncate max-w-[70px]"
-                            [title]="attendee.userId"
-                          >
-                            {{ attendee.userId.substring(0, 8) }}...
-                          </span>
-                          <button
-                            type="button"
-                            (click)="copyToClipboard(attendee.userId)"
-                            class="flex size-5 items-center justify-center rounded-full text-text-secondary hover:text-google-blue hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 transition-colors"
-                            [title]="
-                              copiedId() === attendee.userId ? '¡Copiado!' : 'Copiar User ID'
-                            "
-                            [attr.aria-label]="
-                              copiedId() === attendee.userId ? '¡Copiado!' : 'Copiar User ID'
-                            "
-                          >
-                            <span class="material-symbols-rounded text-xs">
-                              {{ copiedId() === attendee.userId ? 'check' : 'content_copy' }}
-                            </span>
-                          </button>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div class="flex flex-col gap-0.5 text-xs sm:text-sm">
-                    <a
-                      [href]="'mailto:' + attendee.email"
-                      class="inline-flex items-center gap-1.5 text-text-primary dark:text-neutral-200 font-medium hover:underline"
-                    >
-                      <span class="material-symbols-rounded text-sm text-text-secondary">mail</span>
-                      {{ attendee.email }}
-                    </a>
-                    @if (attendee.phone) {
-                      <a
-                        [href]="'tel:' + attendee.phone"
-                        class="inline-flex items-center gap-1.5 text-text-secondary dark:text-neutral-400 hover:underline"
-                      >
-                        <span class="material-symbols-rounded text-sm text-text-secondary"
-                          >call</span
-                        >
-                        {{ attendee.phone }}
-                      </a>
-                    } @else {
-                      <span
-                        class="inline-flex items-center gap-1.5 text-xs text-text-secondary dark:text-neutral-500 italic"
-                      >
-                        <span class="material-symbols-rounded text-xs text-text-secondary"
-                          >call</span
-                        >
-                        Sin celular
-                      </span>
-                    }
-                  </div>
-                </td>
-                <td>
-                  <div class="flex flex-col">
-                    <span class="font-semibold text-text-primary dark:text-neutral-200 text-sm">
-                      {{ entryLabel(attendee) }}
-                    </span>
-                    <span class="text-xs text-text-secondary dark:text-neutral-400 mt-0.5">
-                      @if (attendee.couponId) {
-                        Cupón{{ attendee.couponCode ? ' ' + attendee.couponCode : '' }} · Bs 0
-                      } @else if (attendee.amountDue === 0) {
-                        Gratuito
-                      } @else {
-                        {{ attendee.amountDue | currency: 'BOB ' : 'symbol' : '1.0-2' }}
-                      }
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <p-tag
-                    [value]="translateRole(attendee.role)"
-                    [severity]="getRoleSeverity(attendee.role)"
-                    styleClass="!text-xs !px-2.5 !py-0.5"
-                  />
-                </td>
-                <td>
-                  <p-tag
-                    [value]="statusLabel(attendee.status)"
-                    [severity]="getStatusSeverity(attendee.status)"
-                    styleClass="!text-xs !px-2.5 !py-0.5"
-                  />
-                </td>
-
-                <!-- Celda del indicador de Check-in -->
-                <td>
-                  @if (attendee.checkedIn) {
-                    <span
-                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-google-green bg-google-green-light/40 dark:bg-google-green/20 rounded-full font-bold"
-                    >
-                      <span class="material-symbols-rounded text-xs">check_circle</span> Asistió
-                    </span>
-                  } @else {
-                    <span
-                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-full font-bold"
-                    >
-                      <span class="material-symbols-rounded text-xs">schedule</span> Pendiente
-                    </span>
-                  }
-                </td>
-
-                <!-- Celda del comprobante de pago -->
-                <td>
-                  @if (attendee.paymentProofUrl) {
-                    <button
-                      type="button"
-                      (click)="openProof(attendee)"
-                      [attr.aria-label]="'Ver comprobante de pago de ' + fullName(attendee)"
-                      class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-google-green bg-google-green-light/40 hover:bg-google-green-light/70 dark:bg-google-green/15 dark:hover:bg-google-green/25 rounded-full transition-all"
-                    >
-                      <span class="material-symbols-rounded text-xs">image</span>
-                      <span>Ver pago</span>
-                    </button>
-                  } @else if (attendee.status === 'CANCELLED') {
-                    <span class="text-xs text-text-secondary dark:text-neutral-400">—</span>
-                  } @else if (expectsProof(attendee)) {
-                    <span
-                      class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs text-google-red bg-google-red-light/40 dark:bg-google-red/20 rounded-full font-bold"
-                    >
-                      <span class="material-symbols-rounded text-xs">error</span> Sin comprobante
-                    </span>
-                  } @else {
-                    <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs text-text-secondary dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-full font-bold"
-                    >
-                      {{
-                        attendee.couponId
-                          ? 'Cupón'
-                          : attendee.amountDue === 0
-                            ? 'Gratuito'
-                            : 'Invitación'
-                      }}
-                    </span>
-                  }
-                </td>
-
-                <td class="text-sm text-text-primary dark:text-neutral-200">
-                  {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
-                </td>
-
-                <!-- Celdas dinámicas de respuestas de formulario -->
-                @for (key of customResponseKeys(); track key) {
-                  <td class="text-xs text-text-primary dark:text-neutral-200 font-medium">
-                    @if (isUrl(attendee.customResponses?.[key])) {
-                      <a
-                        [href]="attendee.customResponses?.[key]"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="inline-flex items-center gap-1 px-3 py-1 text-xs text-google-blue bg-google-blue-light/30 hover:bg-google-blue-light/60 dark:bg-google-blue/15 dark:hover:bg-google-blue/25 rounded-full font-bold transition-all"
-                      >
-                        <span class="material-symbols-rounded text-xs">open_in_new</span> Ver Enlace
-                      </a>
-                    } @else if (isBooleanTrue(attendee.customResponses?.[key])) {
-                      <span
-                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-google-green-light/40 text-google-green dark:bg-google-green/15 dark:text-google-green"
-                      >
-                        <span class="material-symbols-rounded text-xs">check</span> Sí
-                      </span>
-                    } @else if (isBooleanFalse(attendee.customResponses?.[key])) {
-                      <span
-                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-text-secondary dark:bg-neutral-800 dark:text-neutral-400"
-                      >
-                        <span class="material-symbols-rounded text-xs">close</span> No
-                      </span>
-                    } @else {
-                      {{ attendee.customResponses?.[key] || '-' }}
-                    }
-                  </td>
-                }
-
-                <!-- Acciones: última columna, fija a la derecha -->
-                <td pFrozenColumn alignFrozen="right" class="text-center attendee-actions-cell">
-                  <div class="inline-flex items-center gap-1.5 whitespace-nowrap">
-                    @if (statusCtl.canEdit()) {
-                      <button
-                        type="button"
-                        (click)="openStatusMenu($event, attendee)"
-                        [disabled]="statusCtl.isSaving(attendee.id)"
-                        aria-haspopup="menu"
-                        [attr.aria-label]="
-                          'Cambiar estado de la inscripción de ' +
-                          attendee.firstName +
-                          ' ' +
-                          attendee.lastName
-                        "
-                        title="Cambiar estado de la inscripción"
-                        data-testid="row-status-action"
-                        class="inline-flex items-center justify-center size-8 shrink-0 rounded-full text-text-secondary bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 transition-all shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-blue/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900"
-                      >
-                        <span
-                          class="material-symbols-rounded text-base"
-                          [class.animate-gdg-spin]="statusCtl.isSaving(attendee.id)"
-                          aria-hidden="true"
-                          >{{
-                            statusCtl.isSaving(attendee.id)
-                              ? 'progress_activity'
-                              : 'published_with_changes'
-                          }}</span
-                        >
-                      </button>
-                    }
-                    <button
-                      type="button"
-                      (click)="openAttendeeDetail(attendee)"
-                      [attr.aria-label]="'Ver detalle y asistencia de ' + fullName(attendee)"
-                      class="inline-flex items-center justify-center size-8 rounded-full text-google-blue bg-google-blue-light/40 hover:bg-google-blue-light/70 dark:bg-google-blue/20 dark:hover:bg-google-blue/30 transition-all shadow-xs cursor-pointer"
-                      title="Ver historial, sesiones y asistencia"
-                    >
-                      <span class="material-symbols-rounded text-base">history</span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </ng-template>
-
-            <!-- Empty State -->
-            <ng-template pTemplate="emptymessage">
-              <tr>
-                <td
-                  [attr.colspan]="10 + customResponseKeys().length"
-                  class="text-center p-12 text-text-secondary dark:text-neutral-400"
-                >
-                  <div class="flex flex-col items-center gap-3">
-                    <span
-                      class="material-symbols-rounded text-5xl text-neutral-300 dark:text-neutral-600"
-                      >{{ attendees().length > 0 ? 'filter_alt_off' : 'group' }}</span
-                    >
-                    @if (attendees().length === 0) {
-                      <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
-                        >No hay asistentes inscritos</span
-                      >
-                      <span class="text-xs max-w-sm"
-                        >Nadie se ha registrado a este evento aún.</span
-                      >
-                    } @else {
-                      <span class="font-bold text-lg text-text-primary dark:text-neutral-200"
-                        >Ningún inscrito coincide con los filtros</span
-                      >
-                      <button
-                        type="button"
-                        (click)="clearFilters()"
-                        class="px-4 py-1.5 text-xs font-semibold text-google-blue border border-google-blue/30 rounded-full hover:bg-google-blue-light/40 cursor-pointer"
-                      >
-                        Limpiar filtros
-                      </button>
-                    }
-                  </div>
-                </td>
-              </tr>
-            </ng-template>
-          </p-table>
-        </div>
-      </div>
+      <p class="text-sm text-text-secondary dark:text-neutral-300" aria-live="polite">
+        Mostrando {{ filteredAttendees().length }} de {{ attendees().length }} inscritas
+      </p>
     </div>
-  }
 
-  <!-- Modal de Historial, Sesiones y Registro Manual -->
-  <p-dialog
-    header="Detalle de Asistencia y Sesiones"
-    [visible]="showDetailModal()"
-    (visibleChange)="showDetailModal.set($event)"
-    [modal]="true"
-    [style]="{ width: '90vw', 'max-width': '650px' }"
-    [draggable]="false"
-    [resizable]="false"
-  >
-    @if (selectedAttendee(); as attendee) {
-      <div class="space-y-6 py-2">
-        <!-- Banner Resumen de Asistente -->
+    <!-- Lista -->
+    <div
+      class="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-neutral-900"
+    >
+      @if (filteredAttendees().length === 0) {
         <div
-          class="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-850 border border-black/5 dark:border-white/5"
+          class="flex flex-col items-center gap-3 p-12 text-center text-text-secondary dark:text-neutral-300"
         >
-          @if (attendee.avatarUrl) {
-            <img
-              [src]="attendee.avatarUrl"
-              alt="Avatar"
-              class="size-12 rounded-full object-cover shrink-0"
-              referrerpolicy="no-referrer"
-            />
-          } @else {
-            <div
-              class="flex size-12 items-center justify-center rounded-full text-base font-bold bg-google-blue-light text-google-blue dark:bg-google-blue/20 shrink-0"
+          <span
+            class="material-symbols-rounded text-5xl text-neutral-400 dark:text-neutral-500"
+            aria-hidden="true"
+            >{{ attendees().length > 0 ? 'filter_alt_off' : 'group' }}</span
+          >
+          @if (attendees().length === 0) {
+            <span class="text-lg font-bold text-text-primary dark:text-neutral-100"
+              >No hay inscritas todavía</span
             >
-              {{ initials(attendee) }}
-            </div>
+            <span class="max-w-sm text-sm">Nadie se ha registrado a este evento aún.</span>
+          } @else {
+            <span class="text-lg font-bold text-text-primary dark:text-neutral-100"
+              >Ninguna inscripción coincide con los filtros</span
+            >
+            <button
+              type="button"
+              (click)="clearFilters()"
+              class="inline-flex min-h-11 items-center rounded-full border border-accent-text px-5 text-sm font-semibold text-accent-text hover:bg-info-bg"
+            >
+              Limpiar filtros
+            </button>
           }
-          <div class="flex flex-col min-w-0 flex-1">
-            <span class="text-base font-extrabold text-text-primary dark:text-neutral-100 truncate">
-              {{ attendee.firstName }} {{ attendee.lastName }}
-            </span>
-            <span class="text-xs text-text-secondary dark:text-neutral-400 truncate">
-              {{ attendee.email }}
-            </span>
-            <div class="flex items-center gap-2 mt-1 flex-wrap">
-              <p-tag
-                [value]="translateRole(attendee.role)"
-                [severity]="getRoleSeverity(attendee.role)"
-                styleClass="!text-[10px] !px-2 !py-0.5"
-              />
-              <p-tag
-                [value]="statusLabel(attendee.status)"
-                [severity]="getStatusSeverity(attendee.status)"
-                styleClass="!text-[10px] !px-2 !py-0.5"
-                data-testid="detail-status-tag"
-              />
-              <span
-                class="text-[11px] font-semibold text-text-secondary dark:text-neutral-400 bg-white dark:bg-neutral-800 px-2 py-0.5 rounded-md border border-black/5 dark:border-white/5"
-              >
-                {{ entryLabel(attendee) }} ·
-                {{
-                  attendee.couponId
-                    ? 'Cupón'
-                    : attendee.amountDue === 0
-                      ? 'Gratuito'
-                      : (attendee.amountDue | currency: 'BOB ' : 'symbol' : '1.0-2')
-                }}
-              </span>
-              @if (attendee.paymentProofUrl) {
-                <button
-                  type="button"
-                  (click)="openProof(attendee)"
-                  class="text-[11px] font-semibold text-google-blue hover:underline cursor-pointer"
-                >
-                  Ver comprobante
-                </button>
-              }
-            </div>
-          </div>
         </div>
-
-        @if (!canCheckin(attendee)) {
-          <p
-            class="rounded-2xl border border-google-yellow/40 bg-google-yellow-light/30 p-3 text-xs font-medium text-text-primary dark:text-neutral-200"
-            role="status"
-          >
-            {{
-              attendee.status === 'CANCELLED'
-                ? 'Inscripción cancelada: no se puede registrar asistencia.'
-                : 'El pago aún no está confirmado: no se puede registrar asistencia.'
-            }}
-          </p>
-        }
-        @if (actionError(); as err) {
-          <p class="text-xs font-medium text-google-red" role="alert">{{ err }}</p>
-        }
-
-        <!-- Sección 1: Asistencia General y Beneficios -->
-        <div class="space-y-3">
-          <h3
-            class="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-neutral-400 flex items-center gap-1.5"
-          >
-            <span class="material-symbols-rounded text-base text-google-blue">verified</span>
-            Asistencia General y Beneficios
-          </h3>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <!-- Registro General -->
-            <div
-              class="p-3.5 rounded-2xl border border-black/5 dark:border-white/5 flex items-center justify-between gap-3"
-              [class]="
-                attendee.checkedIn
-                  ? 'bg-google-green-light/20 dark:bg-google-green/10'
-                  : 'bg-neutral-50 dark:bg-neutral-900'
-              "
-            >
-              <div class="flex flex-col min-w-0">
-                <span class="text-xs font-bold text-text-primary dark:text-neutral-200"
-                  >Check-in Evento</span
-                >
-                @if (attendee.checkedIn) {
-                  <span
-                    class="text-[11px] text-google-green font-semibold flex items-center gap-1 mt-0.5"
+      } @else if (isMobile()) {
+        <ul class="divide-y divide-black/5 dark:divide-white/10">
+          @for (attendee of pageAttendees(); track attendee.id) {
+            <li class="space-y-3 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <button
+                    type="button"
+                    (click)="openAttendeeDetail(attendee)"
+                    class="min-h-11 text-left font-bold text-text-primary underline-offset-2 hover:underline dark:text-neutral-100"
                   >
-                    <span class="material-symbols-rounded text-xs">check_circle</span>
-                    {{
-                      attendee.checkedInAt
-                        ? (attendee.checkedInAt | date: 'HH:mm dd/MM')
-                        : 'Registrado'
-                    }}
-                  </span>
-                } @else {
-                  <span class="text-[11px] text-text-secondary dark:text-neutral-400 mt-0.5"
-                    >Sin registrar</span
-                  >
-                }
+                    {{ fullName(attendee) }}
+                  </button>
+                  <p class="text-sm text-text-secondary dark:text-neutral-300">
+                    <ng-container *ngTemplateOutlet="entryText; context: { $implicit: attendee }" />
+                  </p>
+                </div>
+                <p-tag
+                  [value]="statusLabel(attendee.status)"
+                  [severity]="statusSeverity(attendee.status)"
+                  styleClass="whitespace-nowrap"
+                />
               </div>
-              @if (!attendee.checkedIn) {
-                <button
-                  type="button"
-                  (click)="doManualCheckin()"
-                  [disabled]="actionLoading() || !canCheckin(attendee)"
-                  class="px-3 py-1.5 text-xs font-semibold bg-google-green text-white hover:bg-green-600 rounded-full shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
-                >
-                  Marcar Check-in
-                </button>
-              }
-            </div>
-
-            <!-- Entrega de Refrigerio -->
-            <div
-              class="p-3.5 rounded-2xl border border-black/5 dark:border-white/5 flex items-center justify-between gap-3"
-              [class]="
-                attendee.refrigerioDelivered
-                  ? 'bg-google-yellow-light/20 dark:bg-google-yellow/10'
-                  : 'bg-neutral-50 dark:bg-neutral-900'
-              "
-            >
-              <div class="flex flex-col min-w-0">
-                <span class="text-xs font-bold text-text-primary dark:text-neutral-200"
-                  >Entrega Refrigerio</span
-                >
-                @if (attendee.refrigerioDelivered) {
-                  <span
-                    class="text-[11px] text-google-yellow font-semibold flex items-center gap-1 mt-0.5"
-                  >
-                    <span class="material-symbols-rounded text-xs">restaurant</span>
-                    {{
-                      attendee.refrigerioDeliveredAt
-                        ? (attendee.refrigerioDeliveredAt | date: 'HH:mm dd/MM')
-                        : 'Entregado'
-                    }}
-                  </span>
-                } @else {
-                  <span class="text-[11px] text-text-secondary dark:text-neutral-400 mt-0.5"
-                    >No entregado</span
-                  >
+              <div class="flex flex-wrap items-center gap-2">
+                @if (attendee.role !== 'ATTENDEE') {
+                  <p-tag
+                    [value]="roleLabel(attendee.role)"
+                    [severity]="roleSeverity(attendee.role)"
+                  />
                 }
+                <ng-container *ngTemplateOutlet="checkinChip; context: { $implicit: attendee }" />
+                <ng-container *ngTemplateOutlet="proofCell; context: { $implicit: attendee }" />
               </div>
-              @if (!attendee.refrigerioDelivered) {
-                <button
-                  type="button"
-                  (click)="doManualRefrigerio()"
-                  [disabled]="actionLoading() || !canCheckin(attendee)"
-                  class="px-3 py-1.5 text-xs font-semibold bg-google-yellow text-neutral-900 hover:bg-yellow-500 rounded-full shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
-                >
-                  Entregar
-                </button>
+              <div class="flex flex-wrap gap-2">
+                <ng-container *ngTemplateOutlet="rowActions; context: { $implicit: attendee }" />
+              </div>
+            </li>
+          }
+        </ul>
+        <p-paginator
+          [first]="first()"
+          [rows]="pageSize"
+          [totalRecords]="filteredAttendees().length"
+          [showCurrentPageReport]="false"
+          (onPageChange)="onPage($event)"
+        />
+      } @else {
+        <p-table
+          [value]="filteredAttendees()"
+          dataKey="id"
+          sortField="registeredAt"
+          [sortOrder]="-1"
+          [paginator]="true"
+          [rows]="pageSize"
+          [first]="first()"
+          (onPage)="first.set($event.first)"
+          [rowsPerPageOptions]="[25, 50, 100]"
+          [tableStyle]="{ 'min-width': '52rem' }"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th scope="col" pSortableColumn="firstName" class="min-w-[14rem]">
+                Asistente <p-sortIcon field="firstName" />
+              </th>
+              @if (showColumn('role')) {
+                <th scope="col" pSortableColumn="role">Rol <p-sortIcon field="role" /></th>
               }
-            </div>
-          </div>
-        </div>
+              @if (showColumn('contact')) {
+                <th scope="col" pSortableColumn="email">Contacto <p-sortIcon field="email" /></th>
+              }
+              <th scope="col" pSortableColumn="status">Estado <p-sortIcon field="status" /></th>
+              <th scope="col" pSortableColumn="ticketName">
+                Entrada <p-sortIcon field="ticketName" />
+              </th>
+              <th scope="col" pSortableColumn="checkedIn">
+                Check-in <p-sortIcon field="checkedIn" />
+              </th>
+              <th scope="col">Comprobante</th>
+              @if (showColumn('registeredAt')) {
+                <th scope="col" pSortableColumn="registeredAt">
+                  Inscripción <p-sortIcon field="registeredAt" />
+                </th>
+              }
+              @if (showColumn('id')) {
+                <th scope="col">ID</th>
+              }
+              <th scope="col"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </ng-template>
 
-        <!-- Sección 2: Inscripciones a Sesiones -->
-        <div class="space-y-3">
-          <h3
-            class="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-neutral-400 flex items-center gap-1.5"
-          >
-            <span class="material-symbols-rounded text-base text-google-blue">view_agenda</span>
-            Sesiones del evento
-          </h3>
-
-          @if (loadingSessions()) {
-            <div class="flex items-center justify-center p-6 gap-2 text-xs text-text-secondary">
-              <div class="gdg-spinner !size-4"></div>
-              <span>Cargando sesiones del asistente...</span>
-            </div>
-          } @else if (attendeeSessions().length === 0) {
-            <div
-              class="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-900 text-center text-xs text-text-secondary"
-            >
-              No hay registros de sesiones asociadas a este participante en el evento.
-            </div>
-          } @else {
-            <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
-              @for (session of attendeeSessions(); track session.sessionId) {
-                <div
-                  class="p-3 rounded-2xl border border-black/5 dark:border-white/5 flex items-center justify-between gap-3 bg-white dark:bg-neutral-900"
-                >
-                  <div class="flex flex-col min-w-0">
-                    <span
-                      class="text-xs font-bold text-text-primary dark:text-neutral-200 truncate"
-                    >
-                      {{ session.sessionTitle }}
-                    </span>
+          <ng-template pTemplate="body" let-attendee>
+            <tr>
+              <td>
+                <div class="flex items-center gap-3">
+                  @if (attendee.avatarUrl) {
+                    <img
+                      [src]="attendee.avatarUrl"
+                      alt=""
+                      class="size-8 shrink-0 rounded-full object-cover"
+                      referrerpolicy="no-referrer"
+                    />
+                  } @else {
                     <div
-                      class="flex items-center gap-2 text-[11px] text-text-secondary dark:text-neutral-400 mt-0.5 flex-wrap"
+                      class="flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-text-secondary dark:bg-neutral-800 dark:text-neutral-300"
+                      aria-hidden="true"
                     >
-                      @if (session.speaker) {
-                        <span>Exp: {{ session.speaker }}</span>
-                      }
-                      @if (session.startTime) {
-                        <span>• {{ session.startTime }} hrs</span>
-                      }
+                      {{ initials(attendee) }}
                     </div>
-                  </div>
-
-                  <div class="flex items-center gap-2 shrink-0">
-                    @if (session.asistio) {
-                      <span
-                        class="px-2.5 py-1 text-[11px] font-bold text-google-blue bg-google-blue-light/40 dark:bg-google-blue/20 rounded-full flex items-center gap-1"
-                      >
-                        <span class="material-symbols-rounded text-xs">check_circle</span>
-                        {{
-                          session.checkedInAt ? (session.checkedInAt | date: 'HH:mm') : 'Asistió'
-                        }}
-                      </span>
-                    } @else {
-                      <button
-                        type="button"
-                        (click)="doManualSessionCheckin(session)"
-                        [disabled]="actionLoading() || !canCheckin(attendee)"
-                        class="px-3 py-1 text-xs font-semibold text-google-blue border border-google-blue/30 hover:bg-google-blue-light/50 dark:hover:bg-google-blue/20 rounded-full transition-all disabled:opacity-50 cursor-pointer"
-                      >
-                        Marcar Ingreso
-                      </button>
+                  }
+                  <div class="min-w-0">
+                    <span class="block font-semibold text-text-primary dark:text-neutral-100">
+                      {{ fullName(attendee) }}
+                    </span>
+                    @if (!showColumn('role') && attendee.role !== 'ATTENDEE') {
+                      <p-tag
+                        [value]="roleLabel(attendee.role)"
+                        [severity]="roleSeverity(attendee.role)"
+                        styleClass="!text-[11px] !px-2 !py-0"
+                      />
                     }
                   </div>
                 </div>
+              </td>
+              @if (showColumn('role')) {
+                <td>
+                  <p-tag
+                    [value]="roleLabel(attendee.role)"
+                    [severity]="roleSeverity(attendee.role)"
+                  />
+                </td>
               }
-            </div>
+              @if (showColumn('contact')) {
+                <td class="text-sm">
+                  <a
+                    [href]="'mailto:' + attendee.email"
+                    class="block text-text-primary hover:underline dark:text-neutral-100"
+                    >{{ attendee.email }}</a
+                  >
+                  @if (attendee.phone) {
+                    <a
+                      [href]="'tel:' + attendee.phone"
+                      class="block text-text-secondary hover:underline dark:text-neutral-300"
+                      >{{ attendee.phone }}</a
+                    >
+                  } @else {
+                    <span class="text-text-secondary dark:text-neutral-300">Sin celular</span>
+                  }
+                </td>
+              }
+              <td>
+                <p-tag
+                  [value]="statusLabel(attendee.status)"
+                  [severity]="statusSeverity(attendee.status)"
+                  styleClass="whitespace-nowrap"
+                />
+              </td>
+              <td class="text-sm">
+                <ng-container *ngTemplateOutlet="entryText; context: { $implicit: attendee }" />
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="checkinChip; context: { $implicit: attendee }" />
+              </td>
+              <td>
+                <ng-container *ngTemplateOutlet="proofCell; context: { $implicit: attendee }" />
+              </td>
+              @if (showColumn('registeredAt')) {
+                <td class="whitespace-nowrap text-sm">
+                  {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
+                </td>
+              }
+              @if (showColumn('id')) {
+                <td class="font-mono text-xs" [title]="attendee.id">
+                  {{ attendee.id.substring(0, 8) }}
+                </td>
+              }
+              <td>
+                <div class="flex items-center justify-end gap-2">
+                  <ng-container *ngTemplateOutlet="rowActions; context: { $implicit: attendee }" />
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+    </div>
+  }
+</div>
+
+<!-- Piezas compartidas por la tabla y las tarjetas -->
+<ng-template #entryText let-attendee>
+  <span class="font-semibold text-text-primary dark:text-neutral-100">{{
+    entryLabel(attendee)
+  }}</span>
+  <span class="text-text-secondary dark:text-neutral-300">
+    ·
+    @if (attendee.couponId) {
+      Cupón{{ attendee.couponCode ? ' ' + attendee.couponCode : '' }} (Bs 0)
+    } @else if (attendee.amountDue === 0) {
+      Gratuita
+    } @else {
+      {{ attendee.amountDue | bs }}
+    }
+  </span>
+</ng-template>
+
+<ng-template #checkinChip let-attendee>
+  @if (attendee.checkedIn) {
+    <span
+      class="inline-flex items-center gap-1 rounded-full bg-success-bg px-2.5 py-0.5 text-xs font-semibold text-success-text"
+    >
+      <span class="material-symbols-rounded text-sm" aria-hidden="true">check_circle</span>
+      Con check-in
+    </span>
+  } @else {
+    <span class="text-xs font-medium text-text-secondary dark:text-neutral-300">Sin check-in</span>
+  }
+</ng-template>
+
+<ng-template #proofCell let-attendee>
+  @if (attendee.paymentProofUrl) {
+    <button
+      type="button"
+      (click)="openProof(attendee)"
+      [attr.aria-label]="'Ver comprobante de pago de ' + fullName(attendee)"
+      class="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-black/20 px-3 text-xs font-semibold text-text-primary hover:bg-neutral-100 max-md:min-h-11 dark:border-white/25 dark:text-neutral-100 dark:hover:bg-neutral-800"
+    >
+      <span class="material-symbols-rounded text-base" aria-hidden="true">receipt_long</span>
+      Ver comprobante
+    </button>
+  } @else if (attendee.status === 'CANCELLED') {
+    <span class="text-xs text-text-secondary dark:text-neutral-300">—</span>
+  } @else if (expectsProof(attendee)) {
+    <span
+      class="inline-flex items-center gap-1 rounded-full bg-error-bg px-2.5 py-0.5 text-xs font-semibold text-error-text"
+    >
+      <span class="material-symbols-rounded text-sm" aria-hidden="true">error</span>
+      Sin comprobante
+    </span>
+  } @else {
+    <span class="text-xs font-medium text-text-secondary dark:text-neutral-300">
+      {{ attendee.couponId ? 'Cupón' : attendee.amountDue === 0 ? 'Gratuita' : 'Invitación' }}
+    </span>
+  }
+</ng-template>
+
+<ng-template #rowActions let-attendee>
+  @if (statusCtl.canEdit()) {
+    <button
+      type="button"
+      (click)="openStatusMenu($event, attendee)"
+      [disabled]="statusCtl.isSaving(attendee.id)"
+      aria-haspopup="menu"
+      [attr.aria-label]="'Cambiar estado de la inscripción de ' + fullName(attendee)"
+      data-testid="row-status-action"
+      class="inline-flex min-h-9 items-center gap-1 rounded-full border border-black/20 px-3 text-xs font-semibold text-text-primary hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-60 max-md:min-h-11 max-md:flex-1 max-md:justify-center dark:border-white/25 dark:text-neutral-100 dark:hover:bg-neutral-800"
+    >
+      <span
+        class="material-symbols-rounded text-base"
+        [class.animate-gdg-spin]="statusCtl.isSaving(attendee.id)"
+        aria-hidden="true"
+        >{{
+          statusCtl.isSaving(attendee.id) ? 'progress_activity' : 'published_with_changes'
+        }}</span
+      >
+      Estado
+    </button>
+  }
+  <button
+    type="button"
+    (click)="openAttendeeDetail(attendee)"
+    [attr.aria-label]="'Ver detalle de la inscripción de ' + fullName(attendee)"
+    class="inline-flex min-h-9 items-center gap-1 rounded-full bg-action px-3 text-xs font-semibold text-on-action hover:bg-action-hover max-md:min-h-11 max-md:flex-1 max-md:justify-center"
+  >
+    <span class="material-symbols-rounded text-base" aria-hidden="true">badge</span>
+    Detalle
+  </button>
+</ng-template>
+
+<!-- Detalle de la inscripción -->
+<p-dialog
+  header="Detalle de la inscripción"
+  [visible]="showDetailModal()"
+  (visibleChange)="showDetailModal.set($event)"
+  [modal]="true"
+  [closeOnEscape]="true"
+  [style]="{ width: '90vw', 'max-width': '650px' }"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="[&_.p-dialog-header]:!p-5 [&_.p-dialog-content]:!px-5 [&_.p-dialog-footer]:!p-5"
+>
+  @if (selectedAttendee(); as attendee) {
+    <div class="space-y-6 py-2">
+      <div class="flex items-center gap-4">
+        @if (attendee.avatarUrl) {
+          <img
+            [src]="attendee.avatarUrl"
+            alt=""
+            class="size-12 shrink-0 rounded-full object-cover"
+            referrerpolicy="no-referrer"
+          />
+        } @else {
+          <div
+            class="flex size-12 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-base font-bold text-text-secondary dark:bg-neutral-800 dark:text-neutral-300"
+            aria-hidden="true"
+          >
+            {{ initials(attendee) }}
+          </div>
+        }
+        <div class="flex min-w-0 flex-1 flex-col">
+          <span class="truncate text-lg font-bold text-text-primary dark:text-neutral-100">
+            {{ fullName(attendee) }}
+          </span>
+          <span class="truncate text-sm text-text-secondary dark:text-neutral-300">
+            {{ attendee.email }}
+          </span>
+          <div class="mt-1 flex flex-wrap items-center gap-2">
+            <p-tag [value]="roleLabel(attendee.role)" [severity]="roleSeverity(attendee.role)" />
+            <span class="text-sm text-text-secondary dark:text-neutral-300">
+              <ng-container *ngTemplateOutlet="entryText; context: { $implicit: attendee }" />
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1. Estado de la inscripción -->
+      <section class="space-y-3" data-testid="detail-status-section">
+        <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
+          Estado de la inscripción
+        </h3>
+        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <p-tag
+            [value]="statusLabel(attendee.status)"
+            [severity]="statusSeverity(attendee.status)"
+            data-testid="detail-status-tag"
+          />
+          @if (attendee.paymentProofUrl) {
+            <button
+              type="button"
+              (click)="openProof(attendee)"
+              class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/20 px-4 text-sm font-semibold text-text-primary hover:bg-neutral-100 dark:border-white/25 dark:text-neutral-100 dark:hover:bg-neutral-800"
+            >
+              <span class="material-symbols-rounded text-lg" aria-hidden="true">receipt_long</span>
+              Ver comprobante
+            </button>
+          } @else if (attendee.amountDue > 0) {
+            <span class="text-sm font-semibold text-error-text">Sin comprobante de pago</span>
+          } @else {
+            <span class="text-sm text-text-secondary dark:text-neutral-300">Entrada gratuita</span>
           }
         </div>
 
-        <!-- Sección 3: Estado de la inscripción (pago) -->
-        <div class="space-y-3" data-testid="detail-status-section">
-          <h3
-            class="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-neutral-400 flex items-center gap-1.5"
-          >
-            <span class="material-symbols-rounded text-base text-google-blue" aria-hidden="true"
-              >payments</span
-            >
-            Estado de la inscripción
-          </h3>
-
+        @if (statusCtl.canEdit()) {
           <div
-            class="p-3.5 rounded-2xl border border-black/5 dark:border-white/5 bg-neutral-50 dark:bg-neutral-900 space-y-3"
+            class="flex flex-col gap-2 sm:flex-row sm:flex-wrap"
+            role="group"
+            aria-label="Cambiar estado de la inscripción"
           >
-            <div class="flex items-center justify-between gap-x-3 gap-y-2 flex-wrap">
-              <div
-                class="flex items-center gap-2 text-xs text-text-secondary dark:text-neutral-400"
+            @for (option of statusCtl.options; track option.value) {
+              <button
+                type="button"
+                (click)="changeStatus(attendee, option.value)"
+                [disabled]="
+                  isCurrentStatus(attendee, option.value) || statusCtl.isSaving(attendee.id)
+                "
+                [attr.aria-pressed]="isCurrentStatus(attendee, option.value)"
+                [attr.data-testid]="'detail-status-' + option.value"
+                [title]="option.description"
+                class="inline-flex min-h-11 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-sm font-semibold disabled:cursor-not-allowed sm:w-auto"
+                [ngClass]="
+                  isCurrentStatus(attendee, option.value)
+                    ? 'border-transparent bg-action text-on-action'
+                    : option.requiresConfirmation
+                      ? 'border-danger-text text-danger-text hover:bg-error-bg disabled:opacity-50'
+                      : 'border-black/20 text-text-primary hover:bg-neutral-100 disabled:opacity-50 dark:border-white/25 dark:text-neutral-100 dark:hover:bg-neutral-800'
+                "
               >
-                <span class="font-semibold whitespace-nowrap">Estado actual:</span>
-                <p-tag
-                  [value]="statusLabel(attendee.status)"
-                  [severity]="getStatusSeverity(attendee.status)"
-                  styleClass="!text-xs !px-2.5 !py-0.5"
-                />
-              </div>
-              @if (attendee.paymentProofUrl) {
-                <button
-                  type="button"
-                  (click)="openProof(attendee)"
-                  class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-google-green bg-google-green-light/40 hover:bg-google-green-light/70 dark:bg-google-green/15 dark:hover:bg-google-green/25 rounded-full transition-all cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-blue/60"
-                >
-                  <span class="material-symbols-rounded text-sm" aria-hidden="true">image</span>
-                  Ver comprobante
-                </button>
-              } @else if (attendee.ticketPrice > 0) {
-                <span class="text-[11px] font-semibold text-google-red"
-                  >Sin comprobante de pago</span
-                >
-              } @else {
-                <span class="text-[11px] font-semibold text-text-secondary dark:text-neutral-400"
-                  >Entrada gratuita</span
-                >
-              }
-            </div>
-
-            @if (statusCtl.canEdit()) {
-              <div
-                class="flex flex-col sm:flex-row sm:flex-wrap gap-2"
-                role="group"
-                aria-label="Cambiar estado de la inscripción"
-              >
-                @for (option of statusCtl.options; track option.value) {
-                  <button
-                    type="button"
-                    (click)="changeStatus(attendee, option.value)"
-                    [disabled]="
-                      isCurrentStatus(attendee, option.value) || statusCtl.isSaving(attendee.id)
-                    "
-                    [attr.aria-pressed]="isCurrentStatus(attendee, option.value)"
-                    [attr.data-testid]="'detail-status-' + option.value"
-                    class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 min-h-9 px-3.5 py-2 text-xs font-semibold whitespace-nowrap rounded-full border transition-all cursor-pointer disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-blue/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50 dark:focus-visible:ring-offset-neutral-900"
-                    [ngClass]="
-                      isCurrentStatus(attendee, option.value)
-                        ? 'border-transparent bg-google-blue text-white shadow-xs'
-                        : option.requiresConfirmation
-                          ? 'border-google-red/30 text-google-red hover:bg-google-red-light/40 dark:hover:bg-google-red/20 disabled:opacity-50'
-                          : 'border-black/10 dark:border-white/10 text-text-primary dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50'
-                    "
-                  >
-                    <span class="material-symbols-rounded text-sm" aria-hidden="true">{{
-                      option.icon
-                    }}</span>
-                    {{
-                      isCurrentStatus(attendee, option.value) ? option.label : option.actionLabel
-                    }}
-                  </button>
-                }
-              </div>
-              @if (statusCtl.isSaving(attendee.id)) {
-                <p
-                  class="flex items-center gap-1.5 text-[11px] text-text-secondary dark:text-neutral-400"
-                  role="status"
-                >
-                  <span class="material-symbols-rounded text-xs animate-gdg-spin" aria-hidden="true"
-                    >progress_activity</span
-                  >
-                  Guardando estado...
-                </p>
-              }
-            } @else {
-              <p class="text-[11px] text-text-secondary dark:text-neutral-400">
-                Solo un Super Admin puede cambiar el estado de la inscripción.
-              </p>
+                <span class="material-symbols-rounded text-lg" aria-hidden="true">{{
+                  option.icon
+                }}</span>
+                {{ isCurrentStatus(attendee, option.value) ? option.label : option.actionLabel }}
+              </button>
             }
           </div>
-        </div>
-      </div>
-    }
-
-    <ng-template pTemplate="footer">
-      <button
-        type="button"
-        (click)="showDetailModal.set(false)"
-        class="px-5 py-2 text-xs font-bold text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full transition-colors cursor-pointer"
-      >
-        Cerrar
-      </button>
-    </ng-template>
-  </p-dialog>
-
-  <!-- Estado de inscripción: menú rápido de la tabla, confirmación de anulación y mensajes -->
-  <p-menu
-    #statusMenu
-    [model]="statusMenuItems()"
-    [popup]="true"
-    appendTo="body"
-    ariaLabel="Cambiar estado de la inscripción"
-    styleClass="!min-w-56 !rounded-[0.875rem] !p-1 !border-black/10 dark:!border-white/10 !shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-  >
-    <ng-template #item let-item>
-      <a
-        class="p-menu-item-link flex items-center gap-2.5 !rounded-lg !px-3 !py-2 text-[0.8125rem] font-medium whitespace-nowrap"
-        [ngClass]="{ 'text-google-red dark:text-red-300': item.state?.danger && !item.disabled }"
-      >
-        <span class="material-symbols-rounded text-lg leading-none shrink-0" aria-hidden="true">{{
-          item.state?.icon
-        }}</span>
-        <span>{{ item.label }}</span>
-        @if (item.disabled) {
-          <span class="ml-auto pl-2 text-[11px] font-semibold text-text-secondary">Actual</span>
-        }
-      </a>
-    </ng-template>
-  </p-menu>
-
-  <!-- Headless: misma lógica (accept/reject/Escape/foco inicial de PrimeNG), maquetación propia -->
-  <p-confirmdialog
-    [key]="statusUiKey"
-    [style]="{ width: '30rem', 'max-width': 'calc(100vw - 2rem)' }"
-    styleClass="!rounded-3xl !border !border-black/5 dark:!border-white/10 overflow-hidden"
-    [draggable]="false"
-  >
-    <ng-template #headless let-confirmation let-onAccept="onAccept" let-onReject="onReject">
-      <div class="flex flex-col gap-6 bg-white p-5 sm:p-6 dark:bg-neutral-900">
-        <div
-          class="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left"
-        >
-          <span
-            class="flex size-12 shrink-0 items-center justify-center rounded-full bg-google-red/10 text-google-red dark:bg-google-red/20 dark:text-red-300"
-            aria-hidden="true"
-          >
-            <span class="material-symbols-rounded text-2xl">block</span>
-          </span>
-          <div class="flex min-w-0 flex-col gap-2">
-            <h2 class="m-0 text-lg font-bold leading-tight text-text-primary dark:text-neutral-100">
-              {{ confirmation.header }}
-            </h2>
-            <p class="m-0 text-sm leading-relaxed text-text-secondary dark:text-neutral-300">
-              {{ confirmation.message }}
+          @if (statusCtl.isSaving(attendee.id)) {
+            <p
+              class="flex items-center gap-1.5 text-xs text-text-secondary dark:text-neutral-300"
+              role="status"
+            >
+              <span class="material-symbols-rounded animate-gdg-spin text-sm" aria-hidden="true"
+                >progress_activity</span
+              >
+              Guardando estado...
             </p>
+          }
+        } @else {
+          <p class="text-sm text-text-secondary dark:text-neutral-300">
+            Solo un Super Admin puede cambiar el estado de la inscripción.
+          </p>
+        }
+      </section>
+
+      @if (!canCheckin(attendee)) {
+        <p class="rounded-xl bg-warning-bg p-3 text-sm font-medium text-warning-text" role="status">
+          {{
+            attendee.status === 'CANCELLED'
+              ? 'Inscripción anulada: no se puede registrar asistencia.'
+              : 'El pago aún no está confirmado: no se puede registrar asistencia.'
+          }}
+        </p>
+      }
+      @if (actionError(); as err) {
+        <p class="text-sm font-medium text-error-text" role="alert">{{ err }}</p>
+      }
+
+      <!-- 2. Asistencia -->
+      <section class="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+        <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">Asistencia</h3>
+        <ul class="divide-y divide-black/5 dark:divide-white/10">
+          <li class="flex items-center justify-between gap-3 py-2">
+            <div class="flex min-w-0 flex-col">
+              <span class="text-sm font-semibold text-text-primary dark:text-neutral-100"
+                >Check-in del evento</span
+              >
+              <span class="text-xs text-text-secondary dark:text-neutral-300">
+                @if (attendee.checkedIn) {
+                  Registrado{{
+                    attendee.checkedInAt ? ' · ' + (attendee.checkedInAt | date: 'HH:mm dd/MM') : ''
+                  }}
+                } @else {
+                  Sin registrar
+                }
+              </span>
+            </div>
+            @if (!attendee.checkedIn) {
+              <button
+                type="button"
+                (click)="doManualCheckin()"
+                [disabled]="actionLoading() || !canCheckin(attendee)"
+                class="inline-flex min-h-11 shrink-0 items-center rounded-full bg-action px-4 text-sm font-semibold text-on-action hover:bg-action-hover disabled:opacity-50"
+              >
+                Registrar check-in
+              </button>
+            }
+          </li>
+          <li class="flex items-center justify-between gap-3 py-2">
+            <div class="flex min-w-0 flex-col">
+              <span class="text-sm font-semibold text-text-primary dark:text-neutral-100"
+                >Refrigerio</span
+              >
+              <span class="text-xs text-text-secondary dark:text-neutral-300">
+                @if (attendee.refrigerioDelivered) {
+                  Entregado{{
+                    attendee.refrigerioDeliveredAt
+                      ? ' · ' + (attendee.refrigerioDeliveredAt | date: 'HH:mm dd/MM')
+                      : ''
+                  }}
+                } @else {
+                  No entregado
+                }
+              </span>
+            </div>
+            @if (!attendee.refrigerioDelivered) {
+              <button
+                type="button"
+                (click)="doManualRefrigerio()"
+                [disabled]="actionLoading() || !canCheckin(attendee)"
+                class="inline-flex min-h-11 shrink-0 items-center rounded-full border border-black/20 px-4 text-sm font-semibold text-text-primary hover:bg-neutral-100 disabled:opacity-50 dark:border-white/25 dark:text-neutral-100 dark:hover:bg-neutral-800"
+              >
+                Entregar refrigerio
+              </button>
+            }
+          </li>
+        </ul>
+      </section>
+
+      <!-- 3. Sesiones -->
+      <section class="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+        <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
+          Sesiones del evento
+        </h3>
+        @if (loadingSessions()) {
+          <div
+            class="flex items-center gap-2 text-sm text-text-secondary dark:text-neutral-300"
+            role="status"
+          >
+            <div class="gdg-spinner !size-4"></div>
+            Cargando sesiones...
           </div>
-        </div>
+        } @else if (attendeeSessions().length === 0) {
+          <p class="text-sm text-text-secondary dark:text-neutral-300">
+            Esta persona no tiene sesiones registradas en el evento.
+          </p>
+        } @else {
+          <ul class="max-h-60 divide-y divide-black/5 overflow-y-auto dark:divide-white/10">
+            @for (session of attendeeSessions(); track session.sessionId) {
+              <li class="flex items-center justify-between gap-3 py-2">
+                <div class="flex min-w-0 flex-col">
+                  <span
+                    class="truncate text-sm font-semibold text-text-primary dark:text-neutral-100"
+                  >
+                    {{ session.sessionTitle }}
+                  </span>
+                  <span class="text-xs text-text-secondary dark:text-neutral-300">
+                    @if (session.speaker) {
+                      {{ session.speaker }}
+                    }
+                    @if (session.startTime) {
+                      {{ session.speaker ? ' · ' : '' }}{{ session.startTime }} h
+                    }
+                  </span>
+                </div>
+                @if (session.asistio) {
+                  <span
+                    class="inline-flex shrink-0 items-center gap-1 rounded-full bg-success-bg px-2.5 py-0.5 text-xs font-semibold text-success-text"
+                  >
+                    <span class="material-symbols-rounded text-sm" aria-hidden="true"
+                      >check_circle</span
+                    >
+                    {{ session.checkedInAt ? (session.checkedInAt | date: 'HH:mm') : 'Asistió' }}
+                  </span>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="doManualSessionCheckin(session)"
+                    [disabled]="actionLoading() || !canCheckin(attendee)"
+                    class="inline-flex min-h-11 shrink-0 items-center rounded-full border border-black/20 px-4 text-sm font-semibold text-text-primary hover:bg-neutral-100 disabled:opacity-50 dark:border-white/25 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                  >
+                    Registrar ingreso
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
 
-        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-          <button
-            type="button"
-            class="p-confirm-dialog-reject inline-flex min-h-10 w-full items-center justify-center rounded-full border border-black/10 px-5 text-sm font-semibold text-text-primary transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-blue/60 focus-visible:ring-offset-2 sm:w-auto dark:border-white/15 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus-visible:ring-offset-neutral-900"
-            (click)="onReject()"
-          >
-            {{ confirmation.rejectLabel }}
-          </button>
-          <button
-            type="button"
-            class="p-confirm-dialog-accept inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full bg-google-red px-5 text-sm font-semibold text-white shadow-xs transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-google-red/60 focus-visible:ring-offset-2 sm:w-auto dark:focus-visible:ring-offset-neutral-900"
-            (click)="onAccept()"
-          >
-            <span class="material-symbols-rounded text-lg" aria-hidden="true">block</span>
-            {{ confirmation.acceptLabel }}
-          </button>
-        </div>
-      </div>
-    </ng-template>
-  </p-confirmdialog>
+      <!-- 4. Contacto y datos de la inscripción -->
+      <section class="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+        <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">Datos</h3>
+        <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+          <dt class="text-text-secondary dark:text-neutral-300">Correo</dt>
+          <dd class="break-all text-text-primary dark:text-neutral-100">
+            <a [href]="'mailto:' + attendee.email" class="hover:underline">{{ attendee.email }}</a>
+          </dd>
+          <dt class="text-text-secondary dark:text-neutral-300">Celular</dt>
+          <dd class="text-text-primary dark:text-neutral-100">
+            {{ attendee.phone || 'Sin celular' }}
+          </dd>
+          <dt class="text-text-secondary dark:text-neutral-300">Inscripción</dt>
+          <dd class="text-text-primary dark:text-neutral-100">
+            {{ attendee.registeredAt | date: 'dd/MM/yyyy HH:mm' }}
+          </dd>
+          <dt class="text-text-secondary dark:text-neutral-300">ID</dt>
+          <dd class="break-all font-mono text-xs text-text-primary dark:text-neutral-100">
+            {{ attendee.id }}
+          </dd>
+        </dl>
+      </section>
 
-  <p-toast
-    [key]="statusUiKey"
-    position="top-right"
-    [breakpoints]="{ '640px': { width: 'calc(100vw - 2rem)', right: '1rem', left: 'auto' } }"
-  />
+      @if (responseEntries(attendee).length > 0) {
+        <section class="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+          <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
+            Respuestas del formulario
+          </h3>
+          <dl class="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(0,14rem)_1fr]">
+            @for (entry of responseEntries(attendee); track entry.key) {
+              <dt class="text-text-secondary dark:text-neutral-300">{{ entry.label }}</dt>
+              <dd class="break-words text-text-primary dark:text-neutral-100">
+                @if (isUrl(entry.value)) {
+                  <a
+                    [href]="entry.value"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-accent-text underline"
+                    >Abrir enlace</a
+                  >
+                } @else {
+                  {{ responseText(entry.value) }}
+                }
+              </dd>
+            }
+          </dl>
+        </section>
+      }
+    </div>
+  }
 
-  <app-payment-proof-dialog
-    [attendee]="proofAttendee()"
-    [position]="proofPosition()"
-    [total]="proofQueue().length"
-    [canManage]="statusCtl.canEdit()"
-    [busy]="proofBusy()"
-    (closed)="closeProof()"
-    (previous)="stepProof(-1)"
-    (next)="stepProof(1)"
-    (confirmPayment)="confirmPayment($event)"
-    (cancelRegistration)="cancelFromProof($event)"
-  />
-</div>
+  <ng-template pTemplate="footer">
+    <button
+      type="button"
+      (click)="showDetailModal.set(false)"
+      class="inline-flex min-h-11 items-center rounded-full border border-black/20 px-5 text-sm font-semibold text-text-primary hover:bg-neutral-100 dark:border-white/25 dark:text-neutral-100 dark:hover:bg-neutral-800"
+    >
+      Cerrar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- Menús emergentes: estado de la fila y exportación -->
+<p-menu
+  #statusMenu
+  [model]="statusMenuItems()"
+  [popup]="true"
+  appendTo="body"
+  ariaLabel="Cambiar estado de la inscripción"
+  styleClass="!min-w-56 !rounded-[0.875rem] !p-1 !border-black/10 dark:!border-white/10 !shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+>
+  <ng-template #item let-item>
+    <a
+      class="p-menu-item-link flex items-center gap-2.5 !rounded-lg !px-3 !py-2.5 text-[0.9375rem] font-medium whitespace-nowrap"
+      [ngClass]="{ 'text-danger-text': item.state?.danger && !item.disabled }"
+    >
+      <span class="material-symbols-rounded text-lg leading-none shrink-0" aria-hidden="true">{{
+        item.state?.icon
+      }}</span>
+      <span>{{ item.label }}</span>
+      @if (item.disabled) {
+        <span class="ml-auto pl-2 text-xs font-semibold text-text-secondary">Actual</span>
+      }
+    </a>
+  </ng-template>
+</p-menu>
+
+<p-menu
+  #exportMenu
+  [model]="exportItems()"
+  [popup]="true"
+  appendTo="body"
+  ariaLabel="Exportar inscritas"
+/>
+
+<app-payment-proof-dialog
+  [attendee]="proofAttendee()"
+  [position]="proofPosition()"
+  [total]="proofQueue().length"
+  [canManage]="statusCtl.canEdit()"
+  [busy]="proofBusy()"
+  [error]="proofError()"
+  (closed)="closeProof()"
+  (previous)="stepProof(-1)"
+  (next)="stepProof(1)"
+  (confirmPayment)="confirmPayment($event)"
+  (cancelRegistration)="cancelFromProof($event)"
+/>

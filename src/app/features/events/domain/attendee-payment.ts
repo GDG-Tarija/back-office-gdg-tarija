@@ -1,4 +1,5 @@
 import { matchesAttendeeSearch } from './attendee-search';
+import { ATTENDEE_ROLE_OPTIONS } from './attendee-role';
 import { Attendee } from './event.model';
 
 export interface AmountInput {
@@ -75,6 +76,53 @@ export function hasActiveFilters(f: AttendeeFilters): boolean {
     f.entry !== '' ||
     f.proof !== 'ALL'
   );
+}
+
+/** Parámetros de URL de los filtros: `q`, `estado`, `rol`, `entrada`, `checkin`, `comprobante`. */
+export const ATTENDEE_FILTER_PARAMS = [
+  'q',
+  'estado',
+  'rol',
+  'entrada',
+  'checkin',
+  'comprobante',
+] as const;
+
+const STATUS_SLUGS: Record<string, string> = {
+  CONFIRMED: 'confirmada',
+  PENDING: 'pendiente',
+  CANCELLED: 'anulada',
+};
+
+const bySlug = (map: Record<string, string>, slug: string | null): string =>
+  Object.keys(map).find((k) => map[k] === slug?.toLowerCase()) ?? '';
+
+/** Filtros → query params; los valores por defecto salen como `null` para limpiar la URL. */
+export function attendeeFiltersToParams(f: AttendeeFilters): Record<string, string | null> {
+  return {
+    q: f.search.trim() || null,
+    estado: STATUS_SLUGS[f.status] ?? null,
+    rol: f.role ? f.role.toLowerCase() : null,
+    entrada: f.entry || null,
+    checkin: f.checkin === 'CHECKED_IN' ? 'con' : f.checkin === 'NOT_CHECKED_IN' ? 'sin' : null,
+    comprobante: f.proof === 'WITH_PROOF' ? 'con' : f.proof === 'WITHOUT_PROOF' ? 'sin' : null,
+  };
+}
+
+export function parseAttendeeFilters(params: {
+  get(name: string): string | null;
+}): AttendeeFilters {
+  const role = params.get('rol')?.toUpperCase() ?? '';
+  const checkin = params.get('checkin');
+  const proof = params.get('comprobante');
+  return {
+    search: params.get('q') ?? '',
+    status: bySlug(STATUS_SLUGS, params.get('estado')),
+    role: ATTENDEE_ROLE_OPTIONS.some((o) => o.value === role) ? role : '',
+    checkin: checkin === 'con' ? 'CHECKED_IN' : checkin === 'sin' ? 'NOT_CHECKED_IN' : 'ALL',
+    entry: params.get('entrada') ?? '',
+    proof: proof === 'con' ? 'WITH_PROOF' : proof === 'sin' ? 'WITHOUT_PROOF' : 'ALL',
+  };
 }
 
 /** Clave estable paquete+fase para el filtro por entrada. */

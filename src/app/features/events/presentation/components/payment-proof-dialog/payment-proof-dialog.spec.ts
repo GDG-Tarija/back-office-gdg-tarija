@@ -1,3 +1,5 @@
+import { registerLocaleData } from '@angular/common';
+import localeEsBo from '@angular/common/locales/es-BO';
 import { TestBed } from '@angular/core/testing';
 
 import { Attendee } from '../../../domain/event.model';
@@ -26,6 +28,8 @@ const attendee: Attendee = {
   checkedIn: false,
 };
 
+registerLocaleData(localeEsBo, 'es-BO');
+
 describe('PaymentProofDialog', () => {
   function create(inputs: Record<string, unknown> = {}) {
     const fixture = TestBed.createComponent(PaymentProofDialog);
@@ -42,7 +46,7 @@ describe('PaymentProofDialog', () => {
     const text = document.body.textContent ?? '';
     expect(text).toContain('Ana Paz');
     expect(text).toContain('Normal');
-    expect(text).toContain('Bs 20');
+    expect(text).toContain('Bs\u00A020');
     expect(document.body.querySelector('img[alt^="Comprobante"]')).toBeTruthy();
     fixture.destroy();
   });
