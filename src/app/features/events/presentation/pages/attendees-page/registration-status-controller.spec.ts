@@ -8,11 +8,7 @@ import { BackofficeRole } from '../../../../../core/models/role.model';
 import { DomainError } from '../../../domain/domain-error';
 import { RegistrationStatus, RegistrationStatusChange } from '../../../domain/registration-status';
 import { RegistrationsRepository } from '../../../domain/registrations.repository';
-import {
-  REGISTRATION_STATUS_UI_KEY,
-  RegistrationStatusController,
-  StatusChangeTarget,
-} from './registration-status-controller';
+import { RegistrationStatusController, StatusChangeTarget } from './registration-status-controller';
 
 const ana: StatusChangeTarget = {
   id: 'r1',
@@ -80,9 +76,8 @@ describe('RegistrationStatusController', () => {
     expect(confirmation.confirm).not.toHaveBeenCalled();
     expect(messages.add).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: REGISTRATION_STATUS_UI_KEY,
         severity: 'success',
-        detail: 'Ana Asistente: Pagada / Confirmada.',
+        summary: 'Ana Asistente: confirmada.',
       }),
     );
   });
@@ -107,7 +102,6 @@ describe('RegistrationStatusController', () => {
     await Promise.resolve();
 
     expect(lastConfirm).not.toBeNull();
-    expect(lastConfirm!.key).toBe(REGISTRATION_STATUS_UI_KEY);
     expect(lastConfirm!.header).toBe('Anular inscripción');
     expect(lastConfirm!.message).toContain('Ana Asistente (Ticket Básico)');
     expect(lastConfirm!.defaultFocus).toBe('reject');
@@ -136,7 +130,7 @@ describe('RegistrationStatusController', () => {
     expect(messages.add).toHaveBeenCalledWith(
       expect.objectContaining({
         severity: 'error',
-        detail: 'No tienes permisos para realizar esta acción.',
+        summary: 'No se pudo cambiar el estado. No tienes permisos para realizar esta acción.',
       }),
     );
     expect(ctl.isSaving('r1')).toBe(false);

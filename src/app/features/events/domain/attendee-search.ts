@@ -1,4 +1,6 @@
+import { attendeeRoleLabel, attendeeRoleSeverity } from './attendee-role';
 import { Attendee } from './event.model';
+import { registrationStatusLabel, registrationStatusSeverity } from './registration-status';
 
 const COMMON_RESPONSE_LABELS: Record<string, string> = {
   t_shirt_size: 'Talla de polera',
@@ -71,66 +73,23 @@ export function formatCustomResponseLabel(key: string | number | symbol): string
 }
 
 export function translateAttendeeRole(role?: string): string {
-  switch (role?.toUpperCase()) {
-    case 'ORGANIZER':
-    case 'STAFF':
-      return 'Staff';
-    case 'SPEAKER':
-      return 'Expositor';
-    case 'VOLUNTEER':
-      return 'Voluntario';
-    case 'SPONSOR':
-      return 'Sponsor';
-    case 'ATTENDEE':
-      return 'Asistente';
-    default:
-      return role || 'Asistente';
-  }
+  return attendeeRoleLabel(role);
 }
 
 export function getAttendeeRoleSeverity(
   role?: string,
-): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-  switch (role?.toUpperCase()) {
-    case 'ORGANIZER':
-    case 'STAFF':
-      return 'danger';
-    case 'SPEAKER':
-      return 'warn';
-    case 'VOLUNTEER':
-    case 'SPONSOR':
-      return 'info';
-    default:
-      return 'secondary';
-  }
+): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+  return attendeeRoleSeverity(role);
 }
 
 export function translateAttendeeStatus(status?: string): string {
-  switch (status?.toUpperCase()) {
-    case 'CONFIRMED':
-      return 'Confirmado';
-    case 'PENDING':
-      return 'Pendiente';
-    case 'CANCELLED':
-      return 'Cancelado';
-    default:
-      return status || 'Desconocido';
-  }
+  return registrationStatusLabel(status);
 }
 
 export function getAttendeeStatusSeverity(
   status?: string,
 ): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-  switch (status?.toUpperCase()) {
-    case 'CONFIRMED':
-      return 'success';
-    case 'PENDING':
-      return 'warn';
-    case 'CANCELLED':
-      return 'danger';
-    default:
-      return 'secondary';
-  }
+  return registrationStatusSeverity(status);
 }
 
 function isBooleanLike(val: unknown): boolean {

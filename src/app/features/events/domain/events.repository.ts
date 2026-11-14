@@ -10,6 +10,8 @@ export abstract class EventsRepository {
   abstract delete(eventId: string): Promise<void>;
   abstract isSlugAvailable(slug: string, excludeEventId?: string): Promise<boolean>;
   abstract countRegistrations(eventId: string): Promise<number>;
+  /** Inscritos activos (no anuladas) por evento; los eventos sin inscritos no aparecen. */
+  abstract countActiveRegistrationsByEvent(): Promise<Record<string, number>>;
   abstract getAttendees(eventId: string): Promise<Attendee[]>;
   abstract getAttendeeSessions(
     eventId: string,

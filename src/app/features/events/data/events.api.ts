@@ -105,6 +105,22 @@ export class EventsApi implements EventsRepository {
     return count ?? 0;
   }
 
+  async countActiveRegistrationsByEvent(): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {};
+    for (let from = 0; ; from += ATTENDEES_PAGE_SIZE) {
+      const { data, error } = await this.supabase
+        .from('registrations')
+        .select('event_id')
+        .neq('status', 'CANCELLED')
+        .order('id', { ascending: true })
+        .range(from, from + ATTENDEES_PAGE_SIZE - 1);
+      if (error) throw toDomainError(error, 'event');
+      for (const row of data ?? []) counts[row.event_id] = (counts[row.event_id] ?? 0) + 1;
+      if ((data ?? []).length < ATTENDEES_PAGE_SIZE) break;
+    }
+    return counts;
+  }
+
   async getAttendees(eventId: string): Promise<Attendee[]> {
     // PostgREST corta en 1000 filas por defecto: se pagina con range() y orden estable.
     const rows: RegistrationWithDetailsRow[] = [];

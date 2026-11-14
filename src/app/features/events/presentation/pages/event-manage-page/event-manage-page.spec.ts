@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
+import { signal } from '@angular/core';
+import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { AssetsRepository } from '../../../domain/assets.repository';
 import { CouponsRepository } from '../../../domain/coupons.repository';
@@ -63,6 +65,7 @@ describe('EventManagePage', () => {
       providers: [
         provideRouter([]),
         feedback,
+        { provide: AuthService, useValue: { role: signal('SUPERADMIN') } },
         {
           provide: ActivatedRoute,
           useValue: {

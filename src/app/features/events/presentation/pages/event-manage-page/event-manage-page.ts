@@ -1,8 +1,6 @@
 import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-
-import { TagModule } from 'primeng/tag';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { CanLeave } from '../../../../../core/guards/unsaved-changes.guard';
 import { FeedbackService } from '../../../../../core/services/feedback.service';
@@ -24,6 +22,7 @@ import { EventInput } from '../../../domain/event.model';
 import { ValidationIssue } from '../../../domain/event-validators';
 import { CouponsEditor } from '../../components/coupons-editor/coupons-editor';
 import { EventBasicsForm } from '../../components/event-basics-form/event-basics-form';
+import { EventHeader } from '../../components/event-header/event-header';
 import { EventSectionNav } from '../../components/event-section-nav/event-section-nav';
 import { FormFieldsBuilder } from '../../components/form-fields-builder/form-fields-builder';
 import { PublishChecklist } from '../../components/publish-checklist/publish-checklist';
@@ -37,10 +36,9 @@ import { UnsavedPrompt } from '../event-workspace/unsaved-prompt';
   selector: 'app-event-manage-page',
   standalone: true,
   imports: [
-    RouterLink,
-    TagModule,
     DialogFrame,
     UnsavedChangesDialog,
+    EventHeader,
     CouponsEditor,
     EventBasicsForm,
     EventSectionNav,

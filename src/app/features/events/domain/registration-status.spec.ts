@@ -39,7 +39,7 @@ describe('registration-status', () => {
   });
 
   it('traduce etiquetas y severidades con fallback seguro', () => {
-    expect(registrationStatusLabel('CONFIRMED')).toBe('Pagada / Confirmada');
+    expect(registrationStatusLabel('CONFIRMED')).toBe('Confirmada');
     expect(registrationStatusLabel('PENDING')).toBe('Pendiente de pago');
     expect(registrationStatusLabel('CANCELLED')).toBe('Anulada');
     expect(registrationStatusLabel('REGISTERED')).toBe('REGISTERED');

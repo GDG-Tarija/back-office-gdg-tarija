@@ -1,52 +1,16 @@
 <div class="gdg-page min-w-0 space-y-6 p-4 sm:p-8">
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-    <div class="min-w-0">
-      <h1
-        class="truncate text-2xl font-extrabold tracking-tight text-text-primary sm:text-3xl dark:text-neutral-100"
+  <app-event-header [event]="ws.event()" section="manage">
+    @if (ws.event() && canDelete()) {
+      <button
+        type="button"
+        class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-red-light/40 px-4 text-sm font-semibold text-google-red transition-colors hover:bg-google-red-light/70"
+        (click)="openDelete()"
       >
-        {{ ws.event()?.title ?? 'Gestionar evento' }}
-      </h1>
-      @if (ws.event(); as e) {
-        <div
-          class="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-secondary dark:text-neutral-400"
-        >
-          <p-tag
-            [value]="e.isPublished ? 'Publicado' : 'Borrador'"
-            [severity]="e.isPublished ? 'success' : 'secondary'"
-          />
-          <span class="min-w-0 break-all">/e/{{ e.slug }}</span>
-        </div>
-      }
-    </div>
-    <div class="flex flex-wrap items-center gap-2">
-      @if (ws.event(); as e) {
-        <a
-          [routerLink]="['/events', e.id, 'attendees']"
-          class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-blue-light/60 px-4 py-2 text-sm font-semibold text-accent-text transition-colors hover:bg-google-blue-light dark:bg-google-blue/20"
-        >
-          <span class="material-symbols-rounded text-base" aria-hidden="true">group</span>
-          Asistentes
-        </a>
-        @if (canDelete()) {
-          <button
-            type="button"
-            class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-red-light/40 px-4 py-2 text-sm font-semibold text-danger-text transition-colors hover:bg-google-red-light/70"
-            (click)="openDelete()"
-          >
-            <span class="material-symbols-rounded text-base" aria-hidden="true">delete</span>
-            Eliminar
-          </button>
-        }
-      }
-      <a
-        routerLink="/events"
-        class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-      >
-        <span class="material-symbols-rounded text-base" aria-hidden="true">arrow_back</span>
-        Volver a eventos
-      </a>
-    </div>
-  </div>
+        <span class="material-symbols-rounded text-base" aria-hidden="true">delete</span>
+        Eliminar
+      </button>
+    }
+  </app-event-header>
 
   @if (error(); as err) {
     <div
