@@ -116,6 +116,7 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 - `back.sql` define un CHECK con valores distintos (`CHECK_IN_DOOR`, `SNACK_DAY_1`, `LUNCH_DAY_2`, `SWAG_DELIVERY`, `SESSION_IN`): **por verificar** el CHECK vigente en remoto (probablemente cambiado fuera de migraciones).
 - UNIQUE (`registration_id`, `scan_type`): un mismo tipo de escaneo no se registra dos veces.
 - Trigger `trg_prevent_attendance_for_cancelled_registration` (BEFORE INSERT o UPDATE de `registration_id`, migración `20261109031500`): rechaza (`P0001`) registrar asistencia de una inscripción `CANCELLED`, por cualquier camino (QR, manual, refrigerio, sesiones). Anular no borra los `scan_logs` previos.
+- Policy `staff_delete_recent_own_scan_logs` (DELETE, migración `20261114171703`): solo para `get_my_role()` SUPERADMIN/STAFF con `has_event_access` sobre el evento de la inscripción, filas con `scanned_by = auth.uid()` y `scanned_at` de los últimos 60 s. Es el "Deshacer" del check-in móvil; no hay UPDATE.
 
 ### 2.11. `staff_whitelist`
 
@@ -163,6 +164,7 @@ Migraciones pendientes, NO aplicadas en prod:
 - `20261024155150_close_coupon_read_leak.sql` (elimina `authenticated_read_event_coupons`). Aplicar solo después de desplegar el checkout público que usa `rpc validate_coupon`.
 - `20261024032944_tracks_event_fk.sql` (FK `tracks.evento_id → events.id`). Prod no tiene tracks huérfanos (verificado 2026-10-24).
 - `20261109031500_block_attendance_for_cancelled_registrations.sql` (trigger en `scan_logs` que rechaza asistencia de inscripciones `CANCELLED`). Aditiva: no cambia policies ni datos; no afecta al sitio público (no escribe en `scan_logs`).
+- `20261114171703_checkin_undo_scan.sql` (policy DELETE de `scan_logs` para deshacer un escaneo propio de los últimos 60 s). Aditiva: no cambia datos ni otras policies.
 
 ---
 
@@ -170,13 +172,13 @@ Migraciones pendientes, NO aplicadas en prod:
 
 El rol del operador viene de `get_my_role()` (tabla `staff_whitelist`). `AUTH_WHITELIST` (`auth-whitelist.ts`) e `is_staff()` como mecanismo del back-office ya no existen: el front llama a `AuthService.resolveRole()` y los guards solo son UX.
 
-| Rol                       | Permisos                                                                                                                                                        |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SUPERADMIN`              | Lee y escribe todo: events, ticket_types, tracks, sessions, event_coupons, event_staff_assignments, registrations (update), users, bucket `event-assets`.       |
-| `STAFF`                   | Solo lectura y check-in (insert/select en `scan_logs`) en eventos asignados (`has_event_access`); lee `users` de inscritos de esos eventos. No escribe eventos. |
-| Asistente (authenticated) | Lee eventos publicados, crea sus registrations, lee sus propios `scan_logs`.                                                                                    |
+| Rol                       | Permisos                                                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SUPERADMIN`              | Lee y escribe todo: events, ticket_types, tracks, sessions, event_coupons, event_staff_assignments, registrations (update), users, bucket `event-assets`.                                                          |
+| `STAFF`                   | Solo lectura y check-in (insert/select en `scan_logs`, y delete de su propio escaneo de los últimos 60 s) en eventos asignados (`has_event_access`); lee `users` de inscritos de esos eventos. No escribe eventos. |
+| Asistente (authenticated) | Lee eventos publicados, crea sus registrations, lee sus propios `scan_logs`.                                                                                                                                       |
 
-Políticas relevantes: `public_read_published_events`, `staff_write_events` (solo superadmin), `staff_write_ticket_types`, `staff_write_ticket_phases`, `superadmin_write_tracks|sessions|event_coupons|assignments`, `select_own_or_staff_registrations`, `staff_select_scan_logs`/`staff_insert_scan_logs`, `staff_select_users_for_assigned_events`.
+Políticas relevantes: `public_read_published_events`, `staff_write_events` (solo superadmin), `staff_write_ticket_types`, `staff_write_ticket_phases`, `superadmin_write_tracks|sessions|event_coupons|assignments`, `select_own_or_staff_registrations`, `staff_select_scan_logs`/`staff_insert_scan_logs`/`staff_delete_recent_own_scan_logs`, `staff_select_users_for_assigned_events`.
 
 **Regla crítica**: para dar acceso a un operador, agregar su email a `staff_whitelist` (migración/SQL con rol `SUPERADMIN` o `STAFF`) y, si es STAFF, asignarlo al evento en `event_staff_assignments`. Sin fila en `staff_whitelist`, `get_my_role()` devuelve NULL y no podrá operar.
 
