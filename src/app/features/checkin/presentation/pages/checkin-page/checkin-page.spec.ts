@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { signal } from '@angular/core';
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
 
 import { CheckinPage } from './checkin-page';
 import { CheckinRepository } from '../../../domain/checkin.repository';
@@ -168,13 +168,7 @@ describe('CheckinPage (puerta: QR y Modo Manual)', () => {
   it('preselecciona el evento de ?event= y, sin él, el de hoy en vez del más lejano', async () => {
     const far = { ...mockEvent, id: 'lejano', dateStart: new Date('2030-01-01T09:00:00Z') };
     const other = { ...mockEvent, id: 'otro-evento', dateStart: new Date('2030-02-01T09:00:00Z') };
-    const now = new Date();
-    const today = {
-      ...mockEvent,
-      id: 'hoy',
-      dateStart: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 1),
-      dateEnd: null,
-    };
+    const today = { ...mockEvent, id: 'hoy', dateStart: new Date(), dateEnd: null };
     repo.getEvents.mockResolvedValue([far, other, today]);
 
     queryParams = { event: 'otro-evento' };
@@ -344,6 +338,118 @@ describe('CheckinPage (puerta: QR y Modo Manual)', () => {
 
     expect(cmp.door()).not.toBeNull();
     expect(cmp.undoError()).toBe('Ya no se puede deshacer.');
+  });
+
+  describe('antirebote del mismo QR', () => {
+    const registered = {
+      success: true,
+      message: 'ok',
+      attendee: person,
+      scanLogId: 'log-1',
+    };
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-20T10:00:00Z'));
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it('tras Deshacer, el mismo QR delante de la cámara no se vuelve a registrar', async () => {
+      const cmp = await openPage();
+      repo.registerScan.mockResolvedValue(registered);
+      repo.undoScan.mockResolvedValue({ ok: true, message: 'Registro deshecho.' });
+
+      await cmp.handleQrDecoded('qr-1');
+      await cmp.undo();
+      vi.advanceTimersByTime(500);
+      await cmp.handleQrDecoded('qr-1');
+
+      expect(repo.registerScan).toHaveBeenCalledTimes(1);
+    });
+
+    it('tras cerrar el resultado, el mismo QR sigue bloqueado mientras no se aparte', async () => {
+      const cmp = await openPage();
+      repo.registerScan.mockResolvedValue(registered);
+
+      await cmp.handleQrDecoded('qr-1');
+      cmp.dismissDoor();
+      // La persona sigue frente a la cámara: cada fotograma renueva la espera.
+      for (let i = 0; i < 6; i++) {
+        vi.advanceTimersByTime(1000);
+        await cmp.handleQrDecoded('qr-1');
+      }
+
+      expect(repo.registerScan).toHaveBeenCalledTimes(1);
+    });
+
+    it('pasados 3 s sin ver el QR, se puede volver a leer', async () => {
+      const cmp = await openPage();
+      repo.registerScan.mockResolvedValue(registered);
+
+      await cmp.handleQrDecoded('qr-1');
+      cmp.dismissDoor();
+      vi.advanceTimersByTime(3100);
+      await cmp.handleQrDecoded('qr-1');
+
+      expect(repo.registerScan).toHaveBeenCalledTimes(2);
+    });
+
+    it('otro QR distinto se lee enseguida', async () => {
+      const cmp = await openPage();
+      repo.registerScan.mockResolvedValue(registered);
+
+      await cmp.handleQrDecoded('qr-1');
+      cmp.dismissDoor();
+      await cmp.handleQrDecoded('qr-2');
+
+      expect(repo.registerScan).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('si falla leer las asignaciones, un STAFF ve los eventos legibles con un aviso (no error permanente)', async () => {
+    authStub.role.set('STAFF');
+    repo.getAssignedEventIds.mockRejectedValue(new Error('42501'));
+
+    const cmp = await openPage();
+
+    expect(cmp.eventsError()).toBeNull();
+    expect(cmp.eventsWarning()).toContain('No pudimos leer tus eventos asignados');
+    expect(cmp.events().map((e) => e.id)).toEqual([mockEvent.id]);
+
+    repo.getAssignedEventIds.mockResolvedValue([mockEvent.id]);
+    await cmp.loadEvents();
+    expect(cmp.eventsWarning()).toBeNull();
+  });
+
+  it('si no se pueden leer los eventos, sigue el error con Reintentar', async () => {
+    repo.getEvents.mockRejectedValue(new Error('red'));
+    const cmp = await openPage();
+    expect(cmp.eventsError()).toContain('No se pudieron cargar los eventos');
+  });
+
+  it('si el contador no se puede leer, se oculta en vez de mostrar "0 de 0"', async () => {
+    repo.getCheckinStats.mockResolvedValue(null);
+    const cmp = await openPage();
+    expect(cmp.counter()).toBeNull();
+  });
+
+  it('al volver al modo Sesión conserva la sesión elegida y no recarga', async () => {
+    const second: Session = {
+      ...mockSession,
+      id: 'e4e4e4e4-0000-4000-8000-000000000004',
+      title: 'Z',
+    };
+    repo.getSessions.mockResolvedValue([mockSession, second]);
+    const cmp = await openPage();
+
+    cmp.setMode('session');
+    await vi.waitFor(() => expect(cmp.selectedSession()).toEqual(mockSession));
+    cmp.selectedSession.set(second);
+    cmp.setMode('refrigerio');
+    cmp.setMode('session');
+
+    expect(cmp.selectedSession()).toEqual(second);
+    expect(repo.getSessions).toHaveBeenCalledTimes(1);
   });
 
   it('pendiente de pago pide atención en ámbar y no cambia el contador', async () => {
