@@ -20,6 +20,12 @@ export const routes: Routes = [
         canActivate: [loginGuard],
         loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
       },
+      {
+        path: 'verificar',
+        title: 'Verificando acceso',
+        loadComponent: () =>
+          import('./features/auth/access-check/access-check').then((m) => m.AccessCheck),
+      },
     ],
   },
   {
