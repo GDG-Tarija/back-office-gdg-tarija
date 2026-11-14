@@ -1,0 +1,15 @@
+<div role="img" [attr.aria-label]="summary()" class="flex h-44 items-end gap-2 sm:gap-4">
+  @for (d of days(); track $index) {
+    <div class="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
+      <span class="text-xs font-bold text-text-primary dark:text-neutral-200">{{ d.count }}</span>
+      <div
+        class="w-full max-w-10 rounded-t-md bg-google-blue"
+        [class.opacity-30]="d.count === 0"
+        [style.height.%]="d.count === 0 ? 2 : heightPercent(d.count) * 0.8"
+      ></div>
+      <span class="text-xs font-medium text-text-secondary dark:text-neutral-400">
+        {{ d.label }}
+      </span>
+    </div>
+  }
+</div>

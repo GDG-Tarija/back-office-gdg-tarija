@@ -1,5 +1,4 @@
 import { Component, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
@@ -13,9 +12,8 @@ export interface OptionItem {
 @Component({
   selector: 'app-dashboard-filters',
   standalone: true,
-  imports: [CommonModule, FormsModule, SelectModule, DatePickerModule, ButtonModule],
+  imports: [FormsModule, SelectModule, DatePickerModule, ButtonModule],
   templateUrl: './dashboard-filters.html',
-  styleUrl: './dashboard-filters.scss',
 })
 export class DashboardFilters {
   eventOptions = input.required<OptionItem[]>();
