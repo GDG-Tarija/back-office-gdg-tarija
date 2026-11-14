@@ -37,87 +37,13 @@
 
   <!-- Content State -->
   @else if (event()) {
-    <!-- Breadcrumb & Back Navigation -->
-    <div class="flex items-center gap-3">
-      <button
-        type="button"
-        (click)="goBack()"
-        class="flex size-9 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 border border-black/5 dark:border-white/5 shadow-xs transition-colors"
-        aria-label="Volver"
+    <app-event-header [event]="event()" section="attendees" />
+    <p class="text-sm text-text-secondary dark:text-neutral-400">
+      Inscritos activos:
+      <strong class="text-text-primary dark:text-neutral-200"
+        >{{ stats().active }} / {{ event()?.capacity ?? '∞' }}</strong
       >
-        <span class="material-symbols-rounded text-xl">arrow_back</span>
-      </button>
-      <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">
-        Eventos / Detalle / Asistentes
-      </span>
-    </div>
-
-    <!-- Header & Event Summary Card -->
-    <div
-      class="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-xs"
-    >
-      <div class="lg:col-span-2 space-y-3">
-        <div class="flex items-center gap-3 flex-wrap">
-          <span
-            class="px-3 py-1 rounded-full text-xs font-bold"
-            [class]="
-              event()?.isPublished
-                ? 'bg-google-green-light/60 text-google-green dark:bg-google-green/20'
-                : 'bg-neutral-100 text-text-secondary dark:bg-neutral-800 dark:text-neutral-400'
-            "
-          >
-            {{ event()?.isPublished ? 'Publicado' : 'Borrador' }}
-          </span>
-        </div>
-        <h1
-          class="text-2xl sm:text-3xl font-extrabold text-text-primary dark:text-neutral-100 bg-gradient-to-r from-google-blue via-google-red to-google-yellow bg-clip-text text-transparent"
-        >
-          {{ event()?.title }}
-        </h1>
-        <p class="text-sm text-text-secondary dark:text-neutral-400 line-clamp-2 max-w-2xl">
-          {{ event()?.description || 'Sin descripción detallada.' }}
-        </p>
-      </div>
-
-      <!-- Quick Metrics -->
-      <div class="flex flex-col sm:flex-row gap-3">
-        <div
-          class="flex items-center gap-3 p-3.5 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5 flex-1"
-        >
-          <div
-            class="flex size-11 items-center justify-center rounded-xl bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue shrink-0"
-          >
-            <span class="material-symbols-rounded text-2xl">calendar_month</span>
-          </div>
-          <div class="flex flex-col min-w-0">
-            <span class="text-[11px] text-text-secondary dark:text-neutral-400 font-medium"
-              >Fecha de inicio</span
-            >
-            <span class="text-xs font-bold text-text-primary dark:text-neutral-200">
-              {{ event()?.dateStart | date: 'dd/MM/yyyy' }}
-            </span>
-          </div>
-        </div>
-
-        <div
-          class="flex items-center gap-3 p-3.5 bg-neutral-50/50 dark:bg-neutral-850/50 rounded-2xl border border-black/5 dark:border-white/5 flex-1"
-        >
-          <div
-            class="flex size-11 items-center justify-center rounded-xl bg-google-green-light/60 dark:bg-google-green/20 text-google-green shrink-0"
-          >
-            <span class="material-symbols-rounded text-2xl">group</span>
-          </div>
-          <div class="flex flex-col min-w-0">
-            <span class="text-[11px] text-text-secondary dark:text-neutral-400 font-medium"
-              >Inscritos activos</span
-            >
-            <span class="text-xs font-bold text-text-primary dark:text-neutral-200">
-              {{ stats().active }} / {{ event()?.capacity ?? '∞' }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+    </p>
 
     <!-- Attendees List Section -->
     <div class="space-y-4">

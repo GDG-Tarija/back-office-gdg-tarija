@@ -55,6 +55,7 @@ import { ScanMode, ScanResult } from '../../../../checkin/domain/checkin.model';
 import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
 import { CheckinApi } from '../../../../checkin/data/checkin.api';
 import { AuthService } from '../../../../../core/auth/services/auth.service';
+import { EventHeader } from '../../components/event-header/event-header';
 import { PaymentProofDialog } from '../../components/payment-proof-dialog/payment-proof-dialog';
 
 @Component({
@@ -75,6 +76,7 @@ import { PaymentProofDialog } from '../../components/payment-proof-dialog/paymen
     ConfirmDialogModule,
     ToastModule,
     SelectModule,
+    EventHeader,
     PaymentProofDialog,
     DatePipe,
     CurrencyPipe,
