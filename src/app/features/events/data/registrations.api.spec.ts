@@ -85,12 +85,12 @@ describe('RegistrationsApi.updateStatus', () => {
     });
   });
 
-  it('propaga el mensaje de un error desconocido (p. ej. CHECK)', async () => {
+  it('traduce un CHECK a un mensaje en español', async () => {
     const { api } = setup({
       data: null,
       error: { code: '23514', message: 'violates check constraint "registrations_status_check"' },
     });
-    await expect(api.updateStatus('r1', 'PENDING')).rejects.toMatchObject({ code: 'UNKNOWN' });
+    await expect(api.updateStatus('r1', 'PENDING')).rejects.toMatchObject({ code: 'INVALID' });
   });
 
   it('desconfía de una respuesta con un estado distinto al pedido', async () => {

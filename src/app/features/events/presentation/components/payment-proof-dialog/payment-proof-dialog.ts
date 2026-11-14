@@ -8,14 +8,19 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { TagModule } from 'primeng/tag';
 
+import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
 import { attendeeFullName, entryLabel, isImageProof } from '../../../domain/attendee-payment';
 import { Attendee } from '../../../domain/event.model';
+import {
+  registrationStatusLabel,
+  registrationStatusSeverity,
+} from '../../../domain/registration-status';
 
 export type ProofImageState = 'loading' | 'loaded' | 'error';
 export type ProofPendingAction = 'confirm' | 'cancel' | null;
@@ -26,7 +31,7 @@ export const ZOOM_STEPS: readonly number[] = [1, 1.5, 2, 3];
 @Component({
   selector: 'app-payment-proof-dialog',
   standalone: true,
-  imports: [DialogModule, ButtonModule, TagModule, CurrencyPipe, DatePipe],
+  imports: [DialogModule, ButtonModule, TagModule, BsPipe, DatePipe],
   templateUrl: './payment-proof-dialog.html',
 })
 export class PaymentProofDialog {
@@ -37,7 +42,7 @@ export class PaymentProofDialog {
   /** Posición dentro de la cola de revisión (1-based). */
   readonly position = input<number>(1);
   readonly total = input<number>(1);
-  /** Solo SUPERADMIN confirma o cancela (RLS sigue siendo la seguridad real). */
+  /** Solo SUPERADMIN confirma o anula (RLS sigue siendo la seguridad real). */
   readonly canManage = input<boolean>(false);
   readonly busy = input<boolean>(false);
   readonly error = input<string | null>(null);
@@ -71,6 +76,8 @@ export class PaymentProofDialog {
     const a = this.attendee();
     return a ? entryLabel(a) : '';
   });
+  readonly statusLabel = computed(() => registrationStatusLabel(this.attendee()?.status));
+  readonly statusSeverity = computed(() => registrationStatusSeverity(this.attendee()?.status));
   readonly isPending = computed(() => this.attendee()?.status.toUpperCase() === 'PENDING');
   readonly canAct = computed(() => this.canManage() && this.isPending());
 

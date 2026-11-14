@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/auth/guards/auth.guard';
+import { homeGuard } from './core/auth/guards/home.guard';
+import { loginGuard } from './core/auth/guards/login.guard';
 
 export const routes: Routes = [
   {
@@ -14,12 +16,15 @@ export const routes: Routes = [
     children: [
       {
         path: 'login',
+        title: 'Iniciar sesión',
+        canActivate: [loginGuard],
         loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
       },
     ],
   },
   {
     path: 'auth/callback',
+    title: 'Iniciando sesión',
     loadComponent: () => import('./features/auth/callback/callback').then((m) => m.Callback),
   },
   {
@@ -29,6 +34,8 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
+        title: 'Inicio',
+        canActivate: [homeGuard],
         loadComponent: () =>
           import('./features/dashboard/presentation/pages/dashboard-page/dashboard').then(
             (m) => m.Dashboard,

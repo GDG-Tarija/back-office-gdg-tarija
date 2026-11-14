@@ -15,12 +15,14 @@ export type StatusSeverity = 'success' | 'warn' | 'danger' | 'secondary';
 
 export interface StatusOption<T extends string> {
   value: T;
-  /** Nombre del estado (tags, detalle). */
+  /** Nombre del estado en singular (tags, detalle). */
   label: string;
-  /** Texto del filtro (plural). */
-  filterLabel: string;
+  /** Nombre en plural (filtros, resumen). */
+  pluralLabel: string;
   /** Texto del botón/acción que lleva a este estado. */
   actionLabel: string;
+  /** Qué significa el estado, para tooltips y ayudas. */
+  description: string;
   /** Ícono de Material Symbols. */
   icon: string;
   severity: StatusSeverity;
@@ -31,9 +33,10 @@ export interface StatusOption<T extends string> {
 export const REGISTRATION_STATUS_OPTIONS: readonly StatusOption<RegistrationStatus>[] = [
   {
     value: 'CONFIRMED',
-    label: 'Pagada / Confirmada',
-    filterLabel: 'Confirmados / pagados',
-    actionLabel: 'Marcar como pagada',
+    label: 'Confirmada',
+    pluralLabel: 'Confirmadas',
+    actionLabel: 'Confirmar pago',
+    description: 'El pago está verificado: puede registrar asistencia.',
     icon: 'paid',
     severity: 'success',
     requiresConfirmation: false,
@@ -41,8 +44,9 @@ export const REGISTRATION_STATUS_OPTIONS: readonly StatusOption<RegistrationStat
   {
     value: 'PENDING',
     label: 'Pendiente de pago',
-    filterLabel: 'Pendientes',
+    pluralLabel: 'Pendientes de pago',
     actionLabel: 'Marcar como pendiente',
+    description: 'Falta verificar el pago. Ocupa cupo, pero aún no puede registrar asistencia.',
     icon: 'schedule',
     severity: 'warn',
     requiresConfirmation: false,
@@ -50,8 +54,9 @@ export const REGISTRATION_STATUS_OPTIONS: readonly StatusOption<RegistrationStat
   {
     value: 'CANCELLED',
     label: 'Anulada',
-    filterLabel: 'Anulados',
-    actionLabel: 'Anular inscripción',
+    pluralLabel: 'Anuladas',
+    actionLabel: 'Anular',
+    description: 'Libera el cupo y bloquea la asistencia. Se puede restaurar cambiando el estado.',
     icon: 'block',
     severity: 'danger',
     requiresConfirmation: true,
@@ -86,6 +91,10 @@ export function registrationStatusLabel(status: unknown): string {
     registrationStatusOption(status)?.label ??
     (typeof status === 'string' && status ? status : 'Desconocido')
   );
+}
+
+export function registrationStatusPluralLabel(status: unknown): string {
+  return registrationStatusOption(status)?.pluralLabel ?? registrationStatusLabel(status);
 }
 
 export function registrationStatusSeverity(status: unknown): StatusSeverity {

@@ -1,0 +1,3 @@
+/* Orden de capas: PrimeNG queda debajo de `components` y `utilities` de Tailwind v4,
+   así las utilidades ganan sin `!`. Debe cargarse antes que `tailwindcss`. */
+@layer theme, base, primeng, components, utilities;

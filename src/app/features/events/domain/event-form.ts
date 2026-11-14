@@ -154,3 +154,29 @@ export function buildPublishContext(
     })),
   };
 }
+
+// --- Conversión entre texto del formulario y Date del datepicker (hora local del navegador) ---
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** "2026-10-15" -> Date local a medianoche; null si no es una fecha válida. */
+export function dateStringToDate(value: string): Date | null {
+  if (!isValidDateString(value)) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function dateToDateString(date: Date | null): string {
+  return date ? `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}` : '';
+}
+
+/** "09:30" -> Date (1/1/2000 09:30) para un datepicker de solo hora. */
+export function timeStringToDate(value: string): Date | null {
+  if (!isValidTimeString(value)) return null;
+  const [h, min] = value.split(':').map(Number);
+  return new Date(2000, 0, 1, h, min);
+}
+
+export function dateToTimeString(date: Date | null): string {
+  return date ? `${pad2(date.getHours())}:${pad2(date.getMinutes())}` : '';
+}

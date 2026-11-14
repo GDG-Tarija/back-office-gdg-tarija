@@ -9,7 +9,12 @@ import {
   untracked,
 } from '@angular/core';
 
+import { FeedbackService } from '../../../../../core/services/feedback.service';
+import { ErrorSummary } from '../../../../../shared/components/error-summary/error-summary';
+import { ErrorSummaryItem } from '../../../../../shared/utils/error-summary';
+import { focusField } from '../../../../../shared/utils/focus';
 import { DialogFrame } from '../../../../../shared/components/dialog-frame/dialog-frame';
+import { toUserMessage } from '../../../data/postgres-error.mapper';
 import { Event } from '../../../domain/event.model';
 import { eventToInput } from '../../../domain/event-form';
 import { validateFormFields } from '../../../domain/event-validators';
@@ -39,11 +44,12 @@ interface PendingTemplate {
 @Component({
   selector: 'app-form-fields-builder',
   standalone: true,
-  imports: [DialogFrame],
+  imports: [DialogFrame, ErrorSummary],
   templateUrl: './form-fields-builder.html',
 })
 export class FormFieldsBuilder {
   private readonly repo = inject(EventsRepository);
+  private readonly feedback = inject(FeedbackService);
 
   readonly event = input.required<Event>();
   readonly readonly = input(false);
@@ -83,9 +89,30 @@ export class FormFieldsBuilder {
     ...validateFormFields(toFormFields(this.fields())).errors,
     ...validateOptions(this.fields()),
   ]);
-  readonly canSave = computed(
-    () => !this.readonly() && this.dirty() && this.issues().length === 0 && !this.saving(),
-  );
+  /** Solo se bloquea si no hay nada que guardar; los errores se explican al pulsar Guardar. */
+  readonly canSave = computed(() => !this.readonly() && this.dirty() && !this.saving());
+  readonly submitted = signal(false);
+  private readonly touched = signal<ReadonlySet<string>>(new Set());
+
+  readonly summary = computed<ErrorSummaryItem[]>(() => {
+    if (!this.submitted()) return [];
+    const fields = this.fields();
+    return this.issues().flatMap((issue) => {
+      const m = /^fields\[(\d+)\]\.(label|key|options|type)$/.exec(issue.field);
+      const f = m ? fields[Number(m[1])] : undefined;
+      if (!m || !f) return [];
+      // La clave se genera sola desde la etiqueta: no se reclama mientras ambas están vacías.
+      if (m[2] === 'key' && !f.key && !f.label.trim()) return [];
+      const n = Number(m[1]) + 1;
+      const ref =
+        m[2] === 'options'
+          ? { id: `ff-opt-${f.uid}-0`, label: `Opciones del campo ${n}` }
+          : m[2] === 'key'
+            ? { id: `ff-key-${f.uid}`, label: `Clave del campo ${n}` }
+            : { id: `ff-label-${f.uid}`, label: `Etiqueta del campo ${n}` };
+      return [{ ...ref, message: issue.message }];
+    });
+  });
   readonly preview = computed(() => toFormFields(this.fields()));
 
   readonly pendingMode = computed<'replace' | 'append'>(() =>
@@ -125,9 +152,7 @@ export class FormFieldsBuilder {
       const n = await this.repo.countRegistrations(eventId);
       if (this.event().id === eventId) this.registrations.set(n);
     } catch (err) {
-      this.countError.set(
-        err instanceof Error ? err.message : 'No se pudo comprobar si hay inscritos.',
-      );
+      this.countError.set(toUserMessage(err, 'No se pudo comprobar si hay inscritos.'));
     }
   }
 
@@ -141,8 +166,13 @@ export class FormFieldsBuilder {
     return !this.readonly() && (f.isNew || !this.locked());
   }
 
+  markTouched(uid: string): void {
+    if (!this.touched().has(uid)) this.touched.update((set) => new Set(set).add(uid));
+  }
+
   fieldErrors(index: number, prefix: 'label' | 'key' | 'type' | 'options'): string[] {
     const f = this.fields()[index];
+    if (!this.submitted() && !this.touched().has(f.uid)) return [];
     return (
       this.issues()
         .filter((i) => i.field === `fields[${index}].${prefix}`)
@@ -183,11 +213,18 @@ export class FormFieldsBuilder {
     this.patch(i, { placeholder });
   }
 
-  remove(i: number): void {
+  async remove(i: number): Promise<void> {
     const f = this.fields()[i];
     if (!f || !this.canRemove(f)) return;
+    const ok = await this.feedback.confirm({
+      titulo: 'Quitar campo',
+      mensaje: `Se quitará "${this.fieldTitle(f, i)}" del formulario. Los cambios no se guardan hasta pulsar Guardar formulario.`,
+      aceptar: 'Quitar',
+      peligro: true,
+    });
+    if (!ok) return;
     this.fields.update((l) => l.filter((_, idx) => idx !== i));
-    this.announce(`Campo ${this.fieldTitle(f, i)} eliminado.`);
+    this.announce(`Campo ${this.fieldTitle(f, i)} quitado.`);
   }
 
   move(i: number, delta: -1 | 1): void {
@@ -225,6 +262,7 @@ export class FormFieldsBuilder {
   discard(): void {
     this.fields.set(fromFormFields(this.saved()));
     this.saveError.set(null);
+    this.submitted.set(false);
     this.announce('Cambios descartados.');
   }
 
@@ -242,9 +280,7 @@ export class FormFieldsBuilder {
       const all = await this.repo.getEvents();
       this.otherEvents.set(all.filter((e) => e.id !== this.event().id && e.formFields.length > 0));
     } catch (err) {
-      this.otherEventsError.set(
-        err instanceof Error ? err.message : 'No se pudieron cargar los eventos.',
-      );
+      this.otherEventsError.set(toUserMessage(err, 'No se pudieron cargar los eventos.'));
     } finally {
       this.otherEventsLoading.set(false);
     }
@@ -283,8 +319,16 @@ export class FormFieldsBuilder {
 
   // --- Guardado ----------------------------------------------------------
 
-  async save(): Promise<void> {
-    if (!this.canSave()) return;
+  /** Devuelve true si quedó guardado (o no había nada que guardar). */
+  async save(): Promise<boolean> {
+    if (!this.dirty()) return true;
+    if (!this.canSave()) return false;
+    this.submitted.set(true);
+    const first = this.summary()[0];
+    if (this.issues().length > 0) {
+      if (first) focusField(first.id);
+      return false;
+    }
     const formFields = toFormFields(this.fields());
     this.saving.set(true);
     this.saveError.set(null);
@@ -297,10 +341,13 @@ export class FormFieldsBuilder {
       const persisted = updated?.formFields ?? formFields;
       this.saved.set(persisted);
       this.fields.update((l) => l.map((f) => ({ ...f, isNew: false, keyEdited: true })));
-      this.notice.set('Formulario guardado.');
+      this.feedback.success('Formulario guardado.');
       this.fieldsChange.emit(persisted);
+      this.submitted.set(false);
+      return true;
     } catch (err) {
-      this.saveError.set(err instanceof Error ? err.message : 'No se pudo guardar el formulario.');
+      this.saveError.set(toUserMessage(err, 'No se pudo guardar el formulario.'));
+      return false;
     } finally {
       this.saving.set(false);
     }

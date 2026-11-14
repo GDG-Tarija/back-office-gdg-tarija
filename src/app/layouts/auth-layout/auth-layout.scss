@@ -10,7 +10,7 @@
   padding: 1.5rem;
 }
 
-[data-theme='dark'] .login-layout {
+:host-context([data-theme='dark']) .login-layout {
   background-color: #0a0a0a;
 }
 
@@ -23,7 +23,7 @@
   will-change: transform, opacity;
 }
 
-[data-theme='dark'] .google-orb {
+:host-context([data-theme='dark']) .google-orb {
   filter: blur(120px);
 }
 
@@ -125,5 +125,12 @@
   100% {
     transform: translateY(-20px) translateX(-20px) scale(0.95);
     opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .google-orb {
+    animation: none;
+    opacity: 0.4;
   }
 }

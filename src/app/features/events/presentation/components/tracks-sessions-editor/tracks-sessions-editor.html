@@ -1,14 +1,4 @@
 <div class="flex flex-col gap-8">
-  @if (notice(); as msg) {
-    <div
-      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
-      role="status"
-    >
-      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
-      <span>{{ msg }}</span>
-    </div>
-  }
-
   @if (loading()) {
     <div class="flex justify-center p-8" role="status" aria-label="Cargando agenda">
       <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
@@ -72,7 +62,7 @@
               </div>
               <button
                 type="button"
-                class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+                class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
                 [attr.aria-label]="'Editar track ' + t.name"
                 (click)="openEditTrack(t)"
               >
@@ -80,7 +70,7 @@
               </button>
               <button
                 type="button"
-                class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40"
+                class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40"
                 [attr.aria-label]="'Eliminar track ' + t.name"
                 (click)="askDeleteTrack(t)"
               >
@@ -195,7 +185,7 @@
                           @if (s.level) {
                             {{ s.level }} ·
                           }
-                          {{ registered(s) }}/{{ s.capacity }} inscritos
+                          {{ registered(s) }}/{{ s.capacity }} inscritas
                         </p>
                         @if (s.topics.length > 0) {
                           <p class="mt-1 text-xs text-text-secondary dark:text-neutral-400">
@@ -206,7 +196,7 @@
                       <div class="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
-                          class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+                          class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
                           [attr.aria-label]="'Editar sesión ' + s.title"
                           (click)="openEditSession(s)"
                         >
@@ -220,7 +210,7 @@
                         >
                           <button
                             type="button"
-                            class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             [attr.aria-label]="
                               deleteBlockReason(s)
                                 ? 'Eliminar sesión ' + s.title + ' (no disponible: tiene inscritos)'
@@ -249,12 +239,23 @@
 
 @if (trackDialogOpen()) {
   <app-dialog-frame
+    #frame
     [title]="editingTrack() ? 'Editar track' : 'Nuevo track'"
     icon="route"
     initialSize="sm"
+    [dirty]="trackDirty()"
     (closeDialog)="closeTrackDialog()"
   >
-    <form class="flex flex-col gap-4" (submit)="$event.preventDefault(); saveTrack()">
+    <form
+      id="track-form"
+      class="flex flex-col gap-4"
+      novalidate
+      (submit)="$event.preventDefault(); saveTrack()"
+    >
+      <p class="text-xs text-text-secondary dark:text-neutral-400">
+        <span aria-hidden="true">*</span> obligatorio
+      </p>
+      <app-error-summary [items]="trackSummary()" />
       <div class="flex flex-col gap-1.5">
         <label for="tk-name" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
           >Nombre *</label
@@ -265,10 +266,12 @@
           pInputText
           class="w-full !rounded-xl"
           [formField]="tf.name"
+          aria-required="true"
           [attr.aria-invalid]="!!trackFieldError()"
+          [attr.aria-describedby]="trackFieldError() ? 'tk-name-error' : null"
         />
         @if (trackFieldError(); as err) {
-          <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+          <small class="font-medium text-google-red" id="tk-name-error">{{ err }}</small>
         }
       </div>
       <div class="flex flex-col gap-1.5">
@@ -291,15 +294,15 @@
       <button
         type="button"
         class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
-        (click)="closeTrackDialog()"
+        (click)="frame.requestClose()"
       >
         Cancelar
       </button>
       <button
-        type="button"
+        type="submit"
+        form="track-form"
         class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="trackSaving()"
-        (click)="saveTrack()"
       >
         {{ trackSaving() ? 'Guardando...' : 'Guardar track' }}
       </button>
@@ -342,12 +345,23 @@
 
 @if (sessionDialogOpen()) {
   <app-dialog-frame
+    #frame
     [title]="editingSession() ? 'Editar sesión' : 'Nueva sesión'"
     icon="event_note"
     initialSize="lg"
+    [dirty]="sessionDirty()"
     (closeDialog)="closeSessionDialog()"
   >
-    <form class="flex flex-col gap-5" (submit)="$event.preventDefault(); saveSession()">
+    <form
+      id="session-form"
+      class="flex flex-col gap-5"
+      novalidate
+      (submit)="$event.preventDefault(); saveSession()"
+    >
+      <p class="text-xs text-text-secondary dark:text-neutral-400">
+        <span aria-hidden="true">*</span> obligatorio
+      </p>
+      <app-error-summary [items]="sessionSummary()" />
       <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div class="flex flex-col gap-1.5 md:col-span-2">
           <label
@@ -361,10 +375,12 @@
             pInputText
             class="w-full !rounded-xl"
             [formField]="sf.title"
+            aria-required="true"
             [attr.aria-invalid]="!!sessionFieldError('title')"
+            [attr.aria-describedby]="sessionFieldError('title') ? 'se-title-error' : null"
           />
           @if (sessionFieldError('title'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            <small class="font-medium text-google-red" id="se-title-error">{{ err }}</small>
           }
         </div>
 
@@ -439,39 +455,63 @@
           <small class="text-text-secondary dark:text-neutral-400">Separados por coma.</small>
         </div>
 
-        <div class="flex flex-col gap-1.5 md:col-span-2">
-          <span class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-            >Fecha y horario *</span
-          >
+        <fieldset class="flex min-w-0 flex-col gap-1.5 md:col-span-2">
+          <legend class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+            Fecha y horario <span aria-hidden="true">*</span>
+            <span class="font-normal text-text-secondary">(hora de La Paz)</span>
+          </legend>
           <div class="flex flex-wrap gap-2">
-            <input
-              type="date"
-              pInputText
-              class="min-w-40 flex-1 !rounded-xl"
-              aria-label="Fecha de la sesión"
-              [formField]="sf.date"
-              [attr.aria-invalid]="!!sessionFieldError('date')"
+            <p-datepicker
+              [showOnFocus]="false"
+              class="min-w-40 flex-1"
+              inputId="se-date"
+              ariaLabel="Fecha de la sesión"
+              dateFormat="dd/mm/yy"
+              placeholder="dd/mm/aaaa"
+              appendTo="body"
+              [showIcon]="true"
+              [fluid]="true"
+              [ngModel]="sessionDate()"
+              [ngModelOptions]="{ standalone: true }"
+              [invalid]="!!sessionFieldError('date')"
+              (ngModelChange)="setSessionDate($event)"
             />
-            <input
-              type="time"
-              pInputText
-              class="w-32 !rounded-xl"
-              aria-label="Hora de inicio"
-              [formField]="sf.startTime"
-              [attr.aria-invalid]="!!sessionFieldError('startTime')"
+            <p-datepicker
+              [showOnFocus]="false"
+              class="w-32"
+              inputId="se-start"
+              ariaLabel="Hora de inicio"
+              placeholder="hh:mm"
+              appendTo="body"
+              [timeOnly]="true"
+              [showIcon]="true"
+              hourFormat="24"
+              [fluid]="true"
+              [ngModel]="sessionStart()"
+              [ngModelOptions]="{ standalone: true }"
+              [invalid]="!!sessionFieldError('startTime')"
+              (ngModelChange)="setSessionTime('startTime', $event)"
             />
-            <input
-              type="time"
-              pInputText
-              class="w-32 !rounded-xl"
-              aria-label="Hora de fin"
-              [formField]="sf.endTime"
-              [attr.aria-invalid]="!!sessionFieldError('endTime')"
+            <p-datepicker
+              [showOnFocus]="false"
+              class="w-32"
+              inputId="se-end"
+              ariaLabel="Hora de fin"
+              placeholder="hh:mm"
+              appendTo="body"
+              [timeOnly]="true"
+              [showIcon]="true"
+              hourFormat="24"
+              [fluid]="true"
+              [ngModel]="sessionEnd()"
+              [ngModelOptions]="{ standalone: true }"
+              [invalid]="!!sessionFieldError('endTime')"
+              (ngModelChange)="setSessionTime('endTime', $event)"
             />
           </div>
           @for (f of ['date', 'startTime', 'endTime']; track f) {
             @if (sessionFieldError(f); as err) {
-              <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+              <small class="font-medium text-google-red">{{ err }}</small>
             }
           }
           @if (sessionFieldWarning('startTime'); as warn) {
@@ -479,7 +519,7 @@
               warn
             }}</small>
           }
-        </div>
+        </fieldset>
 
         <div class="flex flex-col gap-1.5">
           <label for="se-cap" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
@@ -492,15 +532,17 @@
             pInputText
             class="w-full !rounded-xl"
             [formField]="sf.capacity"
+            aria-required="true"
             [attr.aria-invalid]="!!sessionFieldError('capacity')"
+            [attr.aria-describedby]="sessionFieldError('capacity') ? 'se-cap-error' : null"
           />
           @if (editingSession() && editingRegistered() > 0) {
             <small class="text-text-secondary dark:text-neutral-400"
-              >Mínimo {{ editingRegistered() }} (inscritos actuales).</small
+              >Mínimo {{ editingRegistered() }} (personas inscritas hoy).</small
             >
           }
           @if (sessionFieldError('capacity'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            <small class="font-medium text-google-red" id="se-cap-error">{{ err }}</small>
           }
           @if (sessionFieldWarning('capacity'); as warn) {
             <small class="font-medium text-text-secondary dark:text-neutral-400" role="status">{{
@@ -535,15 +577,15 @@
       <button
         type="button"
         class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
-        (click)="closeSessionDialog()"
+        (click)="frame.requestClose()"
       >
         Cancelar
       </button>
       <button
-        type="button"
+        type="submit"
+        form="session-form"
         class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        [disabled]="sessionSaving() || (sessionSubmitted() && !canSaveSession())"
-        (click)="saveSession()"
+        [disabled]="sessionSaving()"
       >
         {{ sessionSaving() ? 'Guardando...' : 'Guardar sesión' }}
       </button>

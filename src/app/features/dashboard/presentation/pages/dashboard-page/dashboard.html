@@ -1,336 +1,187 @@
-<div class="p-4 sm:p-6 transition-all duration-300">
+<div class="p-4 sm:p-6">
   <div class="mx-auto flex max-w-6xl flex-col gap-6">
-    <!-- Header -->
-    <header class="flex flex-col gap-2">
-      <p class="text-xs font-bold uppercase tracking-[0.2em] text-google-blue">Dashboard</p>
-      <h1 class="text-3xl font-extrabold tracking-tight text-text-primary dark:text-neutral-100">
-        Back Office GDG Tarija
+    <header class="flex flex-col gap-1">
+      <h1 class="text-2xl font-extrabold tracking-tight text-text-primary dark:text-neutral-100">
+        Inicio
       </h1>
       <p class="text-sm text-text-secondary dark:text-neutral-400">
-        Panel administrativo con métricas reales y filtros dinámicos por evento, fecha o rol.
+        Lo que necesita tu atención hoy y cómo van tus eventos.
       </p>
     </header>
 
     @if (loading()) {
-      <div class="flex flex-col items-center justify-center py-20 gap-4">
+      <div class="flex flex-col items-center justify-center py-20 gap-4" role="status">
         <div class="gdg-spinner"></div>
-        <p class="text-sm font-medium text-text-secondary dark:text-neutral-400">
-          Cargando datos del panel...
-        </p>
+        <p class="text-sm font-medium text-text-secondary dark:text-neutral-400">Cargando…</p>
       </div>
     } @else if (error()) {
       <div
-        class="flex flex-col items-center justify-center py-10 gap-3 border border-google-red/20 bg-google-red-light/10 dark:bg-google-red/5 rounded-3xl p-6"
+        class="flex flex-col items-center justify-center py-10 gap-3 border border-google-red/20 rounded-2xl p-6"
+        role="alert"
       >
-        <span class="material-symbols-rounded text-4xl text-google-red">warning</span>
+        <span class="material-symbols-rounded text-4xl text-google-red" aria-hidden="true">
+          warning
+        </span>
         <p class="text-sm text-google-red font-semibold text-center">{{ error() }}</p>
-        <p-button
-          label="Reintentar"
-          icon="pi pi-refresh"
-          styleClass="p-button-sm !rounded-full"
-          (click)="loadDashboardData()"
-        />
+        <p-button label="Reintentar" icon="pi pi-refresh" size="small" (onClick)="load()" />
       </div>
     } @else {
-      <!-- Filters Panel Component -->
-      <app-dashboard-filters
-        [eventOptions]="eventOptions()"
-        [roleOptions]="roleOptions"
-        [selectedEventId]="filterEventId()"
-        [selectedRole]="filterRole()"
-        [selectedDateRange]="filterDateRange()"
-        (eventIdChange)="filterEventId.set($event)"
-        (roleChange)="filterRole.set($event)"
-        (dateRangeChange)="filterDateRange.set($event)"
-        (resetFilters)="resetFilters()"
-      />
+      <app-dashboard-attention [proofs]="proofs()" [drafts]="drafts()" [upcoming]="upcoming()" />
 
-      <!-- Metrics Grid Component -->
-      <app-dashboard-metrics
-        [totalEventsCount]="totalEventsCount()"
-        [totalRegistrationsCount]="totalRegistrationsCount()"
-        [confirmedAttendeesCount]="confirmedAttendeesCount()"
-        [totalCashFlow]="totalCashFlow()"
-        [approvedCashFlow]="approvedCashFlow()"
-        [pendingCashFlow]="pendingCashFlow()"
-      />
+      <section aria-labelledby="metrics-title" class="flex flex-col gap-4">
+        <h2 id="metrics-title" class="text-lg font-bold text-text-primary dark:text-neutral-100">
+          Métricas
+        </h2>
+        <app-dashboard-filters
+          [eventOptions]="eventOptions()"
+          [roleOptions]="roleOptions"
+          [selectedEventId]="filterEventId()"
+          [selectedRole]="filterRole()"
+          [selectedDateRange]="filterDateRange()"
+          (eventIdChange)="filterEventId.set($event)"
+          (roleChange)="filterRole.set($event)"
+          (dateRangeChange)="filterDateRange.set($event)"
+          (resetFilters)="resetFilters()"
+        />
+        <app-dashboard-metrics
+          [totalEventsCount]="filteredEvents().length"
+          [totalRegistrationsCount]="filteredRegistrations().length"
+          [confirmedCount]="confirmedCount()"
+          [pendingCount]="pendingCount()"
+          [collected]="cashFlow().collected"
+          [receivable]="cashFlow().receivable"
+        />
+        <p class="text-xs text-text-secondary dark:text-neutral-400">
+          Los montos usan el precio real de cada inscripción (fase y cupón). El filtro de fechas se
+          aplica a la fecha del evento.
+        </p>
+      </section>
 
-      <!-- Main Analytics Grid -->
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <!-- Daily Trend Bar Chart (Spans 2 columns on Desktop) -->
-        <div
-          class="lg:col-span-2 flex flex-col justify-between gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-xs"
+        <section
+          aria-labelledby="trend-title"
+          class="lg:col-span-2 flex flex-col gap-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-5"
         >
           <div class="flex flex-col gap-1">
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
-                Tendencia de Inscripciones
-              </h3>
-              <span
-                class="text-xs font-semibold text-google-blue bg-google-blue-light/60 dark:bg-google-blue/20 px-3 py-1 rounded-full"
-              >
-                Últimos 7 días
-              </span>
-            </div>
+            <h2 id="trend-title" class="text-lg font-bold text-text-primary dark:text-neutral-100">
+              Inscripciones de los últimos 7 días
+            </h2>
             <p class="text-xs text-text-secondary dark:text-neutral-400">
-              Registros diarios en la ventana de actividad más reciente.
+              Hasta hoy · {{ trendTotal() }} en total
             </p>
           </div>
+          <app-dashboard-trend [days]="trend()" />
+        </section>
 
-          @if (dailyTrend().length > 0) {
-            <div class="relative w-full h-48 mt-2 overflow-x-auto scrollbar-none">
-              <svg
-                class="w-full h-full min-w-[400px] overflow-visible"
-                viewBox="0 0 500 150"
-                preserveAspectRatio="none"
-              >
-                <!-- Bar Gradient Definition -->
-                <defs>
-                  <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="var(--gdg-google-blue)" stop-opacity="1"></stop>
-                    <stop
-                      offset="100%"
-                      stop-color="var(--gdg-google-blue)"
-                      stop-opacity="0.4"
-                    ></stop>
-                  </linearGradient>
-                </defs>
-
-                <!-- Grid lines -->
-                <line
-                  x1="40"
-                  y1="20"
-                  x2="460"
-                  y2="20"
-                  class="stroke-neutral-100 dark:stroke-neutral-800"
-                  stroke-dasharray="4"
-                  stroke-width="0.75"
-                ></line>
-                <line
-                  x1="40"
-                  y1="70"
-                  x2="460"
-                  y2="70"
-                  class="stroke-neutral-100 dark:stroke-neutral-800"
-                  stroke-dasharray="4"
-                  stroke-width="0.75"
-                ></line>
-                <line
-                  x1="40"
-                  y1="120"
-                  x2="460"
-                  y2="120"
-                  class="stroke-neutral-200 dark:stroke-neutral-750"
-                  stroke-width="1"
-                ></line>
-
-                <!-- Y axis labels -->
-                <text
-                  x="12"
-                  y="24"
-                  class="text-[10px] font-medium fill-neutral-400 dark:fill-neutral-500"
-                  text-anchor="start"
-                >
-                  {{ maxTrendValue() }}
-                </text>
-                <text
-                  x="12"
-                  y="74"
-                  class="text-[10px] font-medium fill-neutral-400 dark:fill-neutral-500"
-                  text-anchor="start"
-                >
-                  {{ maxTrendValue() / 2 | number: '1.0-0' }}
-                </text>
-                <text
-                  x="12"
-                  y="124"
-                  class="text-[10px] font-medium fill-neutral-400 dark:fill-neutral-500"
-                  text-anchor="start"
-                >
-                  0
-                </text>
-
-                <!-- SVG Bars -->
-                @for (bar of barCoords(); track $index) {
-                  @if (bar.height > 0) {
-                    <rect
-                      [attr.x]="bar.x"
-                      [attr.y]="bar.y"
-                      [attr.width]="bar.width"
-                      [attr.height]="bar.height"
-                      rx="4"
-                      fill="url(#barGrad)"
-                      class="transition-all duration-200 hover:opacity-85"
-                    />
-                  } @else {
-                    <circle
-                      [attr.cx]="bar.x + bar.width / 2"
-                      cy="120"
-                      r="2"
-                      class="fill-neutral-300 dark:fill-neutral-700"
-                    />
-                  }
-
-                  <text
-                    [attr.x]="bar.x + bar.width / 2"
-                    [attr.y]="bar.y - 8"
-                    class="text-[10px] fill-text-primary dark:fill-neutral-200 font-bold"
-                    text-anchor="middle"
-                  >
-                    {{ bar.count }}
-                  </text>
-
-                  <text
-                    [attr.x]="bar.x + bar.width / 2"
-                    y="142"
-                    class="text-[10px] font-semibold fill-neutral-500 dark:fill-neutral-400"
-                    text-anchor="middle"
-                  >
-                    {{ bar.label }}
-                  </text>
-                }
-              </svg>
-            </div>
-          } @else {
-            <div
-              class="flex flex-col items-center justify-center h-40 bg-neutral-50 dark:bg-neutral-850 rounded-2xl"
-            >
-              <p class="text-sm text-text-secondary dark:text-neutral-400">
-                No hay datos de registros en este periodo.
-              </p>
-            </div>
-          }
-        </div>
-
-        <!-- Event Capacity Fill Rate Card (Spans 1 column on Desktop) -->
-        <div
-          class="lg:col-span-1 flex flex-col justify-between gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-xs"
+        <section
+          aria-labelledby="fill-title"
+          class="flex flex-col gap-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-5"
         >
           <div class="flex flex-col gap-1">
-            <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
-              Ocupación de Eventos
-            </h3>
+            <h2 id="fill-title" class="text-lg font-bold text-text-primary dark:text-neutral-100">
+              Ocupación
+            </h2>
             <p class="text-xs text-text-secondary dark:text-neutral-400">
-              Porcentaje de aforo total cubierto.
+              Asistentes inscritos sobre la capacidad de los eventos (sin anuladas).
             </p>
           </div>
-
-          <div class="flex flex-col items-center justify-center gap-4 py-4 my-auto">
-            <div class="relative flex items-center justify-center shrink-0">
-              <svg class="size-28 transform -rotate-90">
-                <circle
-                  cx="56"
-                  cy="56"
-                  r="46"
-                  stroke="var(--color-border)"
-                  stroke-width="7"
-                  fill="transparent"
-                  class="stroke-neutral-100 dark:stroke-neutral-800"
-                />
-                <circle
-                  cx="56"
-                  cy="56"
-                  r="46"
-                  stroke="var(--gdg-google-green)"
-                  stroke-width="7"
-                  fill="transparent"
-                  [attr.stroke-dasharray]="2 * 3.14159 * 46"
-                  [attr.stroke-dashoffset]="2 * 3.14159 * 46 * (1 - capacityFillRate())"
-                  stroke-linecap="round"
-                  class="transition-all duration-500 ease-out text-google-green stroke-google-green"
-                />
-              </svg>
-              <div class="absolute flex flex-col items-center justify-center">
-                <span class="text-2xl font-extrabold text-text-primary dark:text-neutral-100">
-                  {{ capacityFillRate() | percent: '1.0-0' }}
-                </span>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-google-green">
-                  Capacidad
-                </span>
-              </div>
-            </div>
-            <p
-              class="text-xs text-center text-text-secondary dark:text-neutral-400 leading-relaxed max-w-[220px]"
+          <div class="relative mx-auto flex items-center justify-center">
+            <svg
+              class="size-28 -rotate-90"
+              viewBox="0 0 112 112"
+              role="img"
+              [attr.aria-label]="
+                'Ocupación de los eventos: ' + (fillRate() * 100 | number: '1.0-0') + ' %'
+              "
             >
-              Capacidad máxima cubierta por inscripciones activas (excluye registros cancelados).
-            </p>
+              <circle
+                cx="56"
+                cy="56"
+                [attr.r]="ringRadius"
+                stroke-width="7"
+                fill="transparent"
+                class="stroke-neutral-200 dark:stroke-neutral-800"
+              />
+              <circle
+                cx="56"
+                cy="56"
+                [attr.r]="ringRadius"
+                stroke-width="7"
+                fill="transparent"
+                [attr.stroke-dasharray]="ringLength"
+                [attr.stroke-dashoffset]="ringLength * (1 - Math.min(fillRate(), 1))"
+                stroke-linecap="round"
+                class="stroke-google-green"
+              />
+            </svg>
+            <span
+              class="absolute text-2xl font-extrabold text-text-primary dark:text-neutral-100"
+              aria-hidden="true"
+            >
+              {{ fillRate() | percent: '1.0-0' }}
+            </span>
           </div>
-        </div>
+        </section>
       </div>
 
-      <!-- Secondary Breakdown Grid -->
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <!-- Roles Distribution -->
-        <div
-          class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-xs"
+        <section
+          aria-labelledby="roles-title"
+          class="flex flex-col gap-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-5"
         >
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
-              Miembros por Rol
-            </h3>
-            <span class="material-symbols-rounded text-text-secondary text-xl">badge</span>
-          </div>
-          <div class="flex flex-col gap-3.5 pt-1">
-            @for (item of roleDistribution(); track item.label) {
-              <div class="flex flex-col gap-1.5">
-                <div class="flex items-center justify-between text-xs font-semibold">
-                  <span class="text-text-primary dark:text-neutral-300">{{ item.label }}</span>
-                  <span class="{{ item.textClass }} font-bold"
-                    >{{ item.value }} ({{ item.percentage | percent: '1.0-0' }})</span
-                  >
-                </div>
-                <div
-                  class="w-full bg-neutral-100 dark:bg-neutral-850 h-2 rounded-full overflow-hidden"
-                >
-                  <div
-                    class="h-full rounded-full {{ item.colorClass }} transition-all duration-500"
-                    [style.width]="item.percentage * 100 + '%'"
-                  ></div>
-                </div>
+          <h2 id="roles-title" class="text-lg font-bold text-text-primary dark:text-neutral-100">
+            Inscripciones por rol
+          </h2>
+          @for (item of roles(); track item.key) {
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between text-sm font-semibold">
+                <span>{{ item.label }}</span>
+                <span>{{ item.value }} ({{ item.percentage | percent: '1.0-0' }})</span>
               </div>
-            } @empty {
-              <p class="text-sm text-text-secondary dark:text-neutral-400 text-center py-6">
-                No hay datos de roles registrados.
-              </p>
-            }
-          </div>
-        </div>
+              <div
+                class="h-2 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800"
+              >
+                <div
+                  class="h-full rounded-full {{ item.colorClass }}"
+                  [style.width.%]="item.percentage * 100"
+                ></div>
+              </div>
+            </div>
+          } @empty {
+            <p class="text-sm text-text-secondary dark:text-neutral-400">
+              No hay inscripciones para estos filtros.
+            </p>
+          }
+        </section>
 
-        <!-- Payment States Distribution -->
-        <div
-          class="flex flex-col gap-4 rounded-3xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-6 shadow-xs"
+        <section
+          aria-labelledby="status-title"
+          class="flex flex-col gap-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-5"
         >
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-bold text-text-primary dark:text-neutral-100">
-              Estados de Pago
-            </h3>
-            <span class="material-symbols-rounded text-text-secondary text-xl">payments</span>
-          </div>
-          <div class="flex flex-col gap-3.5 pt-1">
-            @for (item of statusDistribution(); track item.label) {
-              <div class="flex flex-col gap-1.5">
-                <div class="flex items-center justify-between text-xs font-semibold">
-                  <span class="text-text-primary dark:text-neutral-300">{{ item.label }}</span>
-                  <span class="text-text-secondary dark:text-neutral-300 font-bold"
-                    >{{ item.value }} ({{ item.percentage | percent: '1.0-0' }})</span
-                  >
-                </div>
-                <div
-                  class="w-full bg-neutral-100 dark:bg-neutral-850 h-2 rounded-full overflow-hidden"
-                >
-                  <div
-                    class="h-full rounded-full {{ item.colorClass }} transition-all duration-500"
-                    [style.width]="item.percentage * 100 + '%'"
-                  ></div>
-                </div>
+          <h2 id="status-title" class="text-lg font-bold text-text-primary dark:text-neutral-100">
+            Inscripciones por estado
+          </h2>
+          @for (item of statuses(); track item.key) {
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between text-sm font-semibold">
+                <span>{{ item.label }}</span>
+                <span>{{ item.value }} ({{ item.percentage | percent: '1.0-0' }})</span>
               </div>
-            } @empty {
-              <p class="text-sm text-text-secondary dark:text-neutral-400 text-center py-6">
-                No hay datos de estados registrados.
-              </p>
-            }
-          </div>
-        </div>
+              <div
+                class="h-2 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800"
+              >
+                <div
+                  class="h-full rounded-full {{ item.colorClass }}"
+                  [style.width.%]="item.percentage * 100"
+                ></div>
+              </div>
+            </div>
+          } @empty {
+            <p class="text-sm text-text-secondary dark:text-neutral-400">
+              No hay inscripciones para estos filtros.
+            </p>
+          }
+        </section>
       </div>
     }
   </div>

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
+import { REDIRECT_KEY, safeRedirect } from '../../../core/auth/redirect';
 import { AuthService } from '../../../core/auth/services/auth.service';
 
 @Component({
@@ -24,22 +25,13 @@ export class Callback implements OnInit {
       .getSession()
       .then(async (session) => {
         if (session && !(await this.auth.resolveRole())) {
-          await this.auth.signOutWithError(
-            'Tu correo no está autorizado para acceder a este panel.',
-          );
+          await this.auth.denyAccess(session.user?.email);
           return;
         }
-        const redirectTo = this.getSafeRedirect(sessionStorage.getItem('redirect_to'));
-        sessionStorage.removeItem('redirect_to');
+        const redirectTo = safeRedirect(sessionStorage.getItem(REDIRECT_KEY));
+        sessionStorage.removeItem(REDIRECT_KEY);
         await this.router.navigateByUrl(redirectTo);
       })
       .catch(() => this.router.navigateByUrl('/auth/login'));
-  }
-
-  private getSafeRedirect(value: string | null): string {
-    if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
-    if (value.startsWith('/auth/')) return '/dashboard';
-
-    return value;
   }
 }

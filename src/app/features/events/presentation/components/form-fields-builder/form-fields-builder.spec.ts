@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { Event } from '../../../domain/event.model';
@@ -35,6 +36,8 @@ function makeEvent(id = 'e1', formFields = fields): Event {
 }
 
 describe('FormFieldsBuilder', () => {
+  const feedbackProvider = feedbackStub();
+  const feedback = feedbackProvider.useValue;
   const repo = { countRegistrations: vi.fn(), update: vi.fn(), getEvents: vi.fn() };
 
   beforeEach(() => {
@@ -43,7 +46,7 @@ describe('FormFieldsBuilder', () => {
     repo.getEvents.mockResolvedValue([]);
     TestBed.configureTestingModule({
       imports: [FormFieldsBuilder],
-      providers: [{ provide: EventsRepository, useValue: repo }],
+      providers: [feedbackProvider, { provide: EventsRepository, useValue: repo }],
     });
   });
 
@@ -67,12 +70,16 @@ describe('FormFieldsBuilder', () => {
   it('un campo nuevo genera key desde el label, y bloquea guardar con errores', async () => {
     const cmp = (await create()).componentInstance;
     cmp.add();
-    expect(cmp.canSave()).toBe(false);
+    // El botón no se bloquea por validación: al guardar explica qué falta.
+    expect(cmp.canSave()).toBe(true);
+    expect(await cmp.save()).toBe(false);
+    expect(cmp.summary().length).toBeGreaterThan(0);
+    expect(repo.update).not.toHaveBeenCalled();
     cmp.setLabel(2, 'Edad');
     expect(cmp.fields()[2].key).toBe('edad_2');
-    expect(cmp.canSave()).toBe(true);
+    expect(cmp.issues()).toHaveLength(0);
     cmp.setType(2, 'select');
-    expect(cmp.canSave()).toBe(false); // opciones vacías
+    expect(cmp.issues().length).toBeGreaterThan(0); // opciones vacías
   });
 
   it('guarda con EventsRepository.update y emite fieldsChange', async () => {
@@ -97,7 +104,7 @@ describe('FormFieldsBuilder', () => {
     expect(emitted).toHaveLength(1);
     expect(cmp.dirty()).toBe(false);
     expect(cmp.fields()[2].isNew).toBe(false);
-    expect(cmp.notice()).toBe('Formulario guardado.');
+    expect(feedback.success).toHaveBeenCalledWith('Formulario guardado.');
   });
 
   it('muestra el error si el guardado falla', async () => {
@@ -105,18 +112,18 @@ describe('FormFieldsBuilder', () => {
     cmp.setRequired(0, false);
     repo.update.mockRejectedValue(new Error('boom'));
     await cmp.save();
-    expect(cmp.saveError()).toBe('boom');
+    expect(cmp.saveError()).toBe('No se pudo guardar el formulario.');
     expect(cmp.dirty()).toBe(true);
   });
 
   it('con inscritos no elimina campos guardados ni edita sus keys, pero sí los nuevos', async () => {
     const cmp = (await create(5)).componentInstance;
     expect(cmp.locked()).toBe(true);
-    cmp.remove(0);
+    await cmp.remove(0);
     expect(cmp.fields()).toHaveLength(2);
     expect(cmp.keyEditable(cmp.fields()[0])).toBe(false);
     cmp.add();
-    cmp.remove(2);
+    await cmp.remove(2);
     expect(cmp.fields()).toHaveLength(2);
   });
 

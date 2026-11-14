@@ -17,9 +17,9 @@
     >
   </div>
 
-  <form class="flex flex-col gap-1.5" (submit)="$event.preventDefault(); add()">
+  <form class="flex flex-col gap-1.5" novalidate (submit)="$event.preventDefault(); add()">
     <label for="staff-email" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-      >Correo del staff</label
+      >Correo del staff <span aria-hidden="true">*</span></label
     >
     <div class="flex gap-2">
       <input
@@ -29,7 +29,9 @@
         class="w-full !rounded-xl"
         placeholder="persona@correo.com"
         autocomplete="off"
+        aria-required="true"
         [formField]="f.email"
+        (blur)="blurred.set(true)"
         [attr.aria-invalid]="!!emailError()"
         [attr.aria-describedby]="emailError() ? 'staff-email-error' : null"
       />
@@ -43,21 +45,10 @@
       </button>
     </div>
     @if (emailError(); as err) {
-      <small id="staff-email-error" class="font-medium text-google-red" role="alert">{{
-        err
-      }}</small>
+      <small id="staff-email-error" class="font-medium text-google-red">{{ err }}</small>
     }
   </form>
 
-  @if (notice(); as msg) {
-    <div
-      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
-      role="status"
-    >
-      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
-      <span>{{ msg }}</span>
-    </div>
-  }
   @if (actionError(); as err) {
     <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
   }

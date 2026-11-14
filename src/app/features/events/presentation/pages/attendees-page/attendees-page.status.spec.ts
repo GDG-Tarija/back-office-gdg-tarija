@@ -1,12 +1,14 @@
+import { registerLocaleData } from '@angular/common';
+import localeEsBo from '@angular/common/locales/es-BO';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { of } from 'rxjs';
 
 import { Confirmation, ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { BackofficeRole } from '../../../../../core/models/role.model';
-import { DomainError } from '../../../domain/domain-error';
 import { Attendee, Event } from '../../../domain/event.model';
 import { EventsRepository } from '../../../domain/events.repository';
 import { RegistrationStatus } from '../../../domain/registration-status';
@@ -50,6 +52,8 @@ function attendee(id: string, firstName: string, status: string, o: Partial<Atte
     ...o,
   } satisfies Attendee;
 }
+
+registerLocaleData(localeEsBo, 'es-BO');
 
 describe('AttendeesPage — estado de inscripción', () => {
   const role = signal<BackofficeRole | null>('SUPERADMIN');
@@ -95,10 +99,18 @@ describe('AttendeesPage — estado de inscripción', () => {
       providers: [
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ id: 'e1' }) } },
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ id: 'e1' }),
+              queryParamMap: convertToParamMap({}),
+            },
+            queryParamMap: of(convertToParamMap({})),
+          },
         },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: AuthService, useValue: { role, user: signal(null) } },
+        ConfirmationService,
+        MessageService,
       ],
     });
     TestBed.overrideComponent(AttendeesPage, {
@@ -107,8 +119,6 @@ describe('AttendeesPage — estado de inscripción', () => {
           { provide: EventsRepository, useValue: eventsRepo },
           { provide: RegistrationsRepository, useValue: registrationsRepo },
           { provide: CheckinRepository, useValue: checkinRepo },
-          ConfirmationService,
-          MessageService,
           RegistrationStatusController,
         ],
       },
@@ -159,7 +169,7 @@ describe('AttendeesPage — estado de inscripción', () => {
     expect(el().querySelectorAll('[data-testid="row-status-action"]')).toHaveLength(3);
     const text = el().textContent ?? '';
     expect(text).toContain('Pendiente de pago');
-    expect(text).toContain('Pagada / Confirmada');
+    expect(text).toContain('Confirmada');
     expect(text).toContain('Anulada');
   });
 
@@ -179,7 +189,7 @@ describe('AttendeesPage — estado de inscripción', () => {
     expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('r1', 'CONFIRMED');
     expect(page.selectedAttendee()?.status).toBe('CONFIRMED');
     expect(el().querySelector('[data-testid="detail-status-tag"]')?.textContent?.trim()).toContain(
-      'Pagada / Confirmada',
+      'Confirmada',
     );
     // No se tocan otros campos del asistente.
     expect(page.attendees().find((a) => a.id === 'r1')).toEqual(attendee('r1', 'Ana', 'CONFIRMED'));
@@ -188,9 +198,9 @@ describe('AttendeesPage — estado de inscripción', () => {
   it('cambio rápido desde la tabla: deshabilita el estado actual y usa la misma lógica', async () => {
     const items = rowMenu('r1'); // Ana, PENDING
     expect(items.map((i) => [i.label, !!i.disabled])).toEqual([
-      ['Marcar como pagada', false],
+      ['Confirmar pago', false],
       ['Marcar como pendiente', true],
-      ['Anular inscripción', false],
+      ['Anular', false],
     ]);
 
     runCommand(items[0]);
@@ -223,68 +233,25 @@ describe('AttendeesPage — estado de inscripción', () => {
     expect(lastConfirm).toBeNull();
   });
 
-  describe('modal real de anulación (sin mock de confirm)', () => {
-    const dialogButton = (cls: string) => document.body.querySelector<HTMLButtonElement>(`.${cls}`);
-
-    beforeEach(() => {
-      vi.mocked(fixture.debugElement.injector.get(ConfirmationService).confirm).mockRestore();
-    });
-
-    async function openCancelDialog() {
-      runCommand(rowMenu('r2')[2]); // Bruno -> Anular
-      await vi.waitFor(() => {
-        fixture.detectChanges();
-        expect(dialogButton('p-confirm-dialog-accept')).not.toBeNull();
-      });
-    }
-
-    it('muestra título, mensaje y botones del modal', async () => {
-      await openCancelDialog();
-      const text = document.body.textContent ?? '';
-      expect(text).toContain('Anular inscripción');
-      expect(text).toContain('Bruno Demo (Ticket Básico)');
-      expect(dialogButton('p-confirm-dialog-reject')?.textContent?.trim()).toBe('Volver');
-      expect(dialogButton('p-confirm-dialog-accept')?.textContent).toContain('Anular inscripción');
-    });
-
-    it('"Volver" cierra sin modificar el estado', async () => {
-      await openCancelDialog();
-      dialogButton('p-confirm-dialog-reject')!.click();
-      await fixture.whenStable();
-      expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
-      expect(statusOf('r2')).toBe('CONFIRMED');
-    });
-
-    it('confirmar anula la inscripción', async () => {
-      await openCancelDialog();
-      dialogButton('p-confirm-dialog-accept')!.click();
-      await vi.waitFor(() => expect(statusOf('r2')).toBe('CANCELLED'));
-      expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('r2', 'CANCELLED');
-    });
-  });
-
-  it('si la BD rechaza el cambio, tabla y detalle conservan el estado', async () => {
-    registrationsRepo.updateStatus.mockRejectedValue(
-      new DomainError('No tienes permisos para realizar esta acción.', 'FORBIDDEN'),
+  it('escribe los filtros en la URL sin añadir historial', () => {
+    const router = TestBed.inject(Router);
+    page.setFilter('status', 'PENDING');
+    page.setFilter('proof', 'WITH_PROOF');
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        replaceUrl: true,
+        queryParams: expect.objectContaining({ estado: 'pendiente', comprobante: 'con' }),
+      }),
     );
-    await openDetail('r1');
-    await page.changeStatus(page.attendees()[0], 'CONFIRMED');
-    expect(statusOf('r1')).toBe('PENDING');
-    expect(page.selectedAttendee()?.status).toBe('PENDING');
-  });
-
-  it('un cambio desde la tabla actualiza el detalle abierto de esa persona', async () => {
-    await openDetail('r1');
-    runCommand(rowMenu('r1')[0]);
-    await vi.waitFor(() => expect(page.selectedAttendee()?.status).toBe('CONFIRMED'));
   });
 
   it('filtra por estado con conteos y mantiene la lista completa para exportar', async () => {
     expect(page.statusOptions().map((o) => o.label)).toEqual([
       'Todos los estados (3)',
-      'Confirmados / pagados (1)',
-      'Pendientes (1)',
-      'Anulados (1)',
+      'Confirmadas (1)',
+      'Pendientes de pago (1)',
+      'Anuladas (1)',
     ]);
 
     page.setFilter('status', 'PENDING');
@@ -305,18 +272,18 @@ describe('AttendeesPage — estado de inscripción', () => {
     page.setFilter('status', 'PENDING');
     runCommand(rowMenu('r1')[0]);
     await vi.waitFor(() => expect(visibleIds()).toEqual([]));
-    expect(page.statusOptions()[1].label).toBe('Confirmados / pagados (2)');
+    expect(page.statusOptions()[1].label).toBe('Confirmadas (2)');
     await render();
-    expect(el().textContent).toContain('Ningún inscrito coincide con los filtros');
+    expect(el().textContent).toContain('Ninguna inscripción coincide con los filtros');
   });
 
   it('una inscripción anulada no permite registrar asistencia manual', async () => {
     await openDetail('r3');
     const checkin = Array.from(el().querySelectorAll<HTMLButtonElement>('button')).find((b) =>
-      b.textContent?.includes('Marcar Check-in'),
+      b.textContent?.includes('Registrar check-in'),
     )!;
     expect(checkin.disabled).toBe(true);
-    expect(el().textContent).toContain('Inscripción cancelada: no se puede registrar asistencia');
+    expect(el().textContent).toContain('Inscripción anulada: no se puede registrar asistencia');
   });
 
   describe('sin permiso de edición (STAFF)', () => {

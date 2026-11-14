@@ -1,10 +1,14 @@
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
-import { provideRouter, withInMemoryScrolling } from '@angular/router';
+import { provideRouter, TitleStrategy, withInMemoryScrolling } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import Aura from '@primeuix/themes/aura';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 
 import { supabaseProvider } from './core/supabase/supabase.client';
+import { provideAppLocale } from './core/config/locale';
+import { PRIMENG_ES } from './core/config/primeng-es';
+import { GdgPreset } from './core/config/primeng-preset';
+import { PageTitleStrategy } from './core/services/page-title.strategy';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -16,16 +20,23 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
       }),
     ),
+    { provide: TitleStrategy, useClass: PageTitleStrategy },
     provideAnimationsAsync(),
+    provideAppLocale(),
     providePrimeNG({
+      translation: PRIMENG_ES,
       theme: {
-        preset: Aura,
+        preset: GdgPreset,
         options: {
-          cssLayer: { name: 'primeng', order: 'tailwind, primeng' },
+          // El orden de capas lo declara src/styles/_layers.css (theme, base, primeng, components, utilities).
+          // Sin `order`, PrimeNG declara su capa primero y queda bajo el preflight de Tailwind.
+          cssLayer: { name: 'primeng', order: 'theme, base, primeng, components, utilities' },
           darkModeSelector: '[data-theme="dark"]',
         },
       },
     }),
+    MessageService,
+    ConfirmationService,
     supabaseProvider,
   ],
 };
