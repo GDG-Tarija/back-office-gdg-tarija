@@ -244,6 +244,7 @@
     icon="route"
     initialSize="sm"
     [dirty]="trackDirty()"
+    [busy]="trackSaving()"
     (closeDialog)="closeTrackDialog()"
   >
     <form
@@ -350,6 +351,7 @@
     icon="event_note"
     initialSize="lg"
     [dirty]="sessionDirty()"
+    [busy]="sessionSaving()"
     (closeDialog)="closeSessionDialog()"
   >
     <form

@@ -9,7 +9,6 @@
   role="alertdialog"
   [style]="{ width: 'min(calc(100vw - 1rem), 30rem)' }"
   (onShow)="focusStay()"
-  (keydown.escape)="choose.emit('stay')"
 >
   <ng-template #header let-labelledBy="ariaLabelledBy">
     <h2 [id]="labelledBy" class="text-base font-semibold">Tienes cambios sin guardar</h2>
