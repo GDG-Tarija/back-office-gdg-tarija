@@ -13,6 +13,8 @@ import { TagModule } from 'primeng/tag';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { MOBILE_QUERY, mediaQuerySignal } from '../../../../../shared/utils/media-query';
+import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
+import { eventsVisibleTo } from '../../../../checkin/domain/event-preselection';
 import { EventsApi } from '../../../data/events.api';
 import { Event } from '../../../domain/event.model';
 import {
@@ -53,6 +55,7 @@ import { CredentialGenerator } from '../../components/credential-generator/crede
 })
 export class EventsPage implements OnInit {
   private readonly eventsRepo = inject(EventsRepository);
+  private readonly checkinRepo = inject(CheckinRepository);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
@@ -107,7 +110,13 @@ export class EventsPage implements OnInit {
     this.errorMsg.set(null);
     try {
       this.now.set(new Date());
-      this.events.set(await this.eventsRepo.getEvents());
+      const role = this.auth.role();
+      // RLS deja a STAFF leer todos los publicados, pero solo tiene datos de los que tiene asignados.
+      const [all, assigned] = await Promise.all([
+        this.eventsRepo.getEvents(),
+        role === 'STAFF' ? this.checkinRepo.getAssignedEventIds() : Promise.resolve([]),
+      ]);
+      this.events.set(eventsVisibleTo(role, all, assigned));
       // Los conteos son accesorios: si fallan, la lista se ve igual y muestra "—".
       this.eventsRepo
         .countActiveRegistrationsByEvent()
