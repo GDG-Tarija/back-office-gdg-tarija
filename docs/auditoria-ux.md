@@ -47,9 +47,9 @@ Detrás de casi todo hay una causa de base: PrimeNG gana a Tailwind por el orden
 | --------- | -------- | --------------------------------------------------------------- |
 | P0        | 1        | Pérdida de datos del usuario                                    |
 | P1        | 16       | Bloquea o degrada una tarea principal o la accesibilidad básica |
-| P2        | 17       | Fricción real, con alternativa                                  |
+| P2        | 18       | Fricción real, con alternativa                                  |
 | P3        | 4        | Pulido                                                          |
-| **Total** | **38**   | Ya consolidados: los duplicados entre críticas están fusionados |
+| **Total** | **39**   | Ya consolidados: los duplicados entre críticas están fusionados |
 
 La propuesta es resolverlos en **8 PRs** contra `dev` (sección 6).
 
@@ -97,7 +97,52 @@ Solo la base local de Supabase con el `seed.sql` ficticio: eventos `e1` (STAFF a
 
 ## 3. Recorridos de tarea
 
-<!-- RECORRIDOS -->
+Todos los tiempos son de ejecución automatizada, sin tiempos de lectura humanos: sirven para comparar antes y después, no como duración real. El resultado se verificó en la base local.
+
+| Recorrido                                                       | Rol / viewport       | Clics | Entradas | Acciones | Tiempo | Resultado verificado                               |
+| --------------------------------------------------------------- | -------------------- | ----- | -------- | -------- | ------ | -------------------------------------------------- |
+| 1. Crear un evento desde cero y publicarlo                      | SUPERADMIN / desktop | 9     | 11       | 20       | 16,4 s | Publicado, pero solo en el segundo intento         |
+| 2. Revisar el comprobante de Ana y confirmar el pago            | SUPERADMIN / desktop | 3     | 0        | 3        | 8,4 s  | `CONFIRMED`                                        |
+| 2. Ídem                                                         | SUPERADMIN / móvil   | 3     | 0        | 3        | 8,7 s  | `CONFIRMED`, con el botón bajo el pliegue          |
+| 3. Check-in manual de un inscrito confirmado                    | STAFF / móvil        | 5     | 1        | 6        | 10,3 s | Registro creado, tras cambiar de evento            |
+| 4. Editar fases de Ticket Básico: cambiar precio y reordenar    | SUPERADMIN / desktop | 6     | 1        | 7        | 10,2 s | Precio guardado; el reorden no se puede guardar    |
+| 5a. Recargar el wizard tras crear el borrador                   | SUPERADMIN / desktop | 2     | 7        | 9        | 9,3 s  | El wizard vuelve vacío; el borrador queda huérfano |
+| 5b. Escribir en Datos, cambiar de pestaña y volver              | SUPERADMIN / desktop | 2     | 1        | 3        | 4,0 s  | Se pierde lo escrito                               |
+| 5c. Diálogo de paquete: escribir y cerrar con X, Cancelar y Esc | SUPERADMIN / desktop | 8     | 3        | 11       | 9,1 s  | X y Cancelar descartan sin aviso; Esc no cierra    |
+| 5d. Añadir un campo en Formulario y cambiar de pestaña          | SUPERADMIN / desktop | 4     | 0        | 4        | 5,4 s  | Se pierde el campo (4 → 5 → 4)                     |
+
+### Bloqueos y confusiones por recorrido
+
+**Recorrido 1 · Crear y publicar.** Es el flujo central y se atascó.
+
+- Con solo los datos marcados con `*`, portada y un paquete gratis, "Publicar evento" quedó deshabilitado en el último paso. El checklist decía "falta descripción, lugar". Ni Descripción ni Lugar llevan `*` en el paso 1, así que hubo que volver atrás (FO-5).
+- Con solo el título, "Crear borrador y continuar" sigue gris, sin errores visibles y con el texto "2 campo(s) por corregir", que no nombra los campos. Tras llenar todo, el botón tarda 1–2 s en habilitarse mientras valida el slug, sin indicador.
+- Al llegar al paso 2 no hay indicador de que el borrador se guardó. Hay un 403 en consola durante el flujo.
+
+![Paso Revisar y publicar con el botón deshabilitado](auditoria-ux/flujo1-publicar-bloqueado.jpg)
+
+**Recorrido 2 · Confirmar un pago.** En desktop es limpio: 3 clics y "Confirmar pago" visible sin scroll. En móvil el botón queda bajo el pliegue del visor de comprobante (AS-4).
+
+<img src="auditoria-ux/flujo2-comprobante-movil.jpg" alt="Visor de comprobante en móvil sin el botón Confirmar pago a la vista" width="300">
+
+**Recorrido 3 · Check-in manual.** El evento preseleccionado fue "Cloud Study Jam (demo, virtual)", el publicado más lejano, porque la lista se ordena por fecha descendente. Para el SUPERADMIN, la preselección es un borrador del 30/12. Hubo que abrir el selector, cambiar de evento, buscar, seleccionar y confirmar en un segundo modal (CI-1).
+
+<img src="auditoria-ux/flujo3-checkin-inicial-movil.jpg" alt="Check-in inicial en móvil" width="300">
+
+**Recorrido 4 · Editar fases.** Cambiar el precio de la fase "Preventa" funcionó. Al reordenar (bajar la fase 1), Guardar sigue activo, pero al pulsarlo el diálogo no se cierra, Guardar se deshabilita y el error "Solo la última fase puede quedar sin cupo." aparece bajo el campo Cupo de la fase que quedó primera, dentro del cuerpo con scroll. El pie no lo explica. Solo se pudo continuar deshaciendo el reorden (FO-8).
+
+![Error de fases tras reordenar](auditoria-ux/flujo4-error-al-reordenar-fases.jpg)
+
+**Recorrido 5 · Pérdida de datos.** Las cuatro variantes confirman FO-1: ninguna avisa.
+
+- **5a:** tras recargar, `/events/new` vuelve al paso 1 con el formulario vacío y la URL sin id. El borrador existe en la base, pero el wizard no puede retomarlo y queda un evento huérfano en la lista.
+- **5b:** el texto escrito en Datos desaparece al ir a Paquetes y volver.
+- **5c:** X y Cancelar cierran y descartan sin pedir confirmación. Esc no cierra el diálogo.
+- **5d:** el indicador "Cambios sin guardar" está visible, y aun así cambiar de pestaña descarta el campo sin avisar.
+
+![Wizard tras recargar](auditoria-ux/flujo5a-wizard-tras-refrescar.jpg)
+![Diálogo de paquete tras pulsar Esc](auditoria-ux/flujo5c-esc-no-cierra.jpg)
+![Pestaña Formulario al volver, sin el campo añadido](auditoria-ux/flujo5d-campo-perdido.jpg)
 
 ---
 
@@ -130,9 +175,10 @@ Solo la base local de Supabase con el `seed.sql` ficticio: eventos `e1` (STAFF a
 - **Captura:** <img src="auditoria-ux/gestion-paquetes-movil.jpg" alt="Gestión de paquetes en móvil, con la página más ancha que la pantalla" width="360">
 - **Ubicación:** `src/app/layouts/admin-layout/admin-layout.html:136` (`flex flex-1 flex-col md:pl-64` sin `min-w-0`); stepper y pestañas con `overflow-x-auto` dentro de ese contenedor.
 - **Impacto:** `scrollWidth` 662 en gestión (todas las pestañas y diálogos) y 833 en el wizard, sobre 390 px, en 24 pantallas. Los inputs llegan a 734 px y la X del diálogo queda fuera. Es el usuario declarado en `PRODUCT.md` (organizador en el celular) quien no puede completar el flujo. WCAG 1.4.10.
-- **Arreglo:** `min-w-0` en el contenedor del layout. Después revisar stepper y pestañas (scroll propio con indicio visual) y los grids sin colapso.
+- **Controles inalcanzables (medido):** Playwright no pudo tocar 23 controles en 12 pantallas a 390 px, porque el viewport de layout se ensancha (833 px en el wizard, 662 en la gestión) y el control queda a la derecha de lo visible. Ejemplos: "Siguiente" en los pasos 3–6 del wizard (x=688 sobre 390), "Crear borrador y continuar" (x=562), las pestañas "Cupones y staff" y "Publicación", "Editar paquete" (x=520) y "Nuevo track" (x=469). En `/events` a 390 px, Credenciales, Asistentes y Gestionar están en x=1186–1524.
+- **Arreglo:** `min-w-0` en el contenedor del layout. Después revisar stepper y pestañas (scroll propio con indicio visual) y los grids sin colapso, y re-correr la medición de controles inalcanzables hasta que quede vacía.
 - **Comando:** `/impeccable layout`, `/impeccable adapt`.
-- **PR:** `fix/formularios-eventos` (C). Es un arreglo de una línea en el layout que desbloquea el resto.
+- **PR:** `fix/ui-base` (A) para el `min-w-0` del layout, una línea que desbloquea el resto; `fix/formularios-eventos` (C) para stepper, pestañas y diálogos del flujo de evento. En `/events` lo cubre D (NA-4).
 
 #### [P1] FO-4 · Las pestañas de gestión no se alcanzan con teclado
 
@@ -147,7 +193,7 @@ Solo la base local de Supabase con el `seed.sql` ficticio: eventos `e1` (STAFF a
 
 - **Captura:** ![Paso 1 con Guardar deshabilitado](auditoria-ux/wizard-guardar-deshabilitado-desktop.jpg) ![Paso 6, revisar y publicar](auditoria-ux/wizard-revisar-publicar-desktop.jpg)
 - **Ubicación:** `event-basics-form.html:258-266` (Guardar deshabilitado, solo "N campo(s) por corregir"); `publish-checklist.html:11-23` (faltantes sin enlace); `postgres-error.mapper.ts:73-77` (devuelve `error.message` crudo del servidor).
-- **Impacto:** el recorrido 1 lo confirma: con solo el título, el botón sigue gris y no aparece ningún error. Al llegar a Revisar, "Publicar evento" está deshabilitado y el checklist dice "falta descripción, lugar" sin llevar a ninguna parte. Jordan se queda sin saber qué hacer.
+- **Impacto:** el recorrido 1 lo confirma: con solo el título, el botón sigue gris y no aparece ningún error. Al llegar a Revisar, "Publicar evento" está deshabilitado y el checklist dice "falta descripción, lugar" sin llevar a ninguna parte. Descripción y Lugar son necesarios para publicar, pero el paso 1 no los marca con `*`: el recorrido 1 no pudo publicar hasta volver atrás. Jordan se queda sin saber qué hacer.
 - **Arreglo:** no deshabilitar el envío. Validar al pulsar, enfocar el primer campo inválido y nombrar los campos. Cada ítem del checklist lleva un "Ir a …". Mensaje genérico en español en vez de `error.message`. Marcar en la UI qué es "necesario para publicar" y qué es opcional.
 - **Comando:** `/impeccable clarify`.
 - **PR:** `fix/formularios-eventos` (C).
@@ -168,6 +214,15 @@ Solo la base local de Supabase con el `seed.sql` ficticio: eventos `e1` (STAFF a
 - **Impacto:** el `<input type=file>` aparece en inglés ("Choose File"), las fechas nativas muestran "mm/dd/yyyy" y "09:00 AM" en una interfaz es-BO, y ninguna de las 4 acciones del footer es la primaria. Hay un 403 en consola al abrir Cupones y staff como superadmin (por revisar con la base actual).
 - **Arreglo:** botón de subida propio con texto en español; fechas con `p-datepicker` localizado (depende de BV-2); una acción primaria y las demás secundarias.
 - **Comando:** `/impeccable polish`.
+- **PR:** `fix/formularios-eventos` (C).
+
+#### [P2] FO-8 · Reordenar fases falla recién al guardar, con el error fuera de vista
+
+- **Captura:** ![Error de fases tras reordenar](auditoria-ux/flujo4-error-al-reordenar-fases.jpg)
+- **Ubicación:** `src/app/features/events/presentation/components/ticket-types-editor/ticket-types-editor.html` (editor de fases, error bajo el campo Cupo).
+- **Impacto:** reordenar deja la primera fase sin cupo. Guardar parece disponible, pero al pulsarlo el diálogo sigue abierto y Guardar se deshabilita. El mensaje "Solo la última fase puede quedar sin cupo." aparece bajo un campo dentro del cuerpo con scroll, y el pie no lo menciona. El usuario ve un botón gris sin motivo.
+- **Arreglo:** validar al reordenar, no al guardar; resumen de errores junto al botón Guardar con enlace al campo; sacar el aviso del scroll.
+- **Comando:** `/impeccable harden`, `/impeccable clarify`.
 - **PR:** `fix/formularios-eventos` (C).
 
 ### 4.2 Navegación e IA
@@ -274,8 +329,8 @@ Solo la base local de Supabase con el `seed.sql` ficticio: eventos `e1` (STAFF a
 #### [P1] CI-1 · Demasiados pasos antes de la cámara, y el evento por defecto es arbitrario
 
 - **Captura:** <img src="auditoria-ux/checkin-qr-movil.jpg" alt="Check-in QR en móvil" width="300">
-- **Ubicación:** `CK` y `checkin-page.ts:97-99,116,213`. Tres selects (Evento, Tipo, Cámara) antes de "Encender cámara". Evento por defecto = `data[0]`.
-- **Impacto:** la puerta es la tarea con más prisa. Hay que tocar y decidir tres cosas antes de escanear, el banner rojo "Permiso denegado" aparece al cargar y no tras pulsar, y el evento preseleccionado sale como "Cloud Study Jam (virtual)" sin criterio. La búsqueda manual queda bajo el pliegue.
+- **Ubicación:** `CK` y `checkin-page.ts:97-99,116,213`. Tres selects (Evento, Tipo, Cámara) antes de "Encender cámara". Evento por defecto = `data[0]`, o sea el último por fecha.
+- **Impacto:** la puerta es la tarea con más prisa. Hay que tocar y decidir tres cosas antes de escanear, el banner rojo "Permiso denegado" aparece al cargar y no tras pulsar, y el evento preseleccionado es el más lejano de la lista, ordenada por fecha descendente: "Cloud Study Jam (demo, virtual)" para STAFF y, para SUPERADMIN, un borrador del 30/12. En el recorrido 3 hubo que cambiarlo a mano. La búsqueda manual queda bajo el pliegue.
 - **Arreglo:** preseleccionar el evento de hoy o en curso (o el único asignado) y recordar el último usado; parámetros en una barra de una línea; error de cámara solo tras pulsar; buscador arriba; acciones en la zona del pulgar; objetivos de 44 px.
 - **Comando:** `/impeccable distill`, `/impeccable harden`.
 - **PR:** `fix/checkin-movil` (F).
@@ -319,7 +374,7 @@ Solo la base local de Supabase con el `seed.sql` ficticio: eventos `e1` (STAFF a
 
 #### [P3] DA-3 · Etiquetas y moneda
 
-- **Ubicación:** `dashboard-metrics.html:4,7` ("Eventos Filtrados" con chip "Total de eventos"), `:25,33,38` ("BOB" en lugar de "Bs"); `dashboard.html:6-8` (el H1 repite el nombre de la app); `dashboard-filters.html` (`p-select` y `p-datepicker` sin label ni `ariaLabel`).
+- **Ubicación:** `dashboard-metrics.html:4,7` ("Eventos Filtrados" con chip "Total de eventos"), `:25,33,38` ("BOB" en lugar de "Bs"; en asistentes conviven "BOB 125" y "Bs 0", y en paquetes "Bs 15.00"); `dashboard.html:6-8` (el H1 repite el nombre de la app); `dashboard-filters.html` (`p-select` y `p-datepicker` sin label ni `ariaLabel`).
 - **Impacto:** `PRODUCT.md` pide "Bs". Los filtros no tienen nombre accesible.
 - **Arreglo:** "Bs" en todo el dashboard, H1 "Resumen", labels en filtros.
 - **Comando:** `/impeccable clarify`.
@@ -338,7 +393,7 @@ Solo la base local de Supabase con el `seed.sql` ficticio: eventos `e1` (STAFF a
 #### [P1] BV-2 · Sin locale `es` ni traducción de PrimeNG
 
 - **Ubicación:** `src/app/app.config.ts` (sin `translation` en `providePrimeNG`, sin `LOCALE_ID`); `dashboard-filters.html:49` (`dateFormat="dd/mm/yy"`).
-- **Impacto:** meses y días del calendario, aria-labels internos ("Close", "Next Month"), "No results found", paginador y `confirmdialog` en inglés. Los pipes `date` y `currency` usan `en-US`.
+- **Impacto:** el calendario del dashboard muestra "November 2026" y Su/Mo/Tu (confirmado en vivo), más aria-labels internos ("Close", "Next Month"), "No results found", paginador y `confirmdialog` en inglés. Los pipes `date` y `currency` usan `en-US`.
 - **Arreglo:** `providePrimeNG({ translation: es })` con `firstDayOfWeek: 1`, y `LOCALE_ID` `es` con `registerLocaleData`.
 - **Comando:** `/impeccable harden`.
 - **PR:** `fix/ui-base` (A).
@@ -463,20 +518,20 @@ Conviene conservarlo tal cual.
 
 Esfuerzo: **S** ≈ medio día, **M** ≈ 1–2 días, **L** ≈ 3 o más días.
 
-| Orden | PR                            | Hallazgos                                                         | Severidad máxima | Esfuerzo | Dependencias                                                             |
-| ----- | ----------------------------- | ----------------------------------------------------------------- | ---------------- | -------- | ------------------------------------------------------------------------ |
-| 1     | `fix/ui-base` (A)             | BV-1, BV-2, BV-3, BV-4, BV-5, BV-6, BV-7, BV-8, BV-10, NA-1, NA-3 | P1               | L        | Ninguna. Va primero: los demás se apoyan en capas, locale y preset.      |
-| 2     | `fix/dialogos` (B)            | FO-2, BV-4 (cierre de diálogos)                                   | P1               | M        | A (capas y `aria-hidden`). Decisión Q2.                                  |
-| 3     | `fix/formularios-eventos` (C) | FO-1, FO-3, FO-4, FO-5, FO-6, FO-7, BV-3 (aplicado)               | **P0**           | L        | B (confirmar descarte), A (locale). Decisión Q1.                         |
-| 4     | `fix/navegacion-eventos` (D)  | NA-2, NA-4, NA-5, NA-6                                            | P1               | M        | A. Decisión Q3.                                                          |
-| 5     | `fix/asistentes` (E)          | AS-1, AS-2, AS-3, AS-4, AS-5                                      | P1               | M        | A (preset y contraste), D (patrón de fila → tarjeta). Decisión Q5.       |
-| 6     | `fix/checkin-movil` (F)       | CI-1, CI-2, CI-3, BV-3 (aplicado)                                 | P1               | M        | A, D (acceso rápido del STAFF), AS-2 (nombres de estado).                |
-| 7     | `fix/dashboard` (G)           | DA-1, DA-2, DA-3                                                  | P2               | M        | A. Decisión Q4 (moneda).                                                 |
-| 8     | `chore/ui-pulido` (H)         | BV-9, BV-11, BV-12, BV-13, BV-14                                  | P2               | M        | Todos los anteriores. Incluye documentar el sistema y re-correr `audit`. |
+| Orden | PR                            | Hallazgos                                                                           | Severidad máxima | Esfuerzo | Dependencias                                                             |
+| ----- | ----------------------------- | ----------------------------------------------------------------------------------- | ---------------- | -------- | ------------------------------------------------------------------------ |
+| 1     | `fix/ui-base` (A)             | BV-1, BV-2, BV-3, BV-4, BV-5, BV-6, BV-7, BV-8, BV-10, NA-1, NA-3, FO-3 (`min-w-0`) | P1               | L        | Ninguna. Va primero: los demás se apoyan en capas, locale y preset.      |
+| 2     | `fix/dialogos` (B)            | FO-2, BV-4 (cierre de diálogos)                                                     | P1               | M        | A (capas y `aria-hidden`). Decisión Q2.                                  |
+| 3     | `fix/formularios-eventos` (C) | FO-1, FO-3 (stepper y pestañas), FO-4, FO-5, FO-6, FO-7, FO-8, BV-3 (aplicado)      | **P0**           | L        | B (confirmar descarte), A (locale). Decisión Q1.                         |
+| 4     | `fix/navegacion-eventos` (D)  | NA-2, NA-4, NA-5, NA-6                                                              | P1               | M        | A. Decisión Q3.                                                          |
+| 5     | `fix/asistentes` (E)          | AS-1, AS-2, AS-3, AS-4, AS-5                                                        | P1               | M        | A (preset y contraste), D (patrón de fila → tarjeta). Decisión Q5.       |
+| 6     | `fix/checkin-movil` (F)       | CI-1, CI-2, CI-3, BV-3 (aplicado)                                                   | P1               | M        | A, D (acceso rápido del STAFF), AS-2 (nombres de estado).                |
+| 7     | `fix/dashboard` (G)           | DA-1, DA-2, DA-3                                                                    | P2               | M        | A. Decisión Q4 (moneda).                                                 |
+| 8     | `chore/ui-pulido` (H)         | BV-9, BV-11, BV-12, BV-13, BV-14                                                    | P2               | M        | Todos los anteriores. Incluye documentar el sistema y re-correr `audit`. |
 
 Notas de reparto:
 
-- **FO-3** (`min-w-0` en el layout) es de una línea y desbloquea el móvil. Si el PR C tarda, conviene sacarla en A.
+- **FO-3** (`min-w-0` en el layout) se reparte: el `min-w-0` del layout va en A (una línea que desbloquea el móvil) y el ajuste de stepper, pestañas y diálogos en C.
 - **BV-3** y **BV-13** son transversales: A define el patrón y cada PR de pantalla lo aplica en lo suyo.
 - **Sin asignar:** ninguno. Los puntos que no tienen dueño claro (tokens muertos, `neutral-850`, pesos de fuente) caben en A y H.
 
@@ -525,7 +580,7 @@ Se tomarán por defecto y sin consulta estas decisiones menores, salvo objeción
 | Audit · Responsive                                   | 2 / 4              | pendiente |
 | Audit · Integridad de implementación                 | 2 / 4              | pendiente |
 | **Audit · Total**                                    | **11 / 20**        | pendiente |
-| Hallazgos P0 / P1 / P2 / P3                          | 1 / 16 / 17 / 4    | pendiente |
+| Hallazgos P0 / P1 / P2 / P3                          | 1 / 16 / 18 / 4    | pendiente |
 | axe `color-contrast` (serious)                       | 150                | pendiente |
 | axe `button-name` (critical)                         | 22                 | pendiente |
 | axe `label-content-name-mismatch` (serious)          | 34                 | pendiente |
