@@ -96,6 +96,8 @@ Trigger `trg_process_registration_coupon` (BEFORE INSERT en registrations; únic
 
 `id`, `event_id` (FK events, CASCADE), `staff_email` varchar, `assigned_at` timestamptz default now(). UNIQUE (`event_id`, `staff_email`). No tiene `created_at`/`updated_at` (excepción a la regla general).
 
+- Policy `staff_read_own_assignments` (SELECT, corregida en `20261114171703`): `is_superadmin()` o `lower(staff_email) = lower(auth.jwt() ->> 'email')`. La versión original leía `auth.users` como `authenticated` (sin permiso) y fallaba con 42501 para todo STAFF; ahora cada STAFF lee solo sus asignaciones sin tocar `auth.users`. Escritura: solo SUPERADMIN.
+
 ### 2.8. `registrations`
 
 `id`, `event_id` (FK, CASCADE), `user_id` (FK users, SET NULL, nullable), `ticket_type_id` (FK ticket_types, ON DELETE RESTRICT), `event_role` varchar(20) default `ATTENDEE` (CHECK `ATTENDEE|SPEAKER|SPONSOR|STAFF`), `status` varchar(20) (CHECK `PENDING|CONFIRMED|CANCELLED`), `custom_responses` jsonb, `payment_proof_url` text, `coupon_id` uuid (FK event_coupons, SET NULL), `ticket_phase_id` uuid NULL (FK ticket_phases, ON DELETE RESTRICT, indexada; la asigna el trigger, el cliente no la elige), `created_at`, `updated_at`. UNIQUE (`event_id`, `user_id`).
@@ -164,7 +166,7 @@ Migraciones pendientes, NO aplicadas en prod:
 - `20261024155150_close_coupon_read_leak.sql` (elimina `authenticated_read_event_coupons`). Aplicar solo después de desplegar el checkout público que usa `rpc validate_coupon`.
 - `20261024032944_tracks_event_fk.sql` (FK `tracks.evento_id → events.id`). Prod no tiene tracks huérfanos (verificado 2026-10-24).
 - `20261109031500_block_attendance_for_cancelled_registrations.sql` (trigger en `scan_logs` que rechaza asistencia de inscripciones `CANCELLED`). Aditiva: no cambia policies ni datos; no afecta al sitio público (no escribe en `scan_logs`).
-- `20261114171703_checkin_undo_scan.sql` (policy DELETE de `scan_logs` para deshacer un escaneo propio de los últimos 60 s). Aditiva: no cambia datos ni otras policies.
+- `20261114171703_checkin_undo_scan.sql` (policy DELETE de `scan_logs` para deshacer un escaneo propio de los últimos 60 s, y corrección de `staff_read_own_assignments`, que fallaba para STAFF). No cambia datos ni restringe accesos.
 
 ---
 

@@ -24,3 +24,22 @@ create policy "staff_delete_recent_own_scan_logs" on public.scan_logs
 
 comment on policy "staff_delete_recent_own_scan_logs" on public.scan_logs is
   'Deshacer del check-in: el operador borra su propio escaneo de los últimos 60 s en eventos a los que tiene acceso.';
+
+-- Corrección: staff_read_own_assignments estaba rota para STAFF.
+--
+-- La policy original resolvía el correo con (SELECT email FROM auth.users WHERE id = auth.uid()),
+-- pero `authenticated` no tiene SELECT en auth.users: cualquier consulta de un STAFF fallaba con
+-- 42501 y no podía leer sus propias asignaciones (solo funcionaba dentro de has_event_access,
+-- que es SECURITY DEFINER). Se resuelve el correo con el claim `email` del JWT, que no requiere
+-- tocar auth.users ni crear una función nueva. No amplía el acceso: cada STAFF sigue leyendo
+-- únicamente las filas con su correo; SUPERADMIN, todas.
+
+drop policy if exists "staff_read_own_assignments" on public.event_staff_assignments;
+
+create policy "staff_read_own_assignments" on public.event_staff_assignments
+  for select
+  to authenticated
+  using (
+    public.is_superadmin()
+    or lower(staff_email::text) = lower(auth.jwt() ->> 'email')
+  );

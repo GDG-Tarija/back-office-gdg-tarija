@@ -7,7 +7,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(8);
+select plan(14);
 
 insert into auth.users (instance_id, id, aud, role, email)
 values
@@ -88,6 +88,46 @@ select isnt_empty(
 select is_empty(
   $$ delete from public.scan_logs where id = '7e570000-0000-4000-8000-000000000204' returning id $$,
   'SUPERADMIN: no borra el escaneo de otro operador');
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- staff_read_own_assignments (corregida: ya no lee auth.users)
+-- ---------------------------------------------------------------------------
+insert into public.event_staff_assignments (event_id, staff_email)
+values ('7e570000-0000-4000-8000-0000000000e1', 'staff-otro@undo-test.test');
+
+set local role anon;
+set local request.jwt.claims to '{"role": "anon"}';
+select is_empty($$ select id from public.event_staff_assignments where event_id = '7e570000-0000-4000-8000-0000000000e1' $$, 'anon: no lee asignaciones');
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "7e570000-0000-4000-8000-0000000000a2", "role": "authenticated", "email": "staff@undo-test.test"}';
+select results_eq(
+  $$ select staff_email::text from public.event_staff_assignments where event_id = '7e570000-0000-4000-8000-0000000000e1' $$,
+  $$ values ('staff@undo-test.test') $$,
+  'STAFF: lee solo su asignación, sin error de permisos');
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "7e570000-0000-4000-8000-0000000000a3", "role": "authenticated", "email": "Staff-Otro@undo-test.test"}';
+select results_eq(
+  $$ select staff_email::text from public.event_staff_assignments where event_id = '7e570000-0000-4000-8000-0000000000e1' $$,
+  $$ values ('staff-otro@undo-test.test') $$,
+  'STAFF: la comparación ignora mayúsculas y no ve las de otro');
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "7e570000-0000-4000-8000-0000000000b1", "role": "authenticated", "email": "user1@undo-test.test"}';
+select is_empty($$ select id from public.event_staff_assignments where event_id = '7e570000-0000-4000-8000-0000000000e1' $$, 'usuario sin rol ni asignación: no lee nada');
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "7e570000-0000-4000-8000-0000000000a1", "role": "authenticated", "email": "superadmin@undo-test.test"}';
+select is((select count(*)::int from public.event_staff_assignments where event_id = '7e570000-0000-4000-8000-0000000000e1'), 2, 'SUPERADMIN: lee todas las asignaciones');
+select is_empty(
+  $$ delete from public.event_staff_assignments where staff_email = 'zzz' returning id $$,
+  'SUPERADMIN: sigue pudiendo escribir (policy de escritura intacta)');
 reset role;
 
 select * from finish();
