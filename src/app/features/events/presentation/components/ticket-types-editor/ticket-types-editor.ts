@@ -16,10 +16,23 @@ import { FormField, form } from '@angular/forms/signals';
 import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 
+import { FeedbackService } from '../../../../../core/services/feedback.service';
+import { ErrorSummary } from '../../../../../shared/components/error-summary/error-summary';
+import {
+  ErrorSummaryItem,
+  FieldRef,
+  buildErrorSummary,
+} from '../../../../../shared/utils/error-summary';
+import { focusField } from '../../../../../shared/utils/focus';
 import { DialogFrame } from '../../../../../shared/components/dialog-frame/dialog-frame';
+import { errorField, toUserMessage } from '../../../data/postgres-error.mapper';
 import { AssetCleanupTracker } from '../../../domain/asset-cleanup';
 import { AssetsRepository } from '../../../domain/assets.repository';
-import { validateTicketCapacities, validateTicketType } from '../../../domain/event-validators';
+import {
+  ValidationIssue,
+  validateTicketCapacities,
+  validateTicketType,
+} from '../../../domain/event-validators';
 import { PhaseAvailability } from '../../../domain/ticket-phase.model';
 import { TicketType } from '../../../domain/ticket-type.model';
 import {
@@ -43,12 +56,13 @@ import { ImageUploader } from '../image-uploader/image-uploader';
 @Component({
   selector: 'app-ticket-types-editor',
   standalone: true,
-  imports: [FormField, InputTextModule, TooltipModule, DialogFrame, ImageUploader],
+  imports: [FormField, InputTextModule, TooltipModule, DialogFrame, ErrorSummary, ImageUploader],
   templateUrl: './ticket-types-editor.html',
 })
 export class TicketTypesEditor implements OnInit, OnDestroy {
   private readonly repo = inject(TicketTypesRepository);
   private readonly assets = inject(AssetsRepository);
+  private readonly feedback = inject(FeedbackService);
 
   readonly eventId = input.required<string>();
   readonly eventCapacity = input.required<number>();
@@ -62,7 +76,6 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   readonly availability = signal<Record<string, PhaseAvailability>>({});
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
-  readonly notice = signal<string | null>(null);
   readonly error = signal<string | null>(null);
 
   // Diálogo de edición
@@ -123,7 +136,35 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
     () => validateTicketCapacities(this.tickets(), this.eventCapacity()).warnings,
   );
 
-  readonly canSave = computed(() => this.validation().errors.length === 0 && !this.saving());
+  /** Errores del formulario más el que el servidor atribuye a un campo (p. ej. nombre repetido). */
+  private readonly serverIssue = signal<ValidationIssue | null>(null);
+  readonly errors = computed(() => {
+    const server = this.serverIssue();
+    return server ? [...this.validation().errors, server] : this.validation().errors;
+  });
+  /** Tras reordenar fases se valida de inmediato, sin esperar a Guardar. */
+  private readonly reordered = signal(false);
+  private readonly showErrors = computed(() => this.submitted() || this.reordered());
+
+  readonly canSave = computed(() => this.errors().length === 0 && !this.saving());
+
+  readonly summary = computed<ErrorSummaryItem[]>(() => {
+    if (!this.showErrors()) return [];
+    const refs: Record<string, FieldRef> = {
+      name: { id: 'tt-name', label: 'Nombre' },
+      price: { id: 'tt-price', label: 'Precio' },
+      ticketCapacity: { id: 'tt-cap', label: 'Cupo' },
+      paymentQrUrl: { id: 'tt-qr', label: 'QR de pago' },
+      phases: { id: 'tt-phases-title', label: 'Fases' },
+    };
+    this.model().phases.forEach((_, i) => {
+      refs[`phases[${i}].name`] = { id: `ph-name-${i}`, label: `Nombre de la fase ${i + 1}` };
+      refs[`phases[${i}].price`] = { id: `ph-price-${i}`, label: `Precio de la fase ${i + 1}` };
+      refs[`phases[${i}].capacity`] = { id: `ph-cap-${i}`, label: `Cupo de la fase ${i + 1}` };
+      refs[`phases[${i}].paymentQrUrl`] = { id: `ph-qr-${i}`, label: `QR de la fase ${i + 1}` };
+    });
+    return buildErrorSummary(this.errors(), refs);
+  });
 
   constructor() {
     // Precio 0 => sin QR (espejo del CHECK check_qr_for_paid_tickets).
@@ -168,9 +209,7 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       this.availability.set(availability);
       this.ticketsChange.emit(tickets);
     } catch (err) {
-      this.loadError.set(
-        err instanceof Error ? err.message : 'No se pudieron cargar los paquetes.',
-      );
+      this.loadError.set(toUserMessage(err, 'No se pudieron cargar los paquetes.', 'ticket_type'));
     } finally {
       this.loading.set(false);
     }
@@ -203,7 +242,10 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       const sold = a?.sold ?? 0;
       return {
         name: p.name,
-        label: p.capacity === null ? `${sold} vendidos` : `${sold}/${p.capacity}`,
+        label:
+          p.capacity === null
+            ? `${sold} ${sold === 1 ? 'inscrita' : 'inscritas'}`
+            : `${sold}/${p.capacity}`,
         active: !!a?.isActive,
       };
     });
@@ -226,14 +268,22 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
     this.model.update((v) => ({ ...v, phases: [...v.phases, emptyPhaseFormValue()] }));
   }
 
-  removePhase(index: number): void {
+  async removePhase(index: number): Promise<void> {
     const phase = this.model().phases[index];
     if (!phase || this.phaseDeleteBlockReason(phase)) return;
+    const ok = await this.feedback.confirm({
+      titulo: 'Quitar fase',
+      mensaje: `Se quitará la fase ${index + 1}${phase.name.trim() ? ` "${phase.name.trim()}"` : ''} del paquete. Se aplica al guardar el paquete.`,
+      aceptar: 'Quitar',
+      peligro: true,
+    });
+    if (!ok) return;
     if (phase.paymentQrUrl) void this.cleanup.trackDiscarded(phase.paymentQrUrl);
     this.model.update((v) => ({ ...v, phases: v.phases.filter((_, i) => i !== index) }));
   }
 
   shiftPhase(index: number, direction: -1 | 1): void {
+    this.reordered.set(true);
     this.model.update((v) => ({ ...v, phases: movePhase(v.phases, index, direction) }));
   }
 
@@ -250,16 +300,14 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
   }
 
   phaseError(index: number, field: 'name' | 'price' | 'capacity' | 'paymentQrUrl'): string | null {
-    if (!this.submitted()) return null;
-    return (
-      this.validation().errors.find((e) => e.field === `phases[${index}].${field}`)?.message ?? null
-    );
+    if (!this.showErrors()) return null;
+    return this.errors().find((e) => e.field === `phases[${index}].${field}`)?.message ?? null;
   }
 
   /** Errores de las fases que no pertenecen a una fila (vacío, fase con ventas quitada). */
   phasesError(): string | null {
-    if (!this.submitted()) return null;
-    return this.validation().errors.find((e) => e.field === 'phases')?.message ?? null;
+    if (!this.showErrors()) return null;
+    return this.errors().find((e) => e.field === 'phases')?.message ?? null;
   }
 
   phasesWarnings(): string[] {
@@ -270,7 +318,7 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
 
   fieldError(field: string): string | null {
     if (!this.submitted()) return null;
-    return this.validation().errors.find((e) => e.field === field)?.message ?? null;
+    return this.errors().find((e) => e.field === field)?.message ?? null;
   }
 
   fieldWarning(field: string): string | null {
@@ -304,7 +352,12 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
 
   async save(): Promise<void> {
     this.submitted.set(true);
-    if (!this.canSave()) return;
+    this.serverIssue.set(null);
+    if (!this.canSave()) {
+      const first = this.summary()[0];
+      if (first) focusField(first.id);
+      return;
+    }
     const input = formValueToTicketTypeInput(this.model());
     this.saving.set(true);
     this.dialogError.set(null);
@@ -320,9 +373,12 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       await this.cleanup.commit();
       await this.refreshAvailability();
       this.dialogOpen.set(false);
-      this.notice.set(editing ? 'Paquete actualizado.' : 'Paquete creado.');
+      this.feedback.success(editing ? 'Paquete actualizado.' : 'Paquete creado.');
     } catch (err) {
-      this.dialogError.set(err instanceof Error ? err.message : 'No se pudo guardar el paquete.');
+      const message = toUserMessage(err, 'No se pudo guardar el paquete.', 'ticket_type');
+      const field = errorField(err);
+      if (field) this.serverIssue.set({ field, message });
+      else this.dialogError.set(message);
       // El guardado de fases no es transaccional: muestra lo que quedó realmente en la BD.
       await this.refreshQuietly();
     } finally {
@@ -356,10 +412,10 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
       }
       await tracker.commit();
       this.toDelete.set(null);
-      this.notice.set('Paquete eliminado.');
+      this.feedback.success('Paquete eliminado.');
     } catch (err) {
       // DomainError (p. ej. FK RESTRICT 23503) trae un mensaje legible.
-      this.deleteError.set(err instanceof Error ? err.message : 'No se pudo eliminar el paquete.');
+      this.deleteError.set(toUserMessage(err, 'No se pudo eliminar el paquete.', 'ticket_type'));
     } finally {
       this.deleting.set(false);
     }
@@ -394,8 +450,9 @@ export class TicketTypesEditor implements OnInit, OnDestroy {
     this.model.set(value);
     this.baseline.set(JSON.stringify(value));
     this.submitted.set(false);
+    this.reordered.set(false);
+    this.serverIssue.set(null);
     this.dialogError.set(null);
-    this.notice.set(null);
     this.dialogOpen.set(true);
   }
 

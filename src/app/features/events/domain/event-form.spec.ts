@@ -1,11 +1,15 @@
 import { Event } from './event.model';
 import {
+  dateStringToDate,
+  dateToDateString,
+  dateToTimeString,
   distinctCategories,
   emptyEventFormValue,
   eventToFormValue,
   eventToInput,
   formValueToEventInput,
   nextAutoSlug,
+  timeStringToDate,
 } from './event-form';
 
 describe('event-form', () => {
@@ -83,5 +87,23 @@ describe('event-form', () => {
         { category: 'Cloud' },
       ]),
     ).toEqual(['Cloud', 'IA']);
+  });
+});
+
+describe('conversión fecha/hora para el datepicker', () => {
+  it('ida y vuelta de fecha', () => {
+    const d = dateStringToDate('2026-10-05');
+    expect(d?.getFullYear()).toBe(2026);
+    expect(d?.getMonth()).toBe(9);
+    expect(dateToDateString(d)).toBe('2026-10-05');
+    expect(dateStringToDate('2026-13-45')).toBeNull();
+    expect(dateStringToDate('')).toBeNull();
+    expect(dateToDateString(null)).toBe('');
+  });
+  it('ida y vuelta de hora', () => {
+    const t = timeStringToDate('09:30');
+    expect(t?.getHours()).toBe(9);
+    expect(dateToTimeString(t)).toBe('09:30');
+    expect(timeStringToDate('25:00')).toBeNull();
   });
 });

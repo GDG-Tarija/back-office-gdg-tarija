@@ -412,7 +412,7 @@ describe('validatePublish', () => {
   });
   it('bloquea con datos del evento incompletos', () => {
     const r = validatePublish({ ...ok, event: { ...baseEvent, description: null, dateEnd: null } });
-    expect(fields(r)).toContain('event');
+    expect(fields(r)).toEqual(expect.arrayContaining(['description', 'dateEnd']));
   });
   it('emite avisos sin bloquear', () => {
     const r = validatePublish({

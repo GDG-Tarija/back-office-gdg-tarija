@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { AssetsRepository } from '../../../domain/assets.repository';
@@ -28,6 +29,8 @@ const session = (o: Partial<Session> = {}): Session => ({
 });
 
 describe('TracksSessionsEditor', () => {
+  const feedbackProvider = feedbackStub();
+  const feedback = feedbackProvider.useValue;
   const tracks = { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() };
   const sessions = { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() };
   const regs = { getCounts: vi.fn() };
@@ -39,7 +42,10 @@ describe('TracksSessionsEditor', () => {
     regs.getCounts.mockResolvedValue({ s1: 5 });
     TestBed.configureTestingModule({
       imports: [TracksSessionsEditor],
-      providers: [{ provide: AssetsRepository, useValue: { upload: vi.fn(), remove: vi.fn() } }],
+      providers: [
+        feedbackProvider,
+        { provide: AssetsRepository, useValue: { upload: vi.fn(), remove: vi.fn() } },
+      ],
     });
     TestBed.overrideComponent(TracksSessionsEditor, {
       set: {
@@ -87,7 +93,9 @@ describe('TracksSessionsEditor', () => {
   it('muestra error de carga con reintento', async () => {
     tracks.list.mockRejectedValue(new Error('boom'));
     const fixture = await create();
-    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('boom');
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+      'No se pudieron cargar los tracks y sesiones.',
+    );
   });
 
   it('deshabilita el borrado con inscritos', async () => {
@@ -158,10 +166,12 @@ describe('TracksSessionsEditor', () => {
     const cmp = fixture.componentInstance;
     tracks.delete.mockResolvedValue(undefined);
     cmp.askDeleteTrack(track);
-    expect(cmp.trackDeleteText()).toContain('1 sesión(es)');
+    expect(cmp.trackDeleteText()).toContain('Su sesión quedará');
     await cmp.confirmDeleteTrack();
     expect(cmp.sessions()[0].trackId).toBeNull();
-    expect(cmp.notice()).toContain('1 sesión(es) quedaron sin track');
+    expect(feedback.success).toHaveBeenCalledWith(
+      expect.stringContaining('1 sesión quedó sin track'),
+    );
   });
 
   it('valida nombre de track duplicado', async () => {

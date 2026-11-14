@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { Coupon } from '../../../domain/coupon.model';
@@ -23,6 +24,8 @@ const unused: Coupon = {
 };
 
 describe('CouponsEditor', () => {
+  const feedbackProvider = feedbackStub();
+  const feedback = feedbackProvider.useValue;
   const repo = { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() };
 
   beforeEach(() => {
@@ -30,7 +33,7 @@ describe('CouponsEditor', () => {
     repo.list.mockResolvedValue([used, unused]);
     TestBed.configureTestingModule({
       imports: [CouponsEditor],
-      providers: [{ provide: CouponsRepository, useValue: repo }],
+      providers: [feedbackProvider, { provide: CouponsRepository, useValue: repo }],
     });
   });
 
@@ -47,7 +50,7 @@ describe('CouponsEditor', () => {
     const fixture = await create();
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('SPEAKER1');
-    expect(text).toContain('3 restante(s)');
+    expect(text).toContain('3 usos disponibles');
     expect(text).toContain('sensibles');
   });
 
@@ -57,7 +60,7 @@ describe('CouponsEditor', () => {
     expect(fixture.nativeElement.textContent).toContain('Aún no hay cupones');
     repo.list.mockRejectedValue(new Error('boom'));
     fixture = await create();
-    expect(fixture.componentInstance.loadError()).toBe('boom');
+    expect(fixture.componentInstance.loadError()).toBe('No se pudieron cargar los cupones.');
   });
 
   it('bloquea eliminar un cupón con usos y permite el no usado', async () => {
@@ -117,7 +120,8 @@ describe('CouponsEditor', () => {
       new DomainError('Ya existe un cupón con ese código en el evento.', 'DUPLICATE', 'code'),
     );
     await cmp.save();
-    expect(cmp.dialogError()).toContain('Ya existe');
+    expect(cmp.fieldError('code')).toContain('Ya existe');
+    expect(cmp.summary()[0].id).toBe('cp-code');
     expect(cmp.dialogOpen()).toBe(true);
   });
 
@@ -131,7 +135,7 @@ describe('CouponsEditor', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     await cmp.copy(used);
     expect(writeText).toHaveBeenCalledWith('SPEAKER1');
-    expect(cmp.notice()).toContain('copiado');
+    expect(feedback.success).toHaveBeenCalledWith(expect.stringContaining('copiado'));
     vi.unstubAllGlobals();
   });
 });

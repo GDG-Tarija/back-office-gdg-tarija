@@ -53,9 +53,10 @@
         >warning</span
       >
       <span>
-        Este evento tiene {{ registrations() }} inscrito(s): no se pueden eliminar campos ni cambiar
-        las claves de los existentes, porque hay respuestas guardadas. Sí puedes agregar campos
-        nuevos y editar etiquetas, opciones y orden.
+        Este evento tiene {{ registrations() }}
+        {{ registrations() === 1 ? 'persona inscrita' : 'personas inscritas' }}: no se pueden quitar
+        campos ni cambiar las claves de los existentes, porque hay respuestas guardadas. Sí puedes
+        agregar campos nuevos y editar etiquetas, opciones y orden.
       </span>
     </div>
   }
@@ -69,6 +70,8 @@
       <span>{{ msg }}</span>
     </div>
   }
+
+  <app-error-summary [items]="summary()" />
 
   <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
     <section aria-label="Campos del formulario" class="flex flex-col gap-3">
@@ -100,7 +103,7 @@
                 <div class="flex items-center gap-1">
                   <button
                     type="button"
-                    class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                    class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
                     [attr.aria-label]="'Subir ' + fieldTitle(f, i)"
                     [attr.aria-disabled]="first"
                     (click)="move(i, -1)"
@@ -111,7 +114,7 @@
                   </button>
                   <button
                     type="button"
-                    class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                    class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
                     [attr.aria-label]="'Bajar ' + fieldTitle(f, i)"
                     [attr.aria-disabled]="last"
                     (click)="move(i, 1)"
@@ -122,13 +125,13 @@
                   </button>
                   <button
                     type="button"
-                    class="flex size-8 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
-                    [attr.aria-label]="'Eliminar ' + fieldTitle(f, i)"
+                    class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
+                    [attr.aria-label]="'Quitar ' + fieldTitle(f, i)"
                     [disabled]="!canRemove(f)"
                     [title]="
                       canRemove(f)
-                        ? 'Eliminar campo'
-                        : 'Hay inscritos: no se pueden eliminar campos guardados'
+                        ? 'Quitar campo'
+                        : 'Hay personas inscritas: no se pueden quitar campos guardados'
                     "
                     (click)="remove(i)"
                   >
@@ -143,7 +146,7 @@
                 <label
                   [for]="'ff-label-' + f.uid"
                   class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-                  >Etiqueta *</label
+                  >Etiqueta <span aria-hidden="true">*</span></label
                 >
                 <input
                   [id]="'ff-label-' + f.uid"
@@ -151,13 +154,15 @@
                   class="w-full rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
                   [value]="f.label"
                   [disabled]="readonly()"
+                  aria-required="true"
                   [attr.aria-invalid]="fieldErrors(i, 'label').length > 0"
                   [attr.aria-describedby]="'ff-label-err-' + f.uid"
                   (input)="setLabel(i, $any($event.target).value)"
+                  (blur)="markTouched(f.uid)"
                 />
                 <div [id]="'ff-label-err-' + f.uid">
                   @for (m of fieldErrors(i, 'label'); track m) {
-                    <small class="font-medium text-google-red" role="alert">{{ m }}</small>
+                    <small class="font-medium text-google-red">{{ m }}</small>
                   }
                 </div>
               </div>
@@ -195,6 +200,7 @@
                   [attr.aria-invalid]="fieldErrors(i, 'key').length > 0"
                   [attr.aria-describedby]="'ff-key-hint-' + f.uid"
                   (input)="setKey(i, $any($event.target).value)"
+                  (blur)="markTouched(f.uid)"
                 />
                 <small
                   [id]="'ff-key-hint-' + f.uid"
@@ -207,7 +213,7 @@
                   }
                 </small>
                 @for (m of fieldErrors(i, 'key'); track m) {
-                  <small class="font-medium text-google-red" role="alert">{{ m }}</small>
+                  <small class="font-medium text-google-red">{{ m }}</small>
                 }
               </div>
 
@@ -243,7 +249,7 @@
             @if (f.type === 'select') {
               <fieldset class="mt-4 flex flex-col gap-2">
                 <legend class="text-sm font-semibold text-text-primary dark:text-neutral-200">
-                  Opciones (mínimo 2)
+                  Opciones (mínimo 2) <span aria-hidden="true">*</span>
                 </legend>
                 @for (
                   o of f.options;
@@ -258,13 +264,14 @@
                       class="min-w-0 flex-1 rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10"
                       [value]="o"
                       [disabled]="readonly()"
+                      [attr.id]="'ff-opt-' + f.uid + '-' + j"
                       [attr.aria-label]="'Opción ' + (j + 1) + ' de ' + fieldTitle(f, i)"
                       (input)="setOption(i, j, $any($event.target).value)"
                     />
                     @if (!readonly()) {
                       <button
                         type="button"
-                        class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                        class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
                         [attr.aria-label]="'Subir opción ' + (j + 1)"
                         [attr.aria-disabled]="oFirst"
                         (click)="moveOption(i, j, -1)"
@@ -275,7 +282,7 @@
                       </button>
                       <button
                         type="button"
-                        class="flex size-8 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
+                        class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 aria-disabled:opacity-40 dark:hover:bg-neutral-800"
                         [attr.aria-label]="'Bajar opción ' + (j + 1)"
                         [attr.aria-disabled]="oLast"
                         (click)="moveOption(i, j, 1)"
@@ -286,7 +293,7 @@
                       </button>
                       <button
                         type="button"
-                        class="flex size-8 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
+                        class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/30 disabled:opacity-40"
                         [attr.aria-label]="'Quitar opción ' + (j + 1)"
                         [disabled]="f.options.length <= 2"
                         (click)="removeOption(i, j)"
@@ -299,7 +306,7 @@
                   </div>
                 }
                 @for (m of fieldErrors(i, 'options'); track m) {
-                  <small class="font-medium text-google-red" role="alert">{{ m }}</small>
+                  <small class="font-medium text-google-red">{{ m }}</small>
                 }
                 @if (!readonly()) {
                   <button
@@ -379,11 +386,6 @@
     </section>
   </div>
 
-  @if (issues().length > 0 && !readonly()) {
-    <p class="text-sm font-medium text-google-red" role="status">
-      Corrige {{ issues().length }} error(es) para poder guardar.
-    </p>
-  }
   @if (saveError(); as err) {
     <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
   }
@@ -405,7 +407,7 @@
       }
       <button
         type="button"
-        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        class="min-h-11 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="!canSave()"
         (click)="save()"
       >
@@ -433,7 +435,8 @@
               <div>
                 <p class="text-sm font-semibold">{{ t.name }}</p>
                 <p class="text-xs text-text-secondary dark:text-neutral-400">
-                  {{ t.description }} ({{ t.fields.length }} campo(s))
+                  {{ t.description }} ({{ t.fields.length }}
+                  {{ t.fields.length === 1 ? 'campo' : 'campos' }})
                 </p>
               </div>
               <button
@@ -470,7 +473,10 @@
           >
             <option value="">Selecciona un evento...</option>
             @for (e of otherEvents(); track e.id) {
-              <option [value]="e.id">{{ e.title }} ({{ e.formFields.length }} campo(s))</option>
+              <option [value]="e.id">
+                {{ e.title }} ({{ e.formFields.length }}
+                {{ e.formFields.length === 1 ? 'campo' : 'campos' }})
+              </option>
             }
           </select>
         }
@@ -498,12 +504,12 @@
     <div class="flex flex-col gap-2 text-sm text-text-primary dark:text-neutral-200">
       @if (pendingMode() === 'replace') {
         <p>
-          Se reemplazarán los {{ fields().length }} campo(s) actuales por {{ p.name }}. Los cambios
-          no se guardan hasta pulsar Guardar.
+          Se reemplazarán los {{ fields().length }} campos actuales por {{ p.name }}. Los cambios no
+          se guardan hasta pulsar Guardar.
         </p>
       } @else {
         <p>
-          Hay inscritos, así que se conservarán los campos actuales y se agregarán los de
+          Hay personas inscritas, así que se conservarán los campos actuales y se agregarán los de
           {{ p.name }}
           @if (pendingSkipped() > 0) {
             (se omiten {{ pendingSkipped() }} con clave repetida)

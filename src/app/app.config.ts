@@ -29,7 +29,8 @@ export const appConfig: ApplicationConfig = {
         preset: GdgPreset,
         options: {
           // El orden de capas lo declara src/styles/_layers.css (theme, base, primeng, components, utilities).
-          cssLayer: { name: 'primeng' },
+          // Sin `order`, PrimeNG declara su capa primero y queda bajo el preflight de Tailwind.
+          cssLayer: { name: 'primeng', order: 'theme, base, primeng, components, utilities' },
           darkModeSelector: '[data-theme="dark"]',
         },
       },

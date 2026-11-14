@@ -1,4 +1,13 @@
-import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -10,6 +19,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { InputNumberModule } from 'primeng/inputnumber';
 
+import { toUserMessage } from '../../../data/postgres-error.mapper';
 import { EventsRepository } from '../../../domain/events.repository';
 import { EventsApi } from '../../../data/events.api';
 import { Event as DomainEvent, Attendee, CredentialPosition } from '../../../domain/event.model';
@@ -81,6 +91,10 @@ export class CredentialGenerator implements OnInit, OnDestroy {
   readonly generationProgress = signal(0);
   readonly previewWidth = signal(0);
   readonly previewHeight = signal(0);
+  readonly errorMessage = signal<string | null>(null);
+  readonly warningMessage = signal<string | null>(null);
+  readonly maxX = computed(() => this.templateImage()?.width ?? 4000);
+  readonly maxY = computed(() => this.templateImage()?.height ?? 4000);
 
   // Propiedades de exportación PDF
   readonly pdfPageSize = signal<'A4' | 'LETTER' | 'OFICIO'>('A4');
@@ -138,12 +152,15 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     await this.loadEvents();
     if (event) {
       this.selectedEvent.set(event);
+      this.loadPositions();
       await this.loadAttendees();
     }
   }
 
   close(): void {
     this.visible.set(false);
+    this.errorMessage.set(null);
+    this.warningMessage.set(null);
     this.resetForm();
   }
 
@@ -166,13 +183,14 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       const data = await this.eventsRepo.getEvents();
       this.events.set(data);
     } catch (err) {
-      console.error('Error loading events:', err);
+      this.errorMessage.set(toUserMessage(err, 'No se pudieron cargar los eventos.'));
     } finally {
       this.loadingEvents.set(false);
     }
   }
 
   async onEventChange(): Promise<void> {
+    this.loadPositions();
     await this.loadAttendees();
     this.renderPreview();
   }
@@ -186,7 +204,9 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       const attendees = await this.eventsRepo.getAttendees(event.id);
       this.filteredAttendees.set(attendees);
     } catch (err) {
-      console.error('Error loading attendees:', err);
+      this.errorMessage.set(
+        toUserMessage(err, 'No se pudieron cargar las personas inscritas.', 'registration'),
+      );
       this.filteredAttendees.set([]);
     } finally {
       this.loadingAttendees.set(false);
@@ -200,7 +220,12 @@ export class CredentialGenerator implements OnInit, OnDestroy {
   onTemplateUpload(e: Event): void {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
+    if (file && !file.type.startsWith('image/')) {
+      this.errorMessage.set('La plantilla debe ser una imagen PNG.');
+      return;
+    }
+    if (!file) return;
+    this.errorMessage.set(null);
 
     this.templateFile.set(file);
 
@@ -379,7 +404,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
           qrImg.src = qrDataUrl;
         });
       } catch {
-        console.warn('Failed to generate QR for preview');
+        this.warningMessage.set('No se pudo dibujar el QR en la vista previa.');
       }
     }
   }
@@ -431,9 +456,17 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     this.savePositions();
   }
 
+  /** Las posiciones se guardan por evento; sin evento (o sin datos) rige el último valor general. */
+  private storageKey(): string {
+    const id = this.selectedEvent()?.id;
+    return id ? `${STORAGE_KEY}:${id}` : STORAGE_KEY;
+  }
+
   private loadPositions(): void {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored =
+        localStorage.getItem(this.storageKey()) ??
+        (this.selectedEvent() ? localStorage.getItem(STORAGE_KEY) : null);
       if (stored) {
         const parsed = JSON.parse(stored) as CredentialPosition;
         this.positions.set({ ...DEFAULT_POSITIONS, ...parsed });
@@ -450,10 +483,12 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
   private savePositions(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.positions()));
+      const json = JSON.stringify(this.positions());
+      localStorage.setItem(this.storageKey(), json);
+      localStorage.setItem(STORAGE_KEY, json);
       this.hasStoredPositions = true;
     } catch {
-      console.warn('Failed to save positions to localStorage');
+      this.warningMessage.set('No se pudieron guardar las posiciones en este navegador.');
     }
   }
 
@@ -469,65 +504,73 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     if (!event || !img || attendees.length === 0) return;
 
     this.generating.set(true);
+    this.errorMessage.set(null);
+    this.warningMessage.set(null);
     this.generationProgress.set(0);
 
-    const zip = new JSZip();
-    const pos = this.positions();
+    try {
+      const zip = new JSZip();
+      const pos = this.positions();
 
-    for (let i = 0; i < attendees.length; i++) {
-      const attendee = attendees[i];
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) continue;
+      for (let i = 0; i < attendees.length; i++) {
+        const attendee = attendees[i];
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
 
-      ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0);
 
-      const fullName = `${attendee.firstName} ${attendee.lastName}`;
-      this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize, pos.nameMaxWidth);
+        const fullName = `${attendee.firstName} ${attendee.lastName}`;
+        this.drawNameText(ctx, fullName, pos.nameX, pos.nameY, pos.fontSize, pos.nameMaxWidth);
 
-      if (pos.showRole !== false) {
-        ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
-        ctx.fillStyle = '#333333';
-        ctx.textBaseline = 'top';
-        ctx.textAlign = 'center';
-        ctx.fillText(this.translateRole(attendee.role), pos.roleX, pos.roleY);
+        if (pos.showRole !== false) {
+          ctx.font = `${Math.round(pos.fontSize * 0.75)}px sans-serif`;
+          ctx.fillStyle = '#333333';
+          ctx.textBaseline = 'top';
+          ctx.textAlign = 'center';
+          ctx.fillText(this.translateRole(attendee.role), pos.roleX, pos.roleY);
+        }
+
+        try {
+          const qrDataUrl = await QRCode.toDataURL(attendee.id, {
+            width: pos.qrSize,
+            margin: 1,
+            color: { dark: '#000000', light: '#ffffff' },
+          });
+          const qrImg = new Image();
+          await new Promise<void>((resolve) => {
+            qrImg.onload = () => {
+              ctx.drawImage(qrImg, pos.qrX, pos.qrY, pos.qrSize, pos.qrSize);
+              resolve();
+            };
+            qrImg.src = qrDataUrl;
+          });
+        } catch {
+          this.warningMessage.set(
+            'No se pudo generar el QR de algunas credenciales. Revisa el resultado antes de imprimir.',
+          );
+        }
+
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((b) => resolve(b!), 'image/png');
+        });
+
+        const fileName = `${attendee.firstName}_${attendee.lastName}_${attendee.id.slice(0, 8)}.png`;
+        zip.file(fileName, blob);
+
+        this.generationProgress.set(Math.round(((i + 1) / attendees.length) * 100));
       }
 
-      try {
-        const qrDataUrl = await QRCode.toDataURL(attendee.id, {
-          width: pos.qrSize,
-          margin: 1,
-          color: { dark: '#000000', light: '#ffffff' },
-        });
-        const qrImg = new Image();
-        await new Promise<void>((resolve) => {
-          qrImg.onload = () => {
-            ctx.drawImage(qrImg, pos.qrX, pos.qrY, pos.qrSize, pos.qrSize);
-            resolve();
-          };
-          qrImg.src = qrDataUrl;
-        });
-      } catch {
-        console.warn(`Failed to generate QR for ${attendee.id}`);
-      }
-
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((b) => resolve(b!), 'image/png');
-      });
-
-      const fileName = `${attendee.firstName}_${attendee.lastName}_${attendee.id.slice(0, 8)}.png`;
-      zip.file(fileName, blob);
-
-      this.generationProgress.set(Math.round(((i + 1) / attendees.length) * 100));
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `credenciales-${event.slug}.zip`);
+    } catch (err) {
+      this.errorMessage.set(toUserMessage(err, 'No se pudo generar el ZIP. Inténtalo de nuevo.'));
+    } finally {
+      this.generating.set(false);
+      this.generationProgress.set(0);
     }
-
-    const content = await zip.generateAsync({ type: 'blob' });
-    saveAs(content, `credenciales-${event.slug}.zip`);
-
-    this.generating.set(false);
-    this.generationProgress.set(0);
   }
 
   // Ajustar el alto proporcional de forma dinámica al cambiar el ancho
@@ -666,6 +709,8 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     if (!event || !img || attendees.length === 0) return;
 
     this.generating.set(true);
+    this.errorMessage.set(null);
+    this.warningMessage.set(null);
     this.generationProgress.set(0);
 
     try {
@@ -763,7 +808,9 @@ export class CredentialGenerator implements OnInit, OnDestroy {
             qrImg.src = qrDataUrl;
           });
         } catch {
-          console.warn(`Failed to generate QR for ${attendee.id}`);
+          this.warningMessage.set(
+            'No se pudo generar el QR de algunas credenciales. Revisa el resultado antes de imprimir.',
+          );
         }
 
         let finalCanvas = canvas;
@@ -786,7 +833,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
       doc.save(`credenciales-${event.slug}.pdf`);
     } catch (err) {
-      console.error('Error generating PDF:', err);
+      this.errorMessage.set(toUserMessage(err, 'No se pudo generar el PDF. Inténtalo de nuevo.'));
     } finally {
       this.generating.set(false);
       this.generationProgress.set(0);
@@ -801,6 +848,8 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     if (!event || !img) return;
 
     this.generating.set(true);
+    this.errorMessage.set(null);
+    this.warningMessage.set(null);
 
     try {
       const { jsPDF } = await import('jspdf');
@@ -888,7 +937,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
 
       doc.save(`credenciales-vacias-${event.slug}.pdf`);
     } catch (err) {
-      console.error('Error generating empty PDF:', err);
+      this.errorMessage.set(toUserMessage(err, 'No se pudo generar el PDF sin datos.'));
     } finally {
       this.generating.set(false);
     }

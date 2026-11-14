@@ -1,3 +1,4 @@
+import { inscritas, plural } from './plural';
 import { TicketPhase, TicketPhaseInput } from './ticket-phase.model';
 import { TicketType, TicketTypeInput } from './ticket-type.model';
 
@@ -82,7 +83,9 @@ export function movePhase(
 
 /** Una fase con ventas no se puede eliminar (espejo del trigger de la BD). */
 export function phaseDeleteBlockReason(sold: number): string | null {
-  return sold > 0 ? `No se puede quitar: tiene ${sold} inscripción(es).` : null;
+  return sold > 0
+    ? `No se puede quitar: tiene ${plural(sold, 'inscripción', 'inscripciones')}.`
+    : null;
 }
 
 /** Una fase gratuita no lleva QR: se descartan los QR (devueltos para limpiarlos). */
@@ -147,7 +150,7 @@ export function formValueToTicketTypeInput(v: TicketTypeFormValue): TicketTypeIn
 
 /** Un paquete con inscritos no se puede eliminar (espejo del FK RESTRICT). */
 export function ticketDeleteBlockReason(registeredCount: number): string | null {
-  return registeredCount > 0 ? `No se puede eliminar: tiene ${registeredCount} inscrito(s).` : null;
+  return registeredCount > 0 ? `No se puede eliminar: tiene ${inscritas(registeredCount)}.` : null;
 }
 
 /** Un paquete gratuito no lleva QR: se descarta el QR (devuelto para limpiarlo). */

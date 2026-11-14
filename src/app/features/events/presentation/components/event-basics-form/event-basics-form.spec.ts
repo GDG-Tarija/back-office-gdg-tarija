@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { AssetsRepository } from '../../../domain/assets.repository';
@@ -18,6 +19,7 @@ describe('EventBasicsForm', () => {
     TestBed.configureTestingModule({
       imports: [EventBasicsForm],
       providers: [
+        feedbackStub(),
         { provide: EventsRepository, useValue: { isSlugAvailable, getEvents } },
         { provide: AssetsRepository, useValue: { upload: vi.fn(), remove } },
       ],
@@ -57,10 +59,40 @@ describe('EventBasicsForm', () => {
     expect(cmp.model().slug).toBe('mi-slug');
   });
 
-  it('deshabilita guardar con errores y emite EventInput cuando es válido', async () => {
+  it('con errores no emite, muestra el resumen y enfoca el primer campo', async () => {
     const fixture = create();
     const cmp = fixture.componentInstance;
-    expect(cmp.canSave()).toBe(false);
+    const emitted: EventInput[] = [];
+    cmp.save.subscribe((v) => emitted.push(v));
+    const button = fixture.nativeElement.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(cmp.fieldError('title')).toBeNull();
+
+    await cmp.submit();
+    fixture.detectChanges();
+
+    expect(emitted).toEqual([]);
+    expect(cmp.summary().map((i) => i.label)).toEqual(
+      expect.arrayContaining(['Título', 'Fecha de inicio', 'Capacidad']),
+    );
+    expect(cmp.fieldError('title')).toContain('título');
+    expect(fixture.nativeElement.querySelector('app-error-summary [role="alert"]')).not.toBeNull();
+  });
+
+  it('muestra el error de un campo al salir de él', () => {
+    const fixture = create();
+    const cmp = fixture.componentInstance;
+    expect(cmp.fieldError('title')).toBeNull();
+    cmp.markBlurred('title');
+    expect(cmp.fieldError('title')).not.toBeNull();
+  });
+
+  it('emite EventInput cuando es válido y reporta cambios sin guardar', async () => {
+    const fixture = create();
+    const cmp = fixture.componentInstance;
+    expect(cmp.dirty()).toBe(false);
 
     const emitted: EventInput[] = [];
     cmp.save.subscribe((v) => emitted.push(v));
@@ -72,11 +104,26 @@ describe('EventBasicsForm', () => {
     }));
     fixture.detectChanges();
     await vi.advanceTimersByTimeAsync(600);
+    expect(cmp.dirty()).toBe(true);
 
-    expect(cmp.canSave()).toBe(true);
-    cmp.submit();
+    const pending = cmp.submit();
+    await vi.advanceTimersByTimeAsync(0);
+    await pending;
     expect(emitted[0].slug).toBe('mi-evento');
     expect(emitted[0].capacity).toBe(100);
+
+    cmp.markSaved();
+    expect(cmp.dirty()).toBe(false);
+  });
+
+  it('incluye el error del servidor en el resumen junto al campo', async () => {
+    const fixture = create();
+    fixture.componentRef.setInput('serverError', { field: 'slug', message: 'Ya existe.' });
+    const cmp = fixture.componentInstance;
+    cmp.model.update((v) => ({ ...v, title: 'Mi evento', slug: 'mi-evento' }));
+    await cmp.requestSave();
+    expect(cmp.fieldError('slug')).toBe('Ya existe.');
+    expect(cmp.summary().some((i) => i.label === 'Slug')).toBe(true);
   });
 
   it('bloquea el slug y avisa al cambiar la capacidad con inscritos', () => {

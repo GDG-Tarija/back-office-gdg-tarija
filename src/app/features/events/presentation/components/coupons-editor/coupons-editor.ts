@@ -5,7 +5,12 @@ import { FormField, form } from '@angular/forms/signals';
 import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 
+import { FeedbackService } from '../../../../../core/services/feedback.service';
+import { ErrorSummary } from '../../../../../shared/components/error-summary/error-summary';
+import { ErrorSummaryItem, buildErrorSummary } from '../../../../../shared/utils/error-summary';
+import { focusField } from '../../../../../shared/utils/focus';
 import { DialogFrame } from '../../../../../shared/components/dialog-frame/dialog-frame';
+import { errorField, toUserMessage } from '../../../data/postgres-error.mapper';
 import { Coupon, COUPON_ROLES } from '../../../domain/coupon.model';
 import {
   COUPON_ROLE_LABELS,
@@ -18,16 +23,21 @@ import {
   generateCouponCode,
 } from '../../../domain/coupon-form';
 import { CouponsRepository } from '../../../domain/coupons.repository';
-import { normalizeCouponCode, validateCoupon } from '../../../domain/event-validators';
+import {
+  ValidationIssue,
+  normalizeCouponCode,
+  validateCoupon,
+} from '../../../domain/event-validators';
 
 @Component({
   selector: 'app-coupons-editor',
   standalone: true,
-  imports: [FormField, InputTextModule, TooltipModule, DialogFrame],
+  imports: [FormField, InputTextModule, TooltipModule, DialogFrame, ErrorSummary],
   templateUrl: './coupons-editor.html',
 })
 export class CouponsEditor implements OnInit {
   private readonly repo = inject(CouponsRepository);
+  private readonly feedback = inject(FeedbackService);
 
   readonly eventId = input.required<string>();
 
@@ -40,7 +50,6 @@ export class CouponsEditor implements OnInit {
   readonly coupons = signal<Coupon[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
-  readonly notice = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
 
   readonly dialogOpen = signal(false);
@@ -67,7 +76,21 @@ export class CouponsEditor implements OnInit {
     });
   });
 
-  readonly canSave = computed(() => this.validation().errors.length === 0 && !this.saving());
+  private readonly serverIssue = signal<ValidationIssue | null>(null);
+  readonly errors = computed(() => {
+    const server = this.serverIssue();
+    return server ? [...this.validation().errors, server] : this.validation().errors;
+  });
+  readonly canSave = computed(() => this.errors().length === 0 && !this.saving());
+  readonly summary = computed<ErrorSummaryItem[]>(() =>
+    this.submitted()
+      ? buildErrorSummary(this.errors(), {
+          code: { id: 'cp-code', label: 'Código' },
+          role: { id: 'cp-role', label: 'Rol' },
+          maxUses: { id: 'cp-uses', label: 'Usos máximos' },
+        })
+      : [],
+  );
 
   ngOnInit(): void {
     void this.load();
@@ -81,7 +104,7 @@ export class CouponsEditor implements OnInit {
       this.coupons.set(list);
       this.couponsChange.emit(list);
     } catch (err) {
-      this.loadError.set(err instanceof Error ? err.message : 'No se pudieron cargar los cupones.');
+      this.loadError.set(toUserMessage(err, 'No se pudieron cargar los cupones.', 'coupon'));
     } finally {
       this.loading.set(false);
     }
@@ -97,7 +120,7 @@ export class CouponsEditor implements OnInit {
 
   fieldError(field: string): string | null {
     if (!this.submitted()) return null;
-    return this.validation().errors.find((e) => e.field === field)?.message ?? null;
+    return this.errors().find((e) => e.field === field)?.message ?? null;
   }
 
   openCreate(): void {
@@ -124,16 +147,20 @@ export class CouponsEditor implements OnInit {
     try {
       this.actionError.set(null);
       await navigator.clipboard.writeText(c.code);
-      this.notice.set(`Código ${c.code} copiado al portapapeles.`);
+      this.feedback.success(`Código ${c.code} copiado al portapapeles.`);
     } catch {
-      this.notice.set(null);
       this.actionError.set('No se pudo copiar. Selecciona el código y cópialo manualmente.');
     }
   }
 
   async save(): Promise<void> {
     this.submitted.set(true);
-    if (!this.canSave()) return;
+    this.serverIssue.set(null);
+    if (!this.canSave()) {
+      const first = this.summary()[0];
+      if (first) focusField(first.id);
+      return;
+    }
     const input = formValueToCouponInput(this.model());
     this.saving.set(true);
     this.dialogError.set(null);
@@ -147,10 +174,12 @@ export class CouponsEditor implements OnInit {
       );
       this.couponsChange.emit(this.coupons());
       this.dialogOpen.set(false);
-      this.notice.set(editing ? 'Cupón actualizado.' : 'Cupón creado.');
+      this.feedback.success(editing ? 'Cupón actualizado.' : 'Cupón creado.');
     } catch (err) {
-      // Duplicados y violaciones del trigger llegan como DomainError legible.
-      this.dialogError.set(err instanceof Error ? err.message : 'No se pudo guardar el cupón.');
+      const message = toUserMessage(err, 'No se pudo guardar el cupón.', 'coupon');
+      const field = errorField(err);
+      if (field) this.serverIssue.set({ field, message });
+      else this.dialogError.set(message);
     } finally {
       this.saving.set(false);
     }
@@ -176,9 +205,9 @@ export class CouponsEditor implements OnInit {
       this.coupons.update((list) => list.filter((x) => x.id !== c.id));
       this.couponsChange.emit(this.coupons());
       this.toDelete.set(null);
-      this.notice.set('Cupón eliminado.');
+      this.feedback.success('Cupón eliminado.');
     } catch (err) {
-      this.deleteError.set(err instanceof Error ? err.message : 'No se pudo eliminar el cupón.');
+      this.deleteError.set(toUserMessage(err, 'No se pudo eliminar el cupón.', 'coupon'));
     } finally {
       this.deleting.set(false);
     }
@@ -189,8 +218,8 @@ export class CouponsEditor implements OnInit {
     this.model.set(value);
     this.baseline.set(JSON.stringify(value));
     this.submitted.set(false);
+    this.serverIssue.set(null);
     this.dialogError.set(null);
-    this.notice.set(null);
     this.dialogOpen.set(true);
   }
 }

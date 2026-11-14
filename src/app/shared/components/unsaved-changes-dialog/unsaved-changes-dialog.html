@@ -1,0 +1,48 @@
+<p-dialog
+  [visible]="visible()"
+  [modal]="true"
+  [closable]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [closeOnEscape]="false"
+  appendTo="body"
+  role="alertdialog"
+  [style]="{ width: 'min(calc(100vw - 1rem), 30rem)' }"
+  (onShow)="focusStay()"
+  (keydown.escape)="choose.emit('stay')"
+>
+  <ng-template #header let-labelledBy="ariaLabelledBy">
+    <h2 [id]="labelledBy" class="text-base font-semibold">Tienes cambios sin guardar</h2>
+  </ng-template>
+  <p class="text-sm text-text-primary dark:text-neutral-200">
+    Si sales ahora, perderás lo que escribiste en esta sección.
+  </p>
+  <ng-template #footer>
+    <div class="flex w-full flex-wrap items-center justify-end gap-2">
+      <button
+        id="unsaved-stay"
+        type="button"
+        class="min-h-11 rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+        (click)="choose.emit('stay')"
+      >
+        Seguir editando
+      </button>
+      <button
+        type="button"
+        class="min-h-11 rounded-full bg-google-red-light/40 px-4 py-2 text-sm font-semibold text-danger-text hover:bg-google-red-light/70"
+        [disabled]="saving()"
+        (click)="choose.emit('discard')"
+      >
+        Descartar
+      </button>
+      <button
+        type="button"
+        class="min-h-11 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90 disabled:opacity-50"
+        [disabled]="saving()"
+        (click)="choose.emit('save')"
+      >
+        {{ saving() ? 'Guardando...' : 'Guardar' }}
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

@@ -27,16 +27,6 @@
     >
   </div>
 
-  @if (notice(); as msg) {
-    <div
-      class="flex items-center gap-3 rounded-2xl bg-google-green-light/40 p-3 text-sm font-medium text-google-green"
-      role="status"
-    >
-      <span class="material-symbols-rounded text-xl" aria-hidden="true">check_circle</span>
-      <span>{{ msg }}</span>
-    </div>
-  }
-
   @if (actionError(); as err) {
     <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
   }
@@ -86,14 +76,14 @@
               @if (remaining(c) === 0) {
                 <span class="font-semibold text-google-red">agotado</span>
               } @else {
-                {{ remaining(c) }} restante(s)
+                {{ remaining(c) }} {{ remaining(c) === 1 ? 'uso disponible' : 'usos disponibles' }}
               }
             </p>
           </div>
           <div class="flex shrink-0 items-center gap-1">
             <button
               type="button"
-              class="flex size-9 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              class="flex size-11 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:hover:bg-neutral-800"
               [attr.aria-label]="'Copiar código ' + c.code"
               (click)="copy(c)"
             >
@@ -101,7 +91,7 @@
             </button>
             <button
               type="button"
-              class="flex size-9 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+              class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
               [attr.aria-label]="'Editar cupón ' + c.code"
               (click)="openEdit(c)"
             >
@@ -110,7 +100,7 @@
             <span [pTooltip]="deleteBlockReason(c) ?? ''" [tooltipDisabled]="!deleteBlockReason(c)">
               <button
                 type="button"
-                class="flex size-9 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 [attr.aria-label]="
                   deleteBlockReason(c)
                     ? 'Eliminar cupón ' + c.code + ' (no disponible: ya fue usado)'
@@ -131,13 +121,23 @@
 
 @if (dialogOpen()) {
   <app-dialog-frame
+    #frame
     [title]="editing() ? 'Editar cupón' : 'Nuevo cupón'"
     icon="sell"
     initialSize="md"
     [dirty]="dirty()"
     (closeDialog)="closeDialog()"
   >
-    <form id="coupon-form" class="flex flex-col gap-5" (submit)="$event.preventDefault(); save()">
+    <form
+      id="coupon-form"
+      class="flex flex-col gap-5"
+      (submit)="$event.preventDefault(); save()"
+      novalidate
+    >
+      <p class="text-xs text-text-secondary dark:text-neutral-400">
+        <span aria-hidden="true">*</span> obligatorio
+      </p>
+      <app-error-summary [items]="summary()" />
       <div class="flex flex-col gap-1.5">
         <label for="cp-code" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
           >Código *</label
@@ -150,7 +150,9 @@
             class="w-full !rounded-xl font-mono uppercase"
             autocomplete="off"
             [formField]="f.code"
+            aria-required="true"
             [attr.aria-invalid]="!!fieldError('code')"
+            [attr.aria-describedby]="fieldError('code') ? 'cp-code-error' : null"
             (blur)="normalizeCode()"
           />
           <button
@@ -165,7 +167,7 @@
           >3 a 50 caracteres, sin espacios. Se guarda en MAYÚSCULAS.</small
         >
         @if (fieldError('code'); as err) {
-          <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+          <small class="font-medium text-google-red" id="cp-code-error">{{ err }}</small>
         }
       </div>
 
@@ -199,7 +201,9 @@
             pInputText
             class="w-full !rounded-xl"
             [formField]="f.maxUses"
+            aria-required="true"
             [attr.aria-invalid]="!!fieldError('maxUses')"
+            [attr.aria-describedby]="fieldError('maxUses') ? 'cp-uses-error' : null"
           />
           @if (editing(); as e) {
             @if (e.usedCount > 0) {
@@ -209,7 +213,7 @@
             }
           }
           @if (fieldError('maxUses'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            <small class="font-medium text-google-red" id="cp-uses-error">{{ err }}</small>
           }
         </div>
       </div>
@@ -222,7 +226,7 @@
       <button
         type="button"
         class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
-        (click)="closeDialog()"
+        (click)="frame.requestClose()"
       >
         Cancelar
       </button>
@@ -230,7 +234,7 @@
         type="submit"
         form="coupon-form"
         class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        [disabled]="saving() || (submitted() && !canSave())"
+        [disabled]="saving()"
       >
         {{ saving() ? 'Guardando...' : 'Guardar cupón' }}
       </button>

@@ -12,11 +12,22 @@ import {
 } from '@angular/core';
 // Signal Forms es experimental en Angular 21.2 (`form`, `FormField`); es la API que pide CLAUDE.md
 // para formularios nuevos y funciona con inputs nativos, así que se usa tal cual.
+import { FormsModule } from '@angular/forms';
 import { FormField, disabled, form } from '@angular/forms/signals';
 
+import { DatePickerModule } from 'primeng/datepicker';
 import { InputTextModule } from 'primeng/inputtext';
 
+import { ErrorSummary } from '../../../../../shared/components/error-summary/error-summary';
+import {
+  ErrorSummaryItem,
+  FieldRef,
+  buildErrorSummary,
+} from '../../../../../shared/utils/error-summary';
+import { focusField } from '../../../../../shared/utils/focus';
+
 import { AssetCleanupTracker } from '../../../domain/asset-cleanup';
+import { toUserMessage } from '../../../data/postgres-error.mapper';
 import { AssetsRepository } from '../../../domain/assets.repository';
 import { EventsRepository } from '../../../domain/events.repository';
 import { EVENT_TYPES, Event, EventInput, LOCATION_TYPES } from '../../../domain/event.model';
@@ -26,10 +37,15 @@ import {
   emptyEventFormValue,
   eventToFormValue,
   eventToInput,
+  dateStringToDate,
+  dateToDateString,
+  dateToTimeString,
   formValueToEventInput,
   nextAutoSlug,
+  timeStringToDate,
 } from '../../../domain/event-form';
-import { isValidSlug, validateEvent } from '../../../domain/event-validators';
+import { isRequiredToPublish } from '../../../domain/event-tabs';
+import { ValidationIssue, isValidSlug, validateEvent } from '../../../domain/event-validators';
 import { ImageUploader } from '../image-uploader/image-uploader';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -47,10 +63,22 @@ const LOCATION_TYPE_LABELS: Record<string, string> = {
 
 const SLUG_DEBOUNCE_MS = 400;
 
+/** Control y etiqueta de cada campo validable, para el resumen de errores. */
+const FIELD_REFS: Record<string, FieldRef> = {
+  title: { id: 'ev-title', label: 'Título' },
+  slug: { id: 'ev-slug', label: 'Slug' },
+  eventType: { id: 'ev-type', label: 'Tipo' },
+  locationType: { id: 'ev-mode', label: 'Modalidad' },
+  capacity: { id: 'ev-capacity', label: 'Capacidad' },
+  addressLink: { id: 'ev-link', label: 'Enlace de mapa o reunión' },
+  dateStart: { id: 'ev-start-date', label: 'Fecha de inicio' },
+  dateEnd: { id: 'ev-end-date', label: 'Fecha de fin' },
+};
+
 @Component({
   selector: 'app-event-basics-form',
   standalone: true,
-  imports: [FormField, InputTextModule, ImageUploader],
+  imports: [FormField, FormsModule, DatePickerModule, InputTextModule, ImageUploader, ErrorSummary],
   templateUrl: './event-basics-form.html',
 })
 export class EventBasicsForm implements OnInit, OnDestroy {
@@ -64,6 +92,8 @@ export class EventBasicsForm implements OnInit, OnDestroy {
   readonly registrationCount = input(0);
   readonly saving = input(false);
   readonly submitLabel = input('Guardar');
+  /** Error del servidor atado a un campo (p. ej. slug duplicado), mostrado junto al control. */
+  readonly serverError = input<ValidationIssue | null>(null);
 
   readonly save = output<EventInput>();
 
@@ -101,9 +131,25 @@ export class EventBasicsForm implements OnInit, OnDestroy {
     }),
   );
 
-  readonly canSave = computed(
-    () => this.validation().errors.length === 0 && !this.slugChecking() && !this.saving(),
+  readonly isRequiredToPublish = isRequiredToPublish;
+  readonly submitted = signal(false);
+  private readonly blurred = signal<ReadonlySet<string>>(new Set());
+  private readonly baseline = signal('');
+  /** Hay cambios sin guardar respecto de lo último guardado (o del formulario vacío). */
+  readonly dirty = computed(() => JSON.stringify(this.model()) !== this.baseline());
+
+  readonly errors = computed<ValidationIssue[]>(() => {
+    const server = this.serverError();
+    return server ? [...this.validation().errors, server] : this.validation().errors;
+  });
+  readonly summary = computed<ErrorSummaryItem[]>(() =>
+    this.submitted() ? buildErrorSummary(this.errors(), FIELD_REFS) : [],
   );
+
+  readonly startDate = computed(() => dateStringToDate(this.model().startDate));
+  readonly startTime = computed(() => timeStringToDate(this.model().startTime));
+  readonly endDate = computed(() => dateStringToDate(this.model().endDate));
+  readonly endTime = computed(() => timeStringToDate(this.model().endTime));
 
   private slugRequest = 0;
 
@@ -151,13 +197,34 @@ export class EventBasicsForm implements OnInit, OnDestroy {
       this.model.set(eventToFormValue(existing));
       this.slugManual.set(true);
     }
+    this.baseline.set(JSON.stringify(this.model()));
     void this.loadCategories();
   }
 
-  /** Primer error del campo; solo se muestra si el campo fue tocado. */
-  fieldError(field: string, touched: boolean): string | null {
-    if (!touched) return null;
-    return this.validation().errors.find((e) => e.field === field)?.message ?? null;
+  /** Primer error del campo; se muestra al salir del campo o tras intentar enviar. */
+  fieldError(field: string): string | null {
+    if (!this.submitted() && !this.blurred().has(field)) return null;
+    return this.errors().find((e) => e.field === field)?.message ?? null;
+  }
+
+  markBlurred(field: string): void {
+    if (this.blurred().has(field)) return;
+    this.blurred.update((set) => new Set(set).add(field));
+  }
+
+  describedBy(field: string, hint = false): string | null {
+    const ids = [hint ? `${FIELD_REFS[field]?.id ?? field}-hint` : null];
+    if (this.fieldError(field)) ids.push(`${FIELD_REFS[field]?.id ?? field}-error`);
+    const joined = ids.filter(Boolean).join(' ');
+    return joined || null;
+  }
+
+  setDate(key: 'startDate' | 'endDate', value: Date | null): void {
+    this.model.update((v) => ({ ...v, [key]: dateToDateString(value) }));
+  }
+
+  setTime(key: 'startTime' | 'endTime', value: Date | null): void {
+    this.model.update((v) => ({ ...v, [key]: dateToTimeString(value) }));
   }
 
   onSlugInput(): void {
@@ -186,9 +253,45 @@ export class EventBasicsForm implements OnInit, OnDestroy {
     this.model.update((v) => ({ ...v, [key]: url }));
   }
 
-  submit(): void {
-    if (!this.canSave()) return;
-    this.save.emit(formValueToEventInput(this.model(), this.event()?.formFields ?? []));
+  /** El padre llama esto tras guardar con éxito: lo actual pasa a ser la línea base. */
+  markSaved(): void {
+    this.baseline.set(JSON.stringify(this.model()));
+    this.submitted.set(false);
+  }
+
+  /**
+   * Valida todo, muestra el resumen y enfoca el primer campo con error. Devuelve el
+   * EventInput listo para guardar, o null si hay errores.
+   */
+  async requestSave(): Promise<EventInput | null> {
+    this.submitted.set(true);
+    await this.recheckSlug();
+    // Solo bloquea lo que se puede validar aquí: el error del servidor se limpia al reintentar.
+    const blocking = buildErrorSummary(this.validation().errors, FIELD_REFS);
+    if (blocking.length) {
+      focusField(blocking[0].id);
+      return null;
+    }
+    return formValueToEventInput(this.model(), this.event()?.formFields ?? []);
+  }
+
+  async submit(): Promise<void> {
+    if (this.saving()) return;
+    const input = await this.requestSave();
+    if (input) this.save.emit(input);
+  }
+
+  /** Antes de enviar, confirma el slug sin esperar al debounce. */
+  private async recheckSlug(): Promise<void> {
+    const slug = this.model().slug;
+    if (!slug || !isValidSlug(slug) || slug === this.event()?.slug) return;
+    try {
+      const available = await this.eventsRepo.isSlugAvailable(slug, this.event()?.id);
+      this.slugTaken.set(!available);
+    } catch (err) {
+      // La BD (UNIQUE) sigue siendo la garantía final; no bloquea el envío.
+      console.warn(toUserMessage(err, 'No se pudo comprobar el slug.'));
+    }
   }
 
   private async loadCategories(): Promise<void> {

@@ -1,3 +1,4 @@
+import { inscritas } from './plural';
 import { SessionSlot, ValidationIssue, normalizeTopics } from './event-validators';
 import { Session, SessionInput, SessionLevel } from './session.model';
 import { Track } from './track.model';
@@ -77,7 +78,7 @@ export function formValueToSessionInput(v: SessionFormValue): SessionInput {
 
 /** Una sesión con inscritos no se puede eliminar. */
 export function sessionDeleteBlockReason(registeredCount: number): string | null {
-  return registeredCount > 0 ? `No se puede eliminar: tiene ${registeredCount} inscrito(s).` : null;
+  return registeredCount > 0 ? `No se puede eliminar: tiene ${inscritas(registeredCount)}.` : null;
 }
 
 /** La capacidad no puede bajar de los inscritos actuales. */
@@ -137,7 +138,7 @@ export function findSameStartPairs(sessions: SessionSlot[]): [SessionSlot, Sessi
 
 export function trackDeleteMessage(track: Pick<Track, 'name'>, sessionCount: number): string {
   if (sessionCount === 0) return `¿Eliminar el track "${track.name}"?`;
-  return `¿Eliminar el track "${track.name}"? Sus ${sessionCount} sesión(es) quedarán sin track (no se borran).`;
+  return `¿Eliminar el track "${track.name}"? ${sessionCount === 1 ? 'Su sesión quedará' : `Sus ${sessionCount} sesiones quedarán`} sin track (no se borra${sessionCount === 1 ? '' : 'n'}).`;
 }
 
 export interface AgendaTrackGroup {

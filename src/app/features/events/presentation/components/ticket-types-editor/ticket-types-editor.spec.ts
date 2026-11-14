@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { DomainError } from '../../../domain/domain-error';
@@ -38,6 +39,7 @@ describe('TicketTypesEditor', () => {
     TestBed.configureTestingModule({
       imports: [TicketTypesEditor],
       providers: [
+        feedbackStub(),
         { provide: TicketTypesRepository, useValue: repo },
         { provide: AssetsRepository, useValue: { upload: vi.fn(), remove } },
       ],
@@ -171,7 +173,7 @@ describe('TicketTypesEditor', () => {
       const cmp = fixture.componentInstance;
       expect(cmp.phaseSummary(phased)).toEqual([
         { name: 'Preventa', label: '4/10', active: true },
-        { name: 'Normal', label: '0 vendidos', active: false },
+        { name: 'Normal', label: '0 inscritas', active: false },
       ]);
       expect(fixture.nativeElement.textContent).toContain('Preventa · 4/10');
     });
@@ -191,13 +193,44 @@ describe('TicketTypesEditor', () => {
       const fixture = await create();
       const cmp = fixture.componentInstance;
       cmp.openEdit(phased);
-      cmp.removePhase(0);
+      await cmp.removePhase(0);
       expect(cmp.model().phases).toHaveLength(2);
       expect(cmp.disablePhasesBlockReason()).toContain('Preventa');
       cmp.toggleUsesPhases(false);
       expect(cmp.model().usesPhases).toBe(true);
-      cmp.removePhase(1);
+      await cmp.removePhase(1);
       expect(cmp.model().phases.map((p) => p.id)).toEqual(['p1']);
+    });
+
+    it('pide confirmación antes de quitar una fase y no la quita si se cancela', async () => {
+      TestBed.resetTestingModule();
+      const decline = feedbackStub(false);
+      TestBed.configureTestingModule({
+        imports: [TicketTypesEditor],
+        providers: [
+          decline,
+          { provide: TicketTypesRepository, useValue: repo },
+          { provide: AssetsRepository, useValue: { upload: vi.fn(), remove } },
+        ],
+      });
+      const fixture = await create();
+      const cmp = fixture.componentInstance;
+      cmp.openEdit(phased);
+      await cmp.removePhase(1);
+      expect(decline.useValue.confirm).toHaveBeenCalled();
+      expect(cmp.model().phases).toHaveLength(2);
+    });
+
+    it('valida al reordenar, sin esperar a guardar, y lo muestra junto a la fase', async () => {
+      const fixture = await create();
+      const cmp = fixture.componentInstance;
+      cmp.openEdit(phased);
+      cmp.updatePhase(1, { capacity: '' });
+      expect(cmp.phaseError(0, 'capacity')).toBeNull();
+      cmp.shiftPhase(1, -1);
+      expect(cmp.phaseError(0, 'capacity')).toContain('última fase');
+      expect(cmp.summary().some((i) => i.id === 'ph-cap-0')).toBe(true);
+      expect(repo.update).not.toHaveBeenCalled();
     });
 
     it('no baja el cupo de una fase por debajo de lo vendido', async () => {

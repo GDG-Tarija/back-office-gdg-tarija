@@ -1,5 +1,10 @@
 <div class="flex flex-col gap-2">
-  <span class="text-sm font-semibold text-text-primary dark:text-neutral-200">{{ label() }}</span>
+  <span class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+    >{{ label() }}
+    @if (note(); as n) {
+      <span class="ml-1 text-xs font-medium text-google-blue">· {{ n }}</span>
+    }
+  </span>
 
   <div
     class="flex flex-col gap-3 rounded-2xl border border-dashed border-black/10 dark:border-white/10 p-3 sm:flex-row sm:items-center"
@@ -37,6 +42,9 @@
           <input
             type="file"
             class="sr-only"
+            [attr.id]="inputId()"
+            [attr.aria-invalid]="invalidMessage() ? 'true' : null"
+            [attr.aria-describedby]="inputId() ? inputId() + '-error' : null"
             accept="image/jpeg,image/png,image/webp"
             [disabled]="uploading()"
             [attr.aria-label]="(value() ? 'Reemplazar ' : 'Subir ') + label()"
@@ -58,8 +66,14 @@
         }
       </div>
       <p class="text-xs text-text-secondary dark:text-neutral-400">{{ hint() }}</p>
-      @if (error(); as err) {
-        <p class="text-xs font-medium text-google-red" role="alert">{{ err }}</p>
+      @if (error() || invalidMessage(); as err) {
+        <p
+          class="text-xs font-medium text-google-red"
+          role="alert"
+          [attr.id]="inputId() ? inputId() + '-error' : null"
+        >
+          {{ err }}
+        </p>
       }
     </div>
   </div>
