@@ -13,6 +13,11 @@ import {
 import { Attendee, Event } from '../../events/domain/event.model';
 import { EventsApi } from '../../events/data/events.api';
 
+const UNDO_EXPIRED_MESSAGE =
+  'No se pudo deshacer (pasaron más de 60 s). Avisa a un organizador para corregirlo.';
+const UNDO_NETWORK_MESSAGE =
+  'No se pudo deshacer por un problema de conexión. Vuelve a intentarlo.';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -77,7 +82,7 @@ export class CheckinApi implements CheckinRepository {
     checkedInCount: number;
     refrigerioCount: number;
     totalRegistered: number;
-  }> {
+  } | null> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const client = this.supabase as any;
 
@@ -99,6 +104,12 @@ export class CheckinApi implements CheckinRepository {
         countScans('refrigerio'),
       ]);
 
+      const failed = [regsRes, checkinRes, refrigerioRes].find((res) => res.error);
+      if (failed) {
+        console.error('Error fetching check-in stats:', failed.error);
+        return null;
+      }
+
       return {
         checkedInCount: checkinRes.count || 0,
         refrigerioCount: refrigerioRes.count || 0,
@@ -106,11 +117,7 @@ export class CheckinApi implements CheckinRepository {
       };
     } catch (err) {
       console.error('Error fetching check-in stats:', err);
-      return {
-        checkedInCount: 0,
-        refrigerioCount: 0,
-        totalRegistered: 0,
-      };
+      return null;
     }
   }
 
@@ -343,14 +350,20 @@ export class CheckinApi implements CheckinRepository {
     }
 
     // 2. Registrar el escaneo en `scan_logs`. El id se genera aquí para poder deshacerlo.
+    // `scanned_at` lo pone el servidor (default now()): la ventana de Deshacer no depende del reloj del teléfono.
     const scanLogId = crypto.randomUUID();
-    const { error: insertScanError } = await client.from('scan_logs').insert({
-      id: scanLogId,
-      registration_id: verification.registrationDbId,
-      scan_type: scanType,
-      scanned_by: operatorUserId,
-      scanned_at: new Date().toISOString(),
-    });
+    const { data: inserted, error: insertScanError } = await client
+      .from('scan_logs')
+      .insert({
+        id: scanLogId,
+        registration_id: verification.registrationDbId,
+        scan_type: scanType,
+        scanned_by: operatorUserId,
+      })
+      .select('scanned_at');
+    const serverScannedAt = inserted?.[0]?.scanned_at
+      ? new Date(inserted[0].scanned_at)
+      : new Date();
 
     if (insertScanError) {
       console.error('Error saving scan log:', insertScanError);
@@ -377,7 +390,7 @@ export class CheckinApi implements CheckinRepository {
         .from('inscripciones_sessions')
         .update({
           asistio: true,
-          checked_in_at: new Date().toISOString(),
+          checked_in_at: serverScannedAt.toISOString(),
         })
         .eq('usuario_id', verification.userId)
         .eq('session_id', sessionId);
@@ -396,7 +409,7 @@ export class CheckinApi implements CheckinRepository {
             ? '¡Refrigerio entregado con éxito!'
             : '¡Ingreso a sesión registrado con éxito!',
       attendee: verification.attendee,
-      scannedAt: new Date(),
+      scannedAt: serverScannedAt,
       scanTypeLabel,
       scanLogId,
     };
@@ -406,23 +419,23 @@ export class CheckinApi implements CheckinRepository {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const client = this.supabase as any;
 
-    const { data, error } = await client
-      .from('scan_logs')
-      .delete()
-      .eq('id', input.scanLogId)
-      .select('id');
+    let result: { data: { id: string }[] | null; error: PostgrestError | null };
+    try {
+      result = await client.from('scan_logs').delete().eq('id', input.scanLogId).select('id');
+    } catch (err) {
+      console.error('Error undoing scan:', err);
+      return { ok: false, reason: 'error', message: UNDO_NETWORK_MESSAGE };
+    }
+    const { data, error } = result;
 
     if (error) {
       console.error('Error undoing scan:', error);
-      return { ok: false, message: 'No se pudo deshacer. Vuelve a intentarlo.' };
+      return { ok: false, reason: 'error', message: UNDO_NETWORK_MESSAGE };
     }
 
     // RLS solo deja borrar tu propio registro de los últimos 60 s: sin filas = ya no se puede.
     if (!data || data.length === 0) {
-      return {
-        ok: false,
-        message: 'Ya no se puede deshacer. Pídele a un organizador que lo corrija en Asistentes.',
-      };
+      return { ok: false, reason: 'expired', message: UNDO_EXPIRED_MESSAGE };
     }
 
     if (input.mode === 'session' && input.sessionId && input.userId) {

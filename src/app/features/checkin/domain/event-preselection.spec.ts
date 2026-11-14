@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   PreselectableEvent,
@@ -83,5 +83,25 @@ describe('eventsVisibleTo', () => {
 
   it('SUPERADMIN ve todos', () => {
     expect(eventsVisibleTo('SUPERADMIN', events, [])).toHaveLength(3);
+  });
+});
+
+describe('zona horaria La Paz', () => {
+  // El spec corre en Node pero el tsconfig no incluye @types/node.
+  const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } })
+    .process.env;
+  const previousTz = env['TZ'];
+  beforeAll(() => {
+    env['TZ'] = 'Asia/Tokyo';
+  });
+  afterAll(() => {
+    if (previousTz === undefined) delete env['TZ'];
+    else env['TZ'] = previousTz;
+  });
+
+  it('mismo día en La Paz es "hoy" aunque en el dispositivo (Tokio) ya sea otro día', () => {
+    const morning = ev('manana', new Date('2026-10-15T14:00:00Z')); // 15-oct 10:00 La Paz
+    const now = new Date('2026-10-15T16:00:00Z'); // 15-oct 12:00 La Paz (16-oct 01:00 en Tokio)
+    expect(isEventToday(morning, now)).toBe(true);
   });
 });

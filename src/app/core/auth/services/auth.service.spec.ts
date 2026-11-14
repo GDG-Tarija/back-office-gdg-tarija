@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
+import { RoleLookupError } from '../role-lookup-error';
 import { SUPABASE } from '../../supabase/supabase.client';
 
 describe('AuthService Whitelist', () => {
@@ -51,6 +52,30 @@ describe('AuthService Whitelist', () => {
     const role = await service.resolveRole();
 
     expect(role).toBeNull();
+  });
+
+  it('lanza RoleLookupError cuando la RPC devuelve error (red/servidor), sin tratarlo como sin rol', async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: null, error: { message: 'Failed to fetch' } });
+
+    await expect(service.resolveRole()).rejects.toBeInstanceOf(RoleLookupError);
+    expect(mockSupabase.auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('lanza RoleLookupError cuando la RPC rechaza la promesa', async () => {
+    mockSupabase.rpc.mockRejectedValue(new TypeError('network'));
+
+    await expect(service.resolveRole()).rejects.toBeInstanceOf(RoleLookupError);
+  });
+
+  it('signInWithGoogle apaga loading y avisa si el inicio de OAuth falla', async () => {
+    mockSupabase.auth.signInWithOAuth.mockResolvedValue({ error: { message: 'fail' } });
+
+    service.signInWithGoogle();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(service.loading()).toBe(false);
+    expect(service.authError()).toContain('No pudimos iniciar sesión con Google');
   });
 
   it('should set auth error and sign out when signOutWithError is called', async () => {

@@ -249,7 +249,7 @@ export class EventManagePage implements OnInit, CanLeave {
       return;
     }
     if (!publish) {
-      const n = this.ws.registrationCount();
+      const n = this.ws.activeRegistrationCount();
       const ok = await this.feedback.confirm({
         titulo: 'Despublicar evento',
         mensaje:

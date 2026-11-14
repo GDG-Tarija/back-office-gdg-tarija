@@ -9,7 +9,10 @@ export abstract class EventsRepository {
   /** Falla con DomainError(HAS_REGISTRATIONS) si el evento tiene inscritos. */
   abstract delete(eventId: string): Promise<void>;
   abstract isSlugAvailable(slug: string, excludeEventId?: string): Promise<boolean>;
+  /** Todas las inscripciones, anuladas incluidas: son las que bloquean borrar el evento o cambiar el slug. */
   abstract countRegistrations(eventId: string): Promise<number>;
+  /** Inscripciones sin anuladas: lo que se muestra como "personas inscritas". */
+  abstract countActiveRegistrations(eventId: string): Promise<number>;
   /** Inscritos activos (no anuladas) por evento; los eventos sin inscritos no aparecen. */
   abstract countActiveRegistrationsByEvent(): Promise<Record<string, number>>;
   abstract getAttendees(eventId: string): Promise<Attendee[]>;

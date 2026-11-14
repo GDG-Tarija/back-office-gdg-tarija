@@ -41,6 +41,7 @@ describe('EventManagePage', () => {
   const events = {
     getEventById: vi.fn(),
     countRegistrations: vi.fn(),
+    countActiveRegistrations: vi.fn(),
     getEvents: vi.fn(),
     isSlugAvailable: vi.fn(),
     update: vi.fn(),
@@ -49,6 +50,7 @@ describe('EventManagePage', () => {
   const none = {
     list: vi.fn().mockResolvedValue([]),
     getRegistrationCounts: vi.fn(),
+    getActiveRegistrationCounts: vi.fn(),
     getPhaseAvailability: vi.fn(),
   };
   const feedback = feedbackStub();
@@ -56,9 +58,11 @@ describe('EventManagePage', () => {
   beforeEach(() => {
     events.getEventById.mockResolvedValue(event);
     events.countRegistrations.mockResolvedValue(3);
+    events.countActiveRegistrations.mockResolvedValue(3);
     events.getEvents.mockResolvedValue([]);
     events.isSlugAvailable.mockResolvedValue(true);
     none.getRegistrationCounts.mockResolvedValue({});
+    none.getActiveRegistrationCounts.mockResolvedValue({});
     none.getPhaseAvailability.mockResolvedValue({});
     TestBed.configureTestingModule({
       imports: [EventManagePage],
@@ -102,6 +106,20 @@ describe('EventManagePage', () => {
     fixture.detectChanges();
     return fixture;
   }
+
+  it('Despublicar cuenta solo las inscripciones activas, no las anuladas', async () => {
+    events.getEventById.mockResolvedValue({ ...event, isPublished: true });
+    events.countRegistrations.mockResolvedValue(8);
+    events.countActiveRegistrations.mockResolvedValue(5);
+    events.setPublished.mockResolvedValue({ ...event, isPublished: false });
+    const page = (await create()).componentInstance;
+
+    await page.togglePublished();
+
+    const { mensaje } = feedback.useValue.confirm.mock.calls.at(-1)![0] as { mensaje: string };
+    expect(mensaje).toContain('Tiene 5 personas inscritas');
+    expect(mensaje).not.toContain('8');
+  });
 
   it('deja salir sin preguntar si no hay cambios', async () => {
     const page = (await create()).componentInstance;

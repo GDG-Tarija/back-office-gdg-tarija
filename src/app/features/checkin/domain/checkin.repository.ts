@@ -7,11 +7,12 @@ export abstract class CheckinRepository {
   abstract getAssignedEventIds(): Promise<string[]>;
   abstract getAttendees(eventId: string): Promise<Attendee[]>;
   abstract getSessions(eventId: string): Promise<Session[]>;
+  /** `null` si no se pudo leer: el contador se oculta en vez de mostrar "0 de 0". */
   abstract getCheckinStats(eventId: string): Promise<{
     checkedInCount: number;
     refrigerioCount: number;
     totalRegistered: number;
-  }>;
+  } | null>;
   abstract registerScan(
     registrationId: string,
     eventId: string,

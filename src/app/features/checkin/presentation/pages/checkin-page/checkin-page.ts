@@ -45,6 +45,8 @@ const LAST_EVENT_KEY = 'checkin:last-event';
 /** Cuánto se queda el verde en pantalla: es la ventana para "Deshacer". */
 const SUCCESS_VISIBLE_MS = 5000;
 const SUCCESS_NO_UNDO_MS = 2500;
+/** Mientras el mismo QR siga frente a la cámara (y 3 s después de que se vaya) no se vuelve a leer. */
+const QR_DEBOUNCE_MS = 3000;
 
 interface DoorView {
   state: DoorState;
@@ -80,6 +82,7 @@ export class CheckinPage implements OnInit, OnDestroy {
   readonly loadingEvents = signal<boolean>(false);
   readonly loadingSessions = signal<boolean>(false);
   readonly eventsError = signal<string | null>(null);
+  readonly eventsWarning = signal<string | null>(null);
 
   readonly selectedEvent = signal<Event | null>(null);
   readonly selectedMode = signal<ScanMode>('checkin');
@@ -147,13 +150,20 @@ export class CheckinPage implements OnInit, OnDestroy {
   async loadEvents(): Promise<void> {
     this.loadingEvents.set(true);
     this.eventsError.set(null);
+    this.eventsWarning.set(null);
     try {
       const role = this.auth.role();
       const [all, assigned] = await Promise.all([
         this.checkinRepo.getEvents(),
-        role === 'STAFF' ? this.checkinRepo.getAssignedEventIds() : Promise.resolve([]),
+        role === 'STAFF' ? this.readAssignedEventIds() : Promise.resolve([]),
       ]);
-      const visible = eventsVisibleTo(role, all, assigned);
+      // Sin poder leer las asignaciones se muestran los eventos legibles (RLS limita lo que se puede registrar).
+      const visible = assigned ? eventsVisibleTo(role, all, assigned) : all;
+      if (!assigned) {
+        this.eventsWarning.set(
+          'No pudimos leer tus eventos asignados. Mostramos los eventos publicados; revisa que sea el tuyo.',
+        );
+      }
       this.events.set(visible);
 
       const initial = pickInitialEvent(visible, {
@@ -171,6 +181,16 @@ export class CheckinPage implements OnInit, OnDestroy {
       this.eventsError.set('No se pudieron cargar los eventos. Revisa tu conexión y reintenta.');
     } finally {
       this.loadingEvents.set(false);
+    }
+  }
+
+  /** `null` si falla: la página degrada en vez de quedar en error permanente. */
+  private async readAssignedEventIds(): Promise<string[] | null> {
+    try {
+      return await this.checkinRepo.getAssignedEventIds();
+    } catch (err) {
+      console.error('Error loading assigned events for check-in:', err);
+      return null;
     }
   }
 
@@ -209,7 +229,7 @@ export class CheckinPage implements OnInit, OnDestroy {
       this.loadedAttendeesEventId = eventId;
     } catch (err) {
       console.error('Error loading attendees for manual check-in:', err);
-      this.attendeesError.set('No se pudo cargar la lista de inscritos. Reintenta.');
+      this.attendeesError.set('No se pudo cargar la lista de inscritas. Reintenta.');
     } finally {
       this.loadingAttendees.set(false);
     }
@@ -258,7 +278,8 @@ export class CheckinPage implements OnInit, OnDestroy {
     try {
       const data = await this.checkinRepo.getSessions(eventId);
       this.sessions.set(data);
-      this.selectedSession.set(data[0] ?? null);
+      const keep = this.selectedSession();
+      this.selectedSession.set(data.find((s) => s.id === keep?.id) ?? data[0] ?? null);
     } catch (err) {
       console.error('Error loading sessions:', err);
     } finally {
@@ -292,11 +313,15 @@ export class CheckinPage implements OnInit, OnDestroy {
     this.lastScannedCode = null;
     this.qrError.set(null);
 
+    // Las sesiones solo se recargan si cambió el evento (onEventChange las vacía).
     const event = this.selectedEvent();
-    if (mode === 'session' && event) void this.loadSessions(event.id);
+    if (mode === 'session' && event && this.sessions().length === 0) {
+      void this.loadSessions(event.id);
+    }
   }
 
   async startCamera(): Promise<void> {
+    this.unlockAudio();
     await this.stopScanner();
 
     this.qrError.set(null);
@@ -369,6 +394,7 @@ export class CheckinPage implements OnInit, OnDestroy {
   }
 
   async selectAttendee(attendee: Attendee): Promise<void> {
+    this.unlockAudio();
     if (this.door() || this.isProcessing()) return;
     this.lastScannedCode = null;
     await this.register(attendee.id);
@@ -376,15 +402,13 @@ export class CheckinPage implements OnInit, OnDestroy {
 
   async handleQrDecoded(decodedText: string): Promise<void> {
     const now = Date.now();
+    const sameCode = this.lastScannedCode === decodedText;
+    const recent = now - this.lastScannedTime < QR_DEBOUNCE_MS;
+    // Cada lectura del mismo QR renueva la espera: no se repite mientras siga frente a la cámara.
+    if (sameCode) this.lastScannedTime = now;
 
     // Mientras hay un resultado en pantalla o se está procesando otro, el QR se ignora.
-    if (
-      this.door() ||
-      this.isProcessing() ||
-      (this.lastScannedCode === decodedText && now - this.lastScannedTime < 3000)
-    ) {
-      return;
-    }
+    if (this.door() || this.isProcessing() || (sameCode && recent)) return;
 
     this.lastScannedCode = decodedText;
     this.lastScannedTime = now;
@@ -514,7 +538,7 @@ export class CheckinPage implements OnInit, OnDestroy {
     }
     this.door.set(null);
     this.undoError.set(null);
-    this.lastScannedCode = null;
+    // El antirebote del último QR sigue vigente: si la persona aún está frente a la cámara no se re-registra.
     this.lastScannedTime = Date.now();
   }
 
@@ -606,6 +630,20 @@ export class CheckinPage implements OnInit, OnDestroy {
     else this.beep(120, 'sawtooth', 0.15, 0.4);
   }
 
+  /** iOS solo deja sonar el audio si el contexto se crea/reanuda dentro de un gesto del usuario. */
+  private unlockAudio(): void {
+    try {
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+      this.audioCtx ??= new AudioContextClass();
+      if (this.audioCtx.state === 'suspended') void this.audioCtx.resume();
+    } catch {
+      // Sin Web Audio: la señal queda solo en color y vibración.
+    }
+  }
+
   private beep(frequency: number, type: OscillatorType, volume: number, seconds: number): void {
     try {
       const AudioContextClass =
@@ -613,6 +651,7 @@ export class CheckinPage implements OnInit, OnDestroy {
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.audioCtx ??= new AudioContextClass();
       const ctx = this.audioCtx;
+      if (ctx.state === 'suspended') void ctx.resume();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
