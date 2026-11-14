@@ -8,16 +8,34 @@
       <span>El evento cumple todos los requisitos para publicarse.</span>
     </div>
   } @else {
-    <p class="text-sm font-semibold text-text-primary dark:text-neutral-200">
-      Falta completar para publicar:
+    <p
+      id="publish-checklist-heading"
+      class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+      [attr.role]="attempted() ? 'alert' : null"
+      tabindex="-1"
+    >
+      @if (attempted()) {
+        Aún no se puede publicar. Falta completar:
+      } @else {
+        Falta completar para publicar:
+      }
     </p>
     <ul class="flex flex-col gap-2">
       @for (issue of result().errors; track $index) {
         <li
-          class="flex items-start gap-2 rounded-2xl bg-google-red-light/30 p-3 text-sm text-google-red"
+          class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl bg-google-red-light/30 p-3 text-sm text-google-red"
         >
-          <span class="material-symbols-rounded text-lg" aria-hidden="true">error</span>
-          <span>{{ issue.message }}</span>
+          <span class="flex min-w-0 items-start gap-2">
+            <span class="material-symbols-rounded text-lg" aria-hidden="true">error</span>
+            <span>{{ issue.message }}</span>
+          </span>
+          <button
+            type="button"
+            class="min-h-11 rounded-full px-3 text-sm font-semibold underline underline-offset-2"
+            (click)="go.emit(issue)"
+          >
+            Ir a {{ tabLabel(issue) }}
+          </button>
         </li>
       }
     </ul>

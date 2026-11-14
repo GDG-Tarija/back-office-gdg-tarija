@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { superadminGuard } from '../../core/auth/guards/superadmin.guard';
+import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 
 export const EVENTS_ROUTES: Routes = [
   {
@@ -13,6 +14,7 @@ export const EVENTS_ROUTES: Routes = [
     path: 'new',
     title: 'Nuevo evento',
     canActivate: [superadminGuard],
+    canDeactivate: [unsavedChangesGuard],
     loadComponent: () =>
       import('./presentation/pages/event-wizard-page/event-wizard-page').then(
         (m) => m.EventWizardPage,
@@ -22,6 +24,9 @@ export const EVENTS_ROUTES: Routes = [
     path: ':id/edit',
     title: 'Editar evento',
     canActivate: [superadminGuard],
+    canDeactivate: [unsavedChangesGuard],
+    // La pestaña vive en ?tab=: el guard debe correr también al cambiar de pestaña.
+    runGuardsAndResolvers: 'always',
     loadComponent: () =>
       import('./presentation/pages/event-manage-page/event-manage-page').then(
         (m) => m.EventManagePage,

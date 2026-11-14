@@ -1,4 +1,7 @@
-import { ValidationIssue } from './event-validators';
+export interface ValidationIssue {
+  field: string;
+  message: string;
+}
 
 export interface ErrorSummaryItem {
   /** Id del control en el DOM, para enfocarlo al pulsar el enlace. */

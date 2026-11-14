@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { AssetsRepository } from '../../../domain/assets.repository';
@@ -39,7 +40,10 @@ describe('TracksSessionsEditor', () => {
     regs.getCounts.mockResolvedValue({ s1: 5 });
     TestBed.configureTestingModule({
       imports: [TracksSessionsEditor],
-      providers: [{ provide: AssetsRepository, useValue: { upload: vi.fn(), remove: vi.fn() } }],
+      providers: [
+        feedbackStub(),
+        { provide: AssetsRepository, useValue: { upload: vi.fn(), remove: vi.fn() } },
+      ],
     });
     TestBed.overrideComponent(TracksSessionsEditor, {
       set: {

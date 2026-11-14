@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { DomainError } from '../../../domain/domain-error';
@@ -38,6 +39,7 @@ describe('TicketTypesEditor', () => {
     TestBed.configureTestingModule({
       imports: [TicketTypesEditor],
       providers: [
+        feedbackStub(),
         { provide: TicketTypesRepository, useValue: repo },
         { provide: AssetsRepository, useValue: { upload: vi.fn(), remove } },
       ],

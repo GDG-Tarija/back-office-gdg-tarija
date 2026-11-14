@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { Coupon } from '../../../domain/coupon.model';
@@ -30,7 +31,7 @@ describe('CouponsEditor', () => {
     repo.list.mockResolvedValue([used, unused]);
     TestBed.configureTestingModule({
       imports: [CouponsEditor],
-      providers: [{ provide: CouponsRepository, useValue: repo }],
+      providers: [feedbackStub(), { provide: CouponsRepository, useValue: repo }],
     });
   });
 

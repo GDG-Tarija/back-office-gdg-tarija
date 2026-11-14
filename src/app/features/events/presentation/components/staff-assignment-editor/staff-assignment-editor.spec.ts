@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { DomainError } from '../../../domain/domain-error';
@@ -20,7 +21,7 @@ describe('StaffAssignmentEditor', () => {
     repo.list.mockResolvedValue([a1]);
     TestBed.configureTestingModule({
       imports: [StaffAssignmentEditor],
-      providers: [{ provide: StaffAssignmentsRepository, useValue: repo }],
+      providers: [feedbackStub(), { provide: StaffAssignmentsRepository, useValue: repo }],
     });
   });
 

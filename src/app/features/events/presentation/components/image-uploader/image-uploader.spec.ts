@@ -1,3 +1,4 @@
+import { feedbackStub } from '../../../../../testing/feedback-stub';
 import { TestBed } from '@angular/core/testing';
 
 import { AssetsRepository } from '../../../domain/assets.repository';
@@ -12,7 +13,7 @@ describe('ImageUploader', () => {
     remove.mockReset();
     TestBed.configureTestingModule({
       imports: [ImageUploader],
-      providers: [{ provide: AssetsRepository, useValue: { upload, remove } }],
+      providers: [feedbackStub(), { provide: AssetsRepository, useValue: { upload, remove } }],
     });
   });
 
@@ -57,11 +58,11 @@ describe('ImageUploader', () => {
     expect(fixture.componentInstance.error()).toBeNull();
   });
 
-  it('quitar emite discarded sin borrar el archivo', () => {
+  it('quitar pide confirmación y emite discarded sin borrar el archivo', async () => {
     const fixture = create('https://cdn/old.png');
     const discarded: string[] = [];
     fixture.componentInstance.discarded.subscribe((u) => discarded.push(u));
-    fixture.componentInstance.clear();
+    await fixture.componentInstance.clear();
 
     expect(remove).not.toHaveBeenCalled();
     expect(discarded).toEqual(['https://cdn/old.png']);
@@ -85,7 +86,7 @@ describe('ImageUploader', () => {
     await fixture.componentInstance.upload(png());
 
     expect(discarded).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.error()).toBe('Sin permisos');
+    expect(fixture.componentInstance.error()).toBe('No se pudo subir la imagen.');
     expect(fixture.componentInstance.value()).toBe('https://cdn/old.png');
   });
 });

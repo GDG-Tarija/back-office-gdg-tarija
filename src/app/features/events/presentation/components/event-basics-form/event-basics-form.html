@@ -1,27 +1,39 @@
-<form class="flex flex-col gap-6" (submit)="$event.preventDefault(); submit()">
+<form class="flex flex-col gap-6" novalidate (submit)="$event.preventDefault(); submit()">
+  <p class="text-xs text-text-secondary dark:text-neutral-400">
+    <span aria-hidden="true">*</span> obligatorio.
+    <span class="font-semibold text-google-blue">Necesario para publicar</span> marca lo que se
+    puede dejar para después pero se exige al publicar.
+  </p>
+
+  <app-error-summary [items]="summary()" />
+
   <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
     <!-- Título -->
     <div class="flex flex-col gap-1.5 md:col-span-2">
       <label for="ev-title" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-        >Título *</label
+        >Título <span aria-hidden="true">*</span></label
       >
       <input
         id="ev-title"
         type="text"
         pInputText
         class="w-full !rounded-xl"
+        autocomplete="off"
+        aria-required="true"
         [formField]="f.title"
-        [attr.aria-invalid]="!!fieldError('title', f.title().touched())"
+        [attr.aria-invalid]="!!fieldError('title')"
+        [attr.aria-describedby]="describedBy('title')"
+        (blur)="markBlurred('title')"
       />
-      @if (fieldError('title', f.title().touched()); as err) {
-        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      @if (fieldError('title'); as err) {
+        <small id="ev-title-error" class="font-medium text-google-red">{{ err }}</small>
       }
     </div>
 
     <!-- Slug -->
     <div class="flex flex-col gap-1.5 md:col-span-2">
       <label for="ev-slug" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-        >Slug (URL pública) *</label
+        >Slug (parte final de la URL pública) <span aria-hidden="true">*</span></label
       >
       <input
         id="ev-slug"
@@ -29,36 +41,50 @@
         pInputText
         class="w-full !rounded-xl font-mono"
         autocomplete="off"
+        aria-required="true"
         [formField]="f.slug"
         (input)="onSlugInput()"
-        [attr.aria-invalid]="!!fieldError('slug', true)"
+        [attr.aria-invalid]="!!fieldError('slug')"
+        [attr.aria-describedby]="describedBy('slug', true)"
+        (blur)="markBlurred('slug')"
       />
-      @if (slugLocked()) {
-        <small class="text-text-secondary dark:text-neutral-400"
-          >El slug no se puede cambiar porque el evento está publicado o tiene inscritos.</small
-        >
-      } @else if (slugChecking()) {
-        <small class="text-text-secondary dark:text-neutral-400"
-          >Comprobando disponibilidad...</small
-        >
-      } @else if (model().slug && !fieldError('slug', true)) {
-        <small class="text-google-green">Disponible: /e/{{ model().slug }}</small>
-      }
-      @if (fieldError('slug', f.slug().touched() || !!model().slug); as err) {
-        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      <small id="ev-slug-hint" class="text-text-secondary dark:text-neutral-400">
+        @if (slugLocked()) {
+          El slug no se puede cambiar porque el evento está publicado o tiene personas inscritas.
+        } @else if (slugChecking()) {
+          Comprobando disponibilidad...
+        } @else if (model().slug && !fieldError('slug')) {
+          Quedará en /e/{{ model().slug }}
+        } @else {
+          Se genera desde el título; solo minúsculas, números y guiones.
+        }
+      </small>
+      @if (fieldError('slug'); as err) {
+        <small id="ev-slug-error" class="font-medium text-google-red">{{ err }}</small>
       }
     </div>
 
     <!-- Tipo -->
     <div class="flex flex-col gap-1.5">
       <label for="ev-type" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-        >Tipo *</label
+        >Tipo <span aria-hidden="true">*</span></label
       >
-      <select id="ev-type" pInputText class="w-full !rounded-xl" [formField]="f.eventType">
+      <select
+        id="ev-type"
+        pInputText
+        class="w-full !rounded-xl"
+        aria-required="true"
+        [formField]="f.eventType"
+        [attr.aria-invalid]="!!fieldError('eventType')"
+        [attr.aria-describedby]="describedBy('eventType')"
+      >
         @for (t of eventTypes; track t.value) {
           <option [value]="t.value">{{ t.label }}</option>
         }
       </select>
+      @if (fieldError('eventType'); as err) {
+        <small id="ev-type-error" class="font-medium text-google-red">{{ err }}</small>
+      }
     </div>
 
     <!-- Categoría -->
@@ -85,19 +111,32 @@
     <!-- Modalidad -->
     <div class="flex flex-col gap-1.5">
       <label for="ev-mode" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-        >Modalidad</label
+        >Modalidad
+        <span class="ml-1 text-xs font-medium text-google-blue"
+          >· Necesario para publicar</span
+        ></label
       >
-      <select id="ev-mode" pInputText class="w-full !rounded-xl" [formField]="f.locationType">
+      <select
+        id="ev-mode"
+        pInputText
+        class="w-full !rounded-xl"
+        [formField]="f.locationType"
+        [attr.aria-invalid]="!!fieldError('locationType')"
+        [attr.aria-describedby]="describedBy('locationType')"
+      >
         @for (t of locationTypes; track t.value) {
           <option [value]="t.value">{{ t.label }}</option>
         }
       </select>
+      @if (fieldError('locationType'); as err) {
+        <small id="ev-mode-error" class="font-medium text-google-red">{{ err }}</small>
+      }
     </div>
 
     <!-- Capacidad -->
     <div class="flex flex-col gap-1.5">
       <label for="ev-capacity" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-        >Capacidad *</label
+        >Capacidad <span aria-hidden="true">*</span></label
       >
       <input
         id="ev-capacity"
@@ -105,18 +144,27 @@
         inputmode="numeric"
         pInputText
         class="w-full !rounded-xl"
+        aria-required="true"
         [formField]="f.capacity"
-        [attr.aria-invalid]="!!fieldError('capacity', f.capacity().touched())"
+        [attr.aria-invalid]="!!fieldError('capacity')"
+        [attr.aria-describedby]="describedBy('capacity', true)"
+        (blur)="markBlurred('capacity')"
       />
-      @if (fieldError('capacity', f.capacity().touched()); as err) {
-        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      <small id="ev-capacity-hint" class="text-text-secondary dark:text-neutral-400"
+        >Personas que caben en el evento. Cada paquete puede tener su propio cupo.</small
+      >
+      @if (fieldError('capacity'); as err) {
+        <small id="ev-capacity-error" class="font-medium text-google-red">{{ err }}</small>
       }
     </div>
 
     <!-- Lugar -->
     <div class="flex flex-col gap-1.5">
       <label for="ev-place" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-        >Lugar</label
+        >Lugar
+        <span class="ml-1 text-xs font-medium text-google-blue"
+          >· Necesario para publicar</span
+        ></label
       >
       <input
         id="ev-place"
@@ -129,7 +177,7 @@
     </div>
 
     <!-- Link -->
-    <div class="flex flex-col gap-1.5">
+    <div class="flex flex-col gap-1.5 md:col-span-2">
       <label for="ev-link" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
         >Enlace de mapa o reunión</label
       >
@@ -140,68 +188,106 @@
         class="w-full !rounded-xl"
         placeholder="https://..."
         [formField]="f.addressLink"
-        [attr.aria-invalid]="!!fieldError('addressLink', f.addressLink().touched())"
+        [attr.aria-invalid]="!!fieldError('addressLink')"
+        [attr.aria-describedby]="describedBy('addressLink', true)"
+        (blur)="markBlurred('addressLink')"
       />
-      @if (fieldError('addressLink', f.addressLink().touched()); as err) {
-        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      <small id="ev-link-hint" class="text-text-secondary dark:text-neutral-400"
+        >Obligatorio en eventos virtuales o híbridos.</small
+      >
+      @if (fieldError('addressLink'); as err) {
+        <small id="ev-link-error" class="font-medium text-google-red">{{ err }}</small>
       }
     </div>
 
     <!-- Fechas -->
-    <fieldset class="flex flex-col gap-1.5">
+    <fieldset class="flex min-w-0 flex-col gap-1.5">
       <legend class="text-sm font-semibold text-text-primary dark:text-neutral-200">
-        Inicio * <span class="font-normal text-text-secondary">(hora de La Paz)</span>
+        Inicio <span aria-hidden="true">*</span>
+        <span class="font-normal text-text-secondary">(hora de La Paz)</span>
       </legend>
       <div class="flex gap-2">
-        <input
-          type="date"
-          pInputText
-          class="w-full !rounded-xl"
-          aria-label="Fecha de inicio"
-          [formField]="f.startDate"
+        <p-datepicker
+          class="min-w-0 flex-1"
+          inputId="ev-start-date"
+          ariaLabel="Fecha de inicio"
+          dateFormat="dd/mm/yy"
+          placeholder="dd/mm/aaaa"
+          appendTo="body"
+          [showIcon]="true"
+          [fluid]="true"
+          [ngModel]="startDate()"
+          [ngModelOptions]="{ standalone: true }"
+          [invalid]="!!fieldError('dateStart')"
+          (ngModelChange)="setDate('startDate', $event)"
+          (onBlur)="markBlurred('dateStart')"
         />
-        <input
-          type="time"
-          pInputText
-          class="w-32 !rounded-xl"
-          aria-label="Hora de inicio"
-          [formField]="f.startTime"
+        <p-datepicker
+          class="w-36 shrink-0"
+          inputId="ev-start-time"
+          ariaLabel="Hora de inicio"
+          placeholder="hh:mm"
+          appendTo="body"
+          [timeOnly]="true"
+          hourFormat="24"
+          [fluid]="true"
+          [ngModel]="startTime()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="setTime('startTime', $event)"
         />
       </div>
-      @if (fieldError('dateStart', f.startDate().touched()); as err) {
-        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      @if (fieldError('dateStart'); as err) {
+        <small id="ev-start-date-error" class="font-medium text-google-red">{{ err }}</small>
       }
     </fieldset>
 
-    <fieldset class="flex flex-col gap-1.5">
+    <fieldset class="flex min-w-0 flex-col gap-1.5">
       <legend class="text-sm font-semibold text-text-primary dark:text-neutral-200">
         Fin <span class="font-normal text-text-secondary">(hora de La Paz)</span>
+        <span class="ml-1 text-xs font-medium text-google-blue">· Necesario para publicar</span>
       </legend>
       <div class="flex gap-2">
-        <input
-          type="date"
-          pInputText
-          class="w-full !rounded-xl"
-          aria-label="Fecha de fin"
-          [formField]="f.endDate"
+        <p-datepicker
+          class="min-w-0 flex-1"
+          inputId="ev-end-date"
+          ariaLabel="Fecha de fin"
+          dateFormat="dd/mm/yy"
+          placeholder="dd/mm/aaaa"
+          appendTo="body"
+          [showIcon]="true"
+          [fluid]="true"
+          [ngModel]="endDate()"
+          [ngModelOptions]="{ standalone: true }"
+          [invalid]="!!fieldError('dateEnd')"
+          (ngModelChange)="setDate('endDate', $event)"
+          (onBlur)="markBlurred('dateEnd')"
         />
-        <input
-          type="time"
-          pInputText
-          class="w-32 !rounded-xl"
-          aria-label="Hora de fin"
-          [formField]="f.endTime"
+        <p-datepicker
+          class="w-36 shrink-0"
+          inputId="ev-end-time"
+          ariaLabel="Hora de fin"
+          placeholder="hh:mm"
+          appendTo="body"
+          [timeOnly]="true"
+          hourFormat="24"
+          [fluid]="true"
+          [ngModel]="endTime()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="setTime('endTime', $event)"
         />
       </div>
-      @if (fieldError('dateEnd', f.endDate().touched()); as err) {
-        <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+      @if (fieldError('dateEnd'); as err) {
+        <small id="ev-end-date-error" class="font-medium text-google-red">{{ err }}</small>
       }
     </fieldset>
 
     <!-- Descripción -->
     <div class="flex flex-col gap-1.5 md:col-span-2">
       <label for="ev-desc" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-        >Descripción</label
+        >Descripción
+        <span class="ml-1 text-xs font-medium text-google-blue"
+          >· Necesario para publicar</span
+        ></label
       >
       <textarea
         id="ev-desc"
@@ -216,6 +302,8 @@
     <app-image-uploader
       kind="cover"
       label="Portada"
+      note="Necesario para publicar"
+      inputId="ev-cover"
       hint="JPG, PNG o WebP, máximo 2 MB."
       [eventId]="assetFolderId()"
       [value]="model().imageUrl"
@@ -249,28 +337,29 @@
 
   @if (registrationCount() > 0) {
     <p class="text-xs text-text-secondary dark:text-neutral-400">
-      Este evento tiene {{ registrationCount() }} inscrito(s): el slug está bloqueado y los cambios
-      de fechas o capacidad les afectan.
+      Este evento tiene {{ registrationCount() }}
+      {{ registrationCount() === 1 ? 'persona inscrita' : 'personas inscritas' }}: el slug está
+      bloqueado y los cambios de fechas o capacidad les afectan.
     </p>
   }
 
   <div class="flex items-center justify-end gap-3">
-    @if (validation().errors.length) {
-      <span class="text-xs text-text-secondary dark:text-neutral-400"
-        >{{ validation().errors.length }} campo(s) por corregir</span
+    @if (dirty()) {
+      <span class="text-xs text-text-secondary dark:text-neutral-400" role="status"
+        >Cambios sin guardar</span
       >
     }
     <button
       type="submit"
-      class="inline-flex items-center gap-2 rounded-full bg-google-blue px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      [disabled]="!canSave()"
+      class="inline-flex min-h-11 items-center gap-2 rounded-full bg-google-blue px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
+      [disabled]="saving()"
     >
       @if (saving()) {
         <span class="material-symbols-rounded animate-gdg-spin text-base" aria-hidden="true"
           >progress_activity</span
         >
       }
-      <span>{{ submitLabel() }}</span>
+      <span>{{ saving() ? 'Guardando...' : submitLabel() }}</span>
     </button>
   </div>
 </form>

@@ -1,0 +1,74 @@
+@if (setup()) {
+  <nav aria-label="Pasos para configurar el evento">
+    <ol class="flex items-center gap-1.5 sm:gap-2 sm:overflow-x-auto sm:pb-1">
+      @for (t of tabs; track t.id; let i = $index) {
+        <li class="min-w-0 sm:shrink-0">
+          <button
+            #tabButton
+            type="button"
+            class="flex min-h-11 items-center gap-2 rounded-full border text-sm font-semibold transition-colors max-sm:size-11 max-sm:justify-center sm:px-4"
+            [class]="
+              current() === t.id
+                ? 'border-google-blue bg-google-blue-light/60 text-google-blue dark:bg-google-blue/20'
+                : isFlagged(t.id)
+                  ? 'border-google-red/40 bg-white text-google-red dark:bg-neutral-900'
+                  : 'border-black/5 bg-white text-text-secondary hover:bg-neutral-100 dark:border-white/5 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+            "
+            [attr.aria-current]="current() === t.id ? 'step' : null"
+            (click)="sectionChange.emit(t.id)"
+            (keydown)="onKeydown($event, i)"
+          >
+            <span
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-black/5 text-xs dark:bg-white/10"
+            >
+              @if (statuses()[t.id] === 'complete' && !isFlagged(t.id)) {
+                <span class="material-symbols-rounded text-sm" aria-hidden="true">check</span>
+              } @else if (isFlagged(t.id)) {
+                <span class="material-symbols-rounded text-sm" aria-hidden="true"
+                  >priority_high</span
+                >
+              } @else {
+                {{ i + 1 }}
+              }
+            </span>
+            <span class="max-sm:sr-only">{{ t.label }}</span>
+            <span class="sr-only">, {{ statusLabel(t.id) }}</span>
+          </button>
+        </li>
+      }
+    </ol>
+    <p class="mt-2 text-sm font-semibold text-text-primary sm:hidden dark:text-neutral-100">
+      Paso {{ currentIndex() + 1 }} de {{ tabs.length }}: {{ currentLabel() }}
+    </p>
+  </nav>
+} @else {
+  <div class="relative">
+    <div
+      role="tablist"
+      aria-label="Secciones del evento"
+      class="flex gap-2 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)] pr-6 sm:[mask-image:none] sm:pr-0"
+    >
+      @for (t of tabs; track t.id; let i = $index) {
+        <button
+          #tabButton
+          type="button"
+          role="tab"
+          [id]="'tab-' + t.id"
+          [attr.aria-selected]="current() === t.id"
+          [attr.aria-controls]="'panel-' + t.id"
+          [attr.tabindex]="current() === t.id ? 0 : -1"
+          class="min-h-11 shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
+          [class]="
+            current() === t.id
+              ? 'border-google-blue bg-google-blue-light/60 text-google-blue dark:bg-google-blue/20'
+              : 'border-black/5 bg-white text-text-secondary hover:bg-neutral-100 dark:border-white/5 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+          "
+          (click)="sectionChange.emit(t.id)"
+          (keydown)="onKeydown($event, i)"
+        >
+          {{ t.label }}
+        </button>
+      }
+    </div>
+  </div>
+}
