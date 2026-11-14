@@ -18,7 +18,9 @@
         <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
           Comprobantes por revisar
           @if (totalProofs() > 0) {
-            <span class="ml-1 font-extrabold text-google-red">({{ totalProofs() }})</span>
+            <span class="ml-1 font-extrabold text-google-red-dark dark:text-google-red"
+              >({{ totalProofs() }})</span
+            >
           }
         </h3>
         @for (p of proofs(); track p.eventId) {
@@ -44,7 +46,9 @@
         <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">
           Borradores sin publicar
           @if (drafts().length > 0) {
-            <span class="ml-1 font-extrabold text-google-red">({{ drafts().length }})</span>
+            <span class="ml-1 font-extrabold text-google-red-dark dark:text-google-red"
+              >({{ drafts().length }})</span
+            >
           }
         </h3>
         @for (d of drafts().slice(0, maxDrafts); track d.id) {
@@ -63,7 +67,10 @@
           </p>
         }
         @if (drafts().length > maxDrafts) {
-          <a routerLink="/events" class="px-3 text-sm font-semibold text-google-blue underline">
+          <a
+            routerLink="/events"
+            class="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-google-blue-dark dark:text-google-blue underline"
+          >
             Ver todos los eventos
           </a>
         }
@@ -85,13 +92,13 @@
             <span class="flex flex-wrap gap-x-4">
               <a
                 [routerLink]="['/events', u.event.id, 'attendees']"
-                class="inline-flex min-h-11 items-center font-semibold text-google-blue underline"
+                class="inline-flex min-h-11 items-center font-semibold text-google-blue-dark dark:text-google-blue underline"
               >
                 Asistentes
               </a>
               <a
                 routerLink="/checkin"
-                class="inline-flex min-h-11 items-center font-semibold text-google-blue underline"
+                class="inline-flex min-h-11 items-center font-semibold text-google-blue-dark dark:text-google-blue underline"
               >
                 Check-in
               </a>

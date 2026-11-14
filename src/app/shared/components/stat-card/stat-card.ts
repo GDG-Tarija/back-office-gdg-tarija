@@ -39,13 +39,13 @@ export class StatCard {
   getBadgeClasses(): string {
     switch (this.badgeSeverity()) {
       case 'blue':
-        return 'bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue';
+        return 'bg-google-blue-light/60 dark:bg-google-blue/20 text-google-blue-dark dark:text-google-blue-light';
       case 'red':
-        return 'bg-google-red-light/60 dark:bg-google-red/20 text-google-red';
+        return 'bg-google-red-light/60 dark:bg-google-red/20 text-google-red-dark dark:text-google-red-light';
       case 'green':
-        return 'bg-google-green-light/60 dark:bg-google-green/20 text-google-green';
+        return 'bg-google-green-light/60 dark:bg-google-green/20 text-google-green-dark dark:text-google-green-light';
       case 'yellow':
-        return 'bg-google-yellow-light/60 dark:bg-google-yellow/20 text-google-yellow';
+        return 'bg-google-yellow-light/60 dark:bg-google-yellow/20 text-google-yellow-dark dark:text-google-yellow-light';
       default:
         return 'bg-neutral-100 dark:bg-neutral-800 text-text-secondary dark:text-neutral-400';
     }
