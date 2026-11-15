@@ -200,7 +200,11 @@
                   </span>
                 </span>
                 <div class="flex min-w-0 flex-1 flex-col">
-                  <span class="truncate text-sm font-semibold">{{ u.event.title }}</span>
+                  <a
+                    [routerLink]="['/events', u.event.id]"
+                    class="truncate text-sm font-semibold underline-offset-2 hover:underline"
+                    >{{ u.event.title }}</a
+                  >
                   <span class="text-xs text-text-secondary dark:text-neutral-400">
                     {{ u.isToday ? 'Hoy' : (u.event.dateStart | date: 'EEE d MMM') }} ·
                     {{ u.registered }} de {{ u.event.capacity }} inscritas

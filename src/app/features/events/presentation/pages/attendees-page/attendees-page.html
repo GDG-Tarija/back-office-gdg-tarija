@@ -595,6 +595,7 @@
   (visibleChange)="showDetailModal.set($event)"
   [modal]="true"
   [closeOnEscape]="true"
+  [dismissableMask]="true"
   [style]="{ width: '90vw', 'max-width': '650px' }"
   [draggable]="false"
   [resizable]="false"
@@ -961,6 +962,5 @@
   (closed)="closeProof()"
   (previous)="stepProof(-1)"
   (next)="stepProof(1)"
-  (confirmPayment)="confirmPayment($event)"
-  (cancelRegistration)="cancelFromProof($event)"
+  (statusChange)="changeFromProof($event)"
 />

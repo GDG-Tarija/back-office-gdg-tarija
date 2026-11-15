@@ -163,10 +163,11 @@ Estructura `data` / `domain` / `presentation`. Guía de usuario: `docs/gestion-d
 
 ### Rutas (`events.routes.ts`)
 
-- `/events` listado (todos los roles; en móvil, tarjetas).
+- `/events` listado (todos los roles; en móvil, tarjetas). Filtros arriba y fuera de la tabla; toda la fila abre el Resumen y el menú `⋮` lleva a Configuración (SUPERADMIN), Asistentes, Check-in y Credenciales.
 - `/events/new` primer paso "Datos" (solo SUPERADMIN, `superadminGuard`, `unsavedChangesGuard`).
 - `/events/:id/edit?tab=<pestaña>[&setup=1]` gestión por pestañas (solo SUPERADMIN, `runGuardsAndResolvers: 'always'`).
 - `/events/:id/attendees` asistentes.
+- `/events/:id` **Resumen** (`event-overview-page`, todos los roles): portada del evento con cifras (`buildEventOverview`), lo que requiere atención, últimas inscripciones, ocupación por paquete y detalles. Es el destino del listado y de las migas (`EventHeader.hubLink`). Va última en `events.routes.ts` para no tapar `new`, `:id/edit` ni `:id/attendees`.
 
 ### Alta y gestión (`event-wizard-page`, `event-manage-page`)
 
@@ -186,7 +187,7 @@ Al guardar "Datos" se crea el borrador (`is_published = false`) y la app pasa a 
 
 ### Asistentes (`attendees-page`)
 
-Filtros por estado/rol/entrada/check-in/comprobante, tarjetas de estado, menú de estado por fila (SUPERADMIN), acción "Anular" con confirmación, `payment-proof-dialog` para revisar comprobantes y exportación CSV/Excel de lo filtrado. En móvil las filas son tarjetas.
+Filtros por estado/rol/entrada/check-in/comprobante, tarjetas de estado, menú de estado por fila (SUPERADMIN), acción "Anular" con confirmación, `payment-proof-dialog` para revisar comprobantes (acciones a los otros dos estados para cualquier estado, con confirmación propia; emite `statusChange` y la página usa `changeFromProof` con `skipConfirmation`) y exportación CSV/Excel de lo filtrado. En móvil las filas son tarjetas.
 
 ### Check-in (`src/app/features/checkin/`)
 

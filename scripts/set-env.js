@@ -21,6 +21,8 @@ const devFilePath = path.join(dir, 'environment.ts');
 const prodFilePath = path.join(dir, 'environment.prod.ts');
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || '';
+// Sitio público de registro (eventos-gdg-tarija): enlaces "Página pública" del back-office.
+const publicSiteUrl = process.env.PUBLIC_SITE_URL || 'https://eventos.gdgtarija.com';
 
 const hasEnvVars = supabaseUrl && supabaseKey;
 
@@ -30,6 +32,7 @@ if (hasEnvVars) {
   production: false,
   supabaseUrl: ${toTsString(supabaseUrl)},
   supabaseKey: ${toTsString(supabaseKey)},
+  publicSiteUrl: ${toTsString(publicSiteUrl)},
 };
 `;
   fs.writeFileSync(devFilePath, devContent, 'utf8');
@@ -52,6 +55,7 @@ if (hasEnvVars) {
   production: true,
   supabaseUrl: ${toTsString(supabaseUrl)},
   supabaseKey: ${toTsString(supabaseKey)},
+  publicSiteUrl: ${toTsString(publicSiteUrl)},
 };
 `;
   fs.writeFileSync(prodFilePath, prodContent, 'utf8');

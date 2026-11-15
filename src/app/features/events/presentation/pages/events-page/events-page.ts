@@ -12,6 +12,7 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
+import { filterIconClass, filterSelectClass } from '../../../../../shared/utils/filter-field';
 import { MOBILE_QUERY, mediaQuerySignal } from '../../../../../shared/utils/media-query';
 import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
 import { eventsVisibleTo } from '../../../../checkin/domain/event-preselection';
@@ -85,16 +86,20 @@ export class EventsPage implements OnInit {
 
   readonly rowMenuItems = signal<MenuItem[]>([]);
 
+  // Las opciones se leen solas (sin etiqueta visible encima): "Todos los estados", no "Todos".
   readonly statusOptions: { label: string; value: EventStatusFilter }[] = [
-    { label: 'Todos', value: 'ALL' },
+    { label: 'Todos los estados', value: 'ALL' },
     { label: 'Borradores', value: 'DRAFT' },
     { label: 'Publicados', value: 'PUBLISHED' },
   ];
   readonly timeOptions: { label: string; value: EventTimeFilter }[] = [
     { label: 'Próximos', value: 'UPCOMING' },
     { label: 'Pasados', value: 'PAST' },
-    { label: 'Todos', value: 'ALL' },
+    { label: 'Todas las fechas', value: 'ALL' },
   ];
+
+  readonly selectClass = (active: boolean) => filterSelectClass(active);
+  readonly iconClass = filterIconClass;
 
   readonly sorted = computed(() => sortEventsForList(this.events(), this.now()));
   readonly visible = computed(() => filterEvents(this.sorted(), this.filters(), this.now()));
@@ -160,13 +165,16 @@ export class EventsPage implements OnInit {
     this.first.set(state.first ?? 0);
   }
 
-  /** Hub del evento: Configuración para SUPERADMIN, Asistentes para STAFF. */
-  hubLink(event: Event): string[] {
-    return ['/events', event.id, this.isSuperadmin() ? 'edit' : 'attendees'];
+  /** Portada del evento (Resumen): desde ahí se salta a Configuración, Asistentes y Check-in. */
+  eventLink(event: Event): string[] {
+    return ['/events', event.id];
   }
 
-  primaryLabel(): string {
-    return this.isSuperadmin() ? 'Gestionar' : 'Asistentes';
+  /** Toda la fila abre el evento; los enlaces y botones de la fila siguen haciendo lo suyo. */
+  openEvent(event: Event, click: MouseEvent): void {
+    const target = click.target as HTMLElement | null;
+    if (target?.closest('a, button')) return;
+    void this.router.navigate(this.eventLink(event));
   }
 
   typeLabel(event: Event): string {
@@ -183,16 +191,28 @@ export class EventsPage implements OnInit {
     return `${count ?? 0} / ${event.capacity}`;
   }
 
+  /** 0..100 para la barra de ocupación; null mientras no hay conteos. */
+  fillPercent(event: Event): number | null {
+    const counts = this.registered();
+    if (counts === null || event.capacity <= 0) return null;
+    return Math.min(((counts[event.id] ?? 0) / event.capacity) * 100, 100);
+  }
+
   openRowMenu(event: Event, trigger: MouseEvent): void {
     const items: MenuItem[] = [];
     if (this.isSuperadmin()) {
       items.push({
-        label: 'Asistentes',
-        icon: 'groups',
-        command: () => void this.router.navigate(['/events', event.id, 'attendees']),
+        label: 'Configuración',
+        icon: 'tune',
+        command: () => void this.router.navigate(['/events', event.id, 'edit']),
       });
     }
     items.push(
+      {
+        label: 'Asistentes',
+        icon: 'group',
+        command: () => void this.router.navigate(['/events', event.id, 'attendees']),
+      },
       {
         label: 'Check-in',
         icon: 'qr_code_scanner',

@@ -58,159 +58,209 @@
       </button>
     </div>
   } @else {
-    <section
-      class="overflow-hidden rounded-3xl border border-black/5 bg-white shadow-xs dark:border-white/5 dark:bg-neutral-900"
-      aria-label="Lista de eventos"
+    <!-- Filtros arriba y fuera de la tabla: la tabla es su propia superficie. -->
+    <div
+      role="search"
+      aria-label="Buscar y filtrar eventos"
+      class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center"
     >
-      <div
-        class="flex flex-col gap-3 border-b border-black/5 p-4 dark:border-white/5 md:flex-row md:items-end"
-      >
-        <div class="relative min-w-0 md:w-80">
-          <label for="events-search" class="sr-only">Buscar eventos por nombre, tipo o lugar</label>
-          <span
-            class="material-symbols-rounded pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-secondary"
-            aria-hidden="true"
-            >search</span
-          >
-          <input
-            id="events-search"
-            type="search"
-            autocomplete="off"
-            placeholder="Buscar por nombre, tipo o lugar"
-            class="min-h-11 w-full rounded-xl border border-black/15 bg-transparent pl-10 pr-11 text-sm dark:border-white/15"
-            [ngModel]="filters().query"
-            (ngModelChange)="setFilters({ query: $event })"
-          />
-          @if (filters().query) {
-            <button
-              type="button"
-              class="absolute right-0.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-text-secondary hover:text-text-primary"
-              aria-label="Limpiar búsqueda"
-              (click)="setFilters({ query: '' })"
-            >
-              <span class="material-symbols-rounded text-lg" aria-hidden="true">close</span>
-            </button>
-          }
-        </div>
-        <div class="flex flex-col gap-1">
-          <label for="events-status" class="text-xs font-semibold text-text-secondary"
-            >Estado</label
-          >
-          <p-select
-            inputId="events-status"
-            [options]="statusOptions"
-            optionLabel="label"
-            optionValue="value"
-            [ngModel]="filters().status"
-            (ngModelChange)="setFilters({ status: $event })"
-            styleClass="min-h-11 w-full md:w-44"
-          />
-        </div>
-        <div class="flex flex-col gap-1">
-          <label for="events-time" class="text-xs font-semibold text-text-secondary">Cuándo</label>
-          <p-select
-            inputId="events-time"
-            [options]="timeOptions"
-            optionLabel="label"
-            optionValue="value"
-            [ngModel]="filters().time"
-            (ngModelChange)="setFilters({ time: $event })"
-            styleClass="min-h-11 w-full md:w-44"
-          />
-        </div>
-        @if (filtersActive()) {
+      <div class="relative min-w-0 md:w-80">
+        <label for="events-search" class="sr-only">Buscar eventos por nombre, tipo o lugar</label>
+        <input
+          id="events-search"
+          type="search"
+          autocomplete="off"
+          placeholder="Buscar por nombre, tipo o lugar"
+          class="h-10 w-full rounded-xl border pl-10 pr-11 text-sm max-md:h-11"
+          [class]="
+            filters().query
+              ? 'border-accent-text bg-info-bg'
+              : 'border-black/15 bg-surface-paper dark:border-white/15'
+          "
+          [ngModel]="filters().query"
+          (ngModelChange)="setFilters({ query: $event })"
+        />
+        <span [class]="iconClass(!!filters().query)" aria-hidden="true">search</span>
+        @if (filters().query) {
           <button
             type="button"
-            class="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full px-3 text-sm font-semibold text-accent-text hover:bg-google-blue-light/50 md:self-end"
-            (click)="clearFilters()"
+            class="absolute right-0.5 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-text-secondary hover:text-text-primary max-md:size-11"
+            aria-label="Limpiar búsqueda"
+            (click)="setFilters({ query: '' })"
           >
-            Limpiar filtros
+            <span class="material-symbols-rounded text-lg" aria-hidden="true">close</span>
           </button>
         }
       </div>
 
-      @if (loadingEvents()) {
-        <div class="flex justify-center p-12" role="status" aria-label="Cargando eventos">
-          <span
-            class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
-            aria-hidden="true"
-            >progress_activity</span
-          >
-        </div>
-      } @else if (events().length === 0) {
-        <div class="flex flex-col items-center gap-3 p-12 text-center">
-          <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
-            >calendar_month</span
-          >
-          <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">
-            {{ isSuperadmin() ? 'Todavía no hay eventos' : 'No tienes eventos asignados' }}
-          </h2>
-          @if (isSuperadmin()) {
-            <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
-              Crea el primero: empieza como borrador y lo publicas cuando esté listo.
-            </p>
-            <a
-              routerLink="/events/new"
-              class="inline-flex min-h-11 items-center gap-2 rounded-full bg-action px-5 text-sm font-semibold text-on-action hover:opacity-90"
+      <div class="relative w-full md:w-48">
+        <label for="events-status" class="sr-only">Estado</label>
+        <p-select
+          inputId="events-status"
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+          ariaLabel="Filtrar por estado"
+          [ngModel]="filters().status"
+          (ngModelChange)="setFilters({ status: $event })"
+          [styleClass]="selectClass(filters().status !== 'ALL')"
+          appendTo="body"
+        >
+          <ng-template #dropdownicon>
+            <span class="material-symbols-rounded text-lg text-text-muted" aria-hidden="true"
+              >expand_more</span
             >
-              <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
-              Crear evento
-            </a>
+          </ng-template>
+        </p-select>
+        <span [class]="iconClass(filters().status !== 'ALL')" aria-hidden="true">visibility</span>
+      </div>
+
+      <div class="relative w-full md:w-48">
+        <label for="events-time" class="sr-only">Cuándo</label>
+        <p-select
+          inputId="events-time"
+          [options]="timeOptions"
+          optionLabel="label"
+          optionValue="value"
+          ariaLabel="Filtrar por fecha"
+          [ngModel]="filters().time"
+          (ngModelChange)="setFilters({ time: $event })"
+          [styleClass]="selectClass(filters().time !== 'ALL')"
+          appendTo="body"
+        >
+          <ng-template #dropdownicon>
+            <span class="material-symbols-rounded text-lg text-text-muted" aria-hidden="true"
+              >expand_more</span
+            >
+          </ng-template>
+        </p-select>
+        <span [class]="iconClass(filters().time !== 'ALL')" aria-hidden="true">schedule</span>
+      </div>
+
+      @if (filtersActive()) {
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center gap-1 self-start rounded-full px-3 text-sm font-semibold text-accent-text hover:bg-info-bg md:self-auto"
+          (click)="clearFilters()"
+        >
+          <span class="material-symbols-rounded text-lg" aria-hidden="true">filter_alt_off</span>
+          Limpiar filtros
+        </button>
+      }
+
+      @if (!loadingEvents() && events().length > 0) {
+        <p class="text-sm text-text-secondary md:ml-auto dark:text-neutral-400" aria-live="polite">
+          @if (filtersActive()) {
+            {{ visible().length }} de {{ events().length }} eventos
           } @else {
-            <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
-              No tienes eventos asignados. Pídele a un organizador que te asigne a uno y vuelve a
-              abrir esta pantalla.
-            </p>
+            {{ events().length }} {{ events().length === 1 ? 'evento' : 'eventos' }}
           }
-        </div>
-      } @else if (visible().length === 0) {
-        <div class="flex flex-col items-center gap-3 p-12 text-center">
-          <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
-            >search_off</span
-          >
-          <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">Sin resultados</h2>
+        </p>
+      }
+    </div>
+
+    @if (loadingEvents()) {
+      <div
+        class="flex justify-center rounded-3xl border border-black/[0.06] bg-surface-paper p-12 dark:border-white/[0.06]"
+        role="status"
+        aria-label="Cargando eventos"
+      >
+        <span
+          class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
+          aria-hidden="true"
+          >progress_activity</span
+        >
+      </div>
+    } @else if (events().length === 0) {
+      <div
+        class="flex flex-col items-center gap-3 rounded-3xl border border-black/[0.06] bg-surface-paper p-12 text-center dark:border-white/[0.06]"
+      >
+        <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
+          >calendar_month</span
+        >
+        <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">
+          {{ isSuperadmin() ? 'Todavía no hay eventos' : 'No tienes eventos asignados' }}
+        </h2>
+        @if (isSuperadmin()) {
           <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
-            Ningún evento coincide con la búsqueda o los filtros actuales.
+            Crea el primero: empieza como borrador y lo publicas cuando esté listo.
           </p>
-          <button
-            type="button"
-            class="inline-flex min-h-11 items-center rounded-full border border-black/15 px-5 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
-            (click)="clearFilters()"
+          <a
+            routerLink="/events/new"
+            class="inline-flex min-h-11 items-center gap-2 rounded-full bg-action px-5 text-sm font-semibold text-on-action hover:opacity-90"
           >
-            Limpiar filtros
-          </button>
-        </div>
-      } @else if (isMobile()) {
-        <ul class="divide-y divide-black/5 dark:divide-white/5">
+            <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+            Crear evento
+          </a>
+        } @else {
+          <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
+            No tienes eventos asignados. Pídele a un organizador que te asigne a uno y vuelve a
+            abrir esta pantalla.
+          </p>
+        }
+      </div>
+    } @else if (visible().length === 0) {
+      <div
+        class="flex flex-col items-center gap-3 rounded-3xl border border-black/[0.06] bg-surface-paper p-12 text-center dark:border-white/[0.06]"
+      >
+        <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
+          >search_off</span
+        >
+        <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">Sin resultados</h2>
+        <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
+          Ningún evento coincide con la búsqueda o los filtros actuales.
+        </p>
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center rounded-full border border-black/15 px-5 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
+          (click)="clearFilters()"
+        >
+          Limpiar filtros
+        </button>
+      </div>
+    } @else if (isMobile()) {
+      <div
+        class="overflow-hidden rounded-3xl border border-black/[0.06] bg-surface-paper dark:border-white/[0.06]"
+      >
+        <ul
+          role="list"
+          aria-label="Lista de eventos"
+          class="divide-y divide-black/5 dark:divide-white/10"
+        >
           @for (event of page(); track event.id) {
-            <li class="space-y-3 p-4">
-              <div class="space-y-1">
-                <a
-                  [routerLink]="hubLink(event)"
-                  class="flex min-h-11 items-center rounded font-bold text-text-primary underline-offset-2 hover:underline dark:text-neutral-100"
-                >
-                  {{ event.title }}
-                </a>
-                <p class="text-sm text-text-secondary dark:text-neutral-400">
-                  {{ typeLabel(event) }} · {{ event.dateStart | date: 'EEE d MMM y, HH:mm' }}
-                </p>
+            <!-- El enlace del título cubre toda la tarjeta (after:inset-0); el menú queda encima. -->
+            <li class="relative flex gap-3 p-4 transition-colors active:bg-surface-main">
+              <div class="flex min-w-0 flex-1 flex-col gap-2">
+                <div class="flex flex-col gap-0.5">
+                  <a
+                    [routerLink]="eventLink(event)"
+                    class="font-bold text-text-primary after:absolute after:inset-0 after:content-[''] dark:text-neutral-100"
+                  >
+                    {{ event.title }}
+                  </a>
+                  <p class="text-sm text-text-secondary dark:text-neutral-400">
+                    {{ typeLabel(event) }} · {{ event.dateStart | date: 'EEE d MMM y, HH:mm' }}
+                  </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                  <p-tag
+                    [value]="event.isPublished ? 'Publicado' : 'Borrador'"
+                    [severity]="event.isPublished ? 'success' : 'secondary'"
+                  />
+                  <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">{{
+                    timingLabel(event)
+                  }}</span>
+                  <span class="ml-auto tabular-nums text-text-secondary dark:text-neutral-300"
+                    >Inscritas
+                    <strong class="text-text-primary dark:text-neutral-100">{{
+                      registeredLabel(event)
+                    }}</strong></span
+                  >
+                </div>
               </div>
-              <div class="flex flex-wrap items-center gap-2 text-sm">
-                <p-tag
-                  [value]="event.isPublished ? 'Publicado' : 'Borrador'"
-                  [severity]="event.isPublished ? 'success' : 'secondary'"
-                />
-                <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">{{
-                  timingLabel(event)
-                }}</span>
-                <span class="ml-auto text-text-secondary dark:text-neutral-300"
-                  >Inscritas
-                  <strong class="text-text-primary dark:text-neutral-100">{{
-                    registeredLabel(event)
-                  }}</strong></span
-                >
+              <div class="relative z-10 flex shrink-0 items-start">
+                <ng-container *ngTemplateOutlet="actions; context: { $implicit: event }" />
               </div>
-              <ng-container *ngTemplateOutlet="actions; context: { $implicit: event }" />
             </li>
           }
         </ul>
@@ -221,89 +271,103 @@
           [showCurrentPageReport]="false"
           (onPageChange)="onPage($event)"
         />
-      } @else {
-        <p-table
-          [value]="visible()"
-          [paginator]="true"
-          [rows]="rows"
-          [first]="first()"
-          (onPage)="onPage($event)"
-          [tableStyle]="{ 'min-width': '56rem' }"
-        >
-          <ng-template #header>
-            <tr>
-              <th scope="col" class="min-w-[18rem]">Evento</th>
-              <th scope="col">Tipo</th>
-              <th scope="col">Fecha</th>
-              <th scope="col" class="text-center">Inscritas</th>
-              <th scope="col">Estado</th>
-              <th scope="col"><span class="sr-only">Acciones</span></th>
-            </tr>
-          </ng-template>
-          <ng-template #body let-event>
-            <tr>
-              <td>
-                <a
-                  [routerLink]="hubLink(event)"
-                  class="inline-flex min-h-11 items-center font-bold text-text-primary underline-offset-2 hover:underline dark:text-neutral-100"
-                  >{{ event.title }}</a
-                >
+      </div>
+    } @else {
+      <p-table
+        [value]="visible()"
+        [paginator]="true"
+        [rows]="rows"
+        [first]="first()"
+        (onPage)="onPage($event)"
+        [tableStyle]="{ 'min-width': '48rem' }"
+        aria-label="Lista de eventos"
+      >
+        <ng-template #header>
+          <tr>
+            <th scope="col" class="min-w-[18rem]">Evento</th>
+            <th scope="col">Fecha</th>
+            <th scope="col" class="w-44">Inscritas</th>
+            <th scope="col">Estado</th>
+            <th scope="col" class="w-24"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-event>
+          <tr class="group cursor-pointer" (click)="openEvent(event, $event)">
+            <td>
+              <a
+                [routerLink]="eventLink(event)"
+                class="inline-flex min-h-11 items-center font-bold text-text-primary underline-offset-2 group-hover:underline hover:underline dark:text-neutral-100"
+                >{{ event.title }}</a
+              >
+              <p class="-mt-1.5 text-xs text-text-secondary dark:text-neutral-400">
+                {{ typeLabel(event) }}
                 @if (event.locationName) {
-                  <p class="mt-0.5 text-xs text-text-secondary dark:text-neutral-400">
-                    {{ event.locationName }}
-                  </p>
+                  · {{ event.locationName }}
                 }
-              </td>
-              <td>{{ typeLabel(event) }}</td>
-              <td class="whitespace-nowrap">
-                {{ event.dateStart | date: 'd MMM y' }}
-                <span class="block text-xs text-text-secondary dark:text-neutral-400">{{
-                  event.dateStart | date: 'HH:mm'
+              </p>
+            </td>
+            <td class="whitespace-nowrap">
+              {{ event.dateStart | date: 'EEE d MMM y' }}
+              <span class="block text-xs text-text-secondary dark:text-neutral-400">{{
+                event.dateStart | date: 'HH:mm'
+              }}</span>
+            </td>
+            <td>
+              <span class="text-sm font-semibold tabular-nums">{{ registeredLabel(event) }}</span>
+              @if (fillPercent(event); as pct) {
+                <span
+                  class="mt-1 block h-1 w-28 overflow-hidden rounded-full bg-black/5 dark:bg-white/10"
+                  aria-hidden="true"
+                >
+                  <span
+                    class="block h-full rounded-full bg-google-blue"
+                    [style.width.%]="pct"
+                  ></span>
+                </span>
+              } @else if (fillPercent(event) === 0) {
+                <span
+                  class="mt-1 block h-1 w-28 rounded-full bg-black/5 dark:bg-white/10"
+                  aria-hidden="true"
+                ></span>
+              }
+            </td>
+            <td>
+              <div class="flex flex-col items-start gap-1">
+                <p-tag
+                  [value]="event.isPublished ? 'Publicado' : 'Borrador'"
+                  [severity]="event.isPublished ? 'success' : 'secondary'"
+                />
+                <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">{{
+                  timingLabel(event)
                 }}</span>
-              </td>
-              <td class="text-center font-semibold">{{ registeredLabel(event) }}</td>
-              <td>
-                <div class="flex flex-col items-start gap-1">
-                  <p-tag
-                    [value]="event.isPublished ? 'Publicado' : 'Borrador'"
-                    [severity]="event.isPublished ? 'success' : 'secondary'"
-                  />
-                  <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">{{
-                    timingLabel(event)
-                  }}</span>
-                </div>
-              </td>
-              <td>
+              </div>
+            </td>
+            <td>
+              <div class="flex items-center justify-end gap-1">
                 <ng-container *ngTemplateOutlet="actions; context: { $implicit: event }" />
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      }
-    </section>
+                <span
+                  class="material-symbols-rounded text-xl text-text-muted transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                  >chevron_right</span
+                >
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
   }
 
   <ng-template #actions let-event>
-    <div class="flex items-center gap-2">
-      <a
-        [routerLink]="hubLink(event)"
-        class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-blue-light/60 px-4 text-sm font-semibold text-accent-text transition-colors hover:bg-google-blue-light dark:bg-google-blue/20"
-      >
-        <span class="material-symbols-rounded text-base" aria-hidden="true">{{
-          isSuperadmin() ? 'tune' : 'group'
-        }}</span>
-        {{ primaryLabel() }}
-      </a>
-      <button
-        type="button"
-        class="flex size-11 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-        [attr.aria-label]="'Más acciones de ' + event.title"
-        aria-haspopup="menu"
-        (click)="openRowMenu(event, $event)"
-      >
-        <span class="material-symbols-rounded text-xl" aria-hidden="true">more_vert</span>
-      </button>
-    </div>
+    <button
+      type="button"
+      class="flex size-10 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 max-md:size-11 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      [attr.aria-label]="'Más acciones de ' + event.title"
+      aria-haspopup="menu"
+      (click)="openRowMenu(event, $event)"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">more_vert</span>
+    </button>
   </ng-template>
 
   <p-menu
