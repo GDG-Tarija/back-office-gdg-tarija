@@ -1,7 +1,7 @@
 <div class="space-y-6 p-4 sm:p-8">
   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h1 class="text-3xl font-bold tracking-tight text-text-primary dark:text-neutral-100">
+      <h1 class="text-2xl font-bold tracking-tight text-text-primary dark:text-neutral-100">
         Eventos
       </h1>
       <p class="mt-1 text-sm text-text-secondary dark:text-neutral-400">
@@ -77,7 +77,7 @@
             type="search"
             autocomplete="off"
             placeholder="Buscar por nombre, tipo o lugar"
-            class="min-h-11 w-full rounded-xl border border-black/15 bg-transparent !pl-10 pr-11 text-sm dark:border-white/15"
+            class="min-h-11 w-full rounded-xl border border-black/15 bg-transparent pl-10 pr-11 text-sm dark:border-white/15"
             [ngModel]="filters().query"
             (ngModelChange)="setFilters({ query: $event })"
           />
@@ -132,7 +132,7 @@
       @if (loadingEvents()) {
         <div class="flex justify-center p-12" role="status" aria-label="Cargando eventos">
           <span
-            class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+            class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
             aria-hidden="true"
             >progress_activity</span
           >
@@ -312,6 +312,17 @@
     [popup]="true"
     [model]="rowMenuItems()"
     appendTo="body"
-  />
+  >
+    <ng-template #item let-item>
+      <a
+        class="p-menu-item-link flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium whitespace-nowrap"
+      >
+        <span class="material-symbols-rounded text-lg leading-none shrink-0" aria-hidden="true">{{
+          item.icon
+        }}</span>
+        <span>{{ item.label }}</span>
+      </a>
+    </ng-template>
+  </p-menu>
   <app-credential-generator />
 </div>

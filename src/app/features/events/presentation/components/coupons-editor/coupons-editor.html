@@ -8,7 +8,7 @@
     </div>
     <button
       type="button"
-      class="inline-flex items-center gap-1.5 rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+      class="inline-flex items-center gap-1.5 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-opacity hover:opacity-90"
       (click)="openCreate()"
     >
       <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
@@ -28,18 +28,18 @@
   </div>
 
   @if (actionError(); as err) {
-    <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+    <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
   }
 
   @if (loading()) {
     <div class="flex justify-center p-8" role="status" aria-label="Cargando cupones">
-      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-google-blue"
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
         >progress_activity</span
       >
     </div>
   } @else if (loadError(); as err) {
     <div
-      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-google-red"
+      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-danger-text"
       role="alert"
     >
       <span>{{ err }}</span>
@@ -74,7 +74,7 @@
             <p class="text-sm text-text-secondary dark:text-neutral-400">
               {{ roleLabels[c.role] }} · {{ c.usedCount }} de {{ c.maxUses }} usos ·
               @if (remaining(c) === 0) {
-                <span class="font-semibold text-google-red">agotado</span>
+                <span class="font-semibold text-danger-text">agotado</span>
               } @else {
                 {{ remaining(c) }} {{ remaining(c) === 1 ? 'uso disponible' : 'usos disponibles' }}
               }
@@ -91,7 +91,7 @@
             </button>
             <button
               type="button"
-              class="flex size-11 items-center justify-center rounded-full text-google-blue hover:bg-google-blue-light/60"
+              class="flex size-11 items-center justify-center rounded-full text-accent-text hover:bg-google-blue-light/60"
               [attr.aria-label]="'Editar cupón ' + c.code"
               (click)="openEdit(c)"
             >
@@ -100,7 +100,7 @@
             <span [pTooltip]="deleteBlockReason(c) ?? ''" [tooltipDisabled]="!deleteBlockReason(c)">
               <button
                 type="button"
-                class="flex size-11 items-center justify-center rounded-full text-google-red hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                class="flex size-11 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 [attr.aria-label]="
                   deleteBlockReason(c)
                     ? 'Eliminar cupón ' + c.code + ' (no disponible: ya fue usado)'
@@ -148,7 +148,7 @@
             id="cp-code"
             type="text"
             pInputText
-            class="w-full !rounded-xl font-mono uppercase"
+            class="w-full rounded-xl font-mono uppercase"
             autocomplete="off"
             [formField]="f.code"
             aria-required="true"
@@ -168,7 +168,7 @@
           >3 a 50 caracteres, sin espacios. Se guarda en MAYÚSCULAS.</small
         >
         @if (fieldError('code'); as err) {
-          <small class="font-medium text-google-red" id="cp-code-error">{{ err }}</small>
+          <small class="font-medium text-danger-text" id="cp-code-error">{{ err }}</small>
         }
       </div>
 
@@ -187,7 +187,7 @@
             }
           </select>
           @if (fieldError('role'); as err) {
-            <small class="font-medium text-google-red" role="alert">{{ err }}</small>
+            <small class="font-medium text-danger-text" role="alert">{{ err }}</small>
           }
         </div>
 
@@ -200,7 +200,7 @@
             type="text"
             inputmode="numeric"
             pInputText
-            class="w-full !rounded-xl"
+            class="w-full rounded-xl"
             [formField]="f.maxUses"
             aria-required="true"
             [attr.aria-invalid]="!!fieldError('maxUses')"
@@ -214,13 +214,13 @@
             }
           }
           @if (fieldError('maxUses'); as err) {
-            <small class="font-medium text-google-red" id="cp-uses-error">{{ err }}</small>
+            <small class="font-medium text-danger-text" id="cp-uses-error">{{ err }}</small>
           }
         </div>
       </div>
 
       @if (dialogError(); as err) {
-        <p class="text-sm font-medium text-google-red" role="alert">{{ err }}</p>
+        <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
       }
     </form>
     <ng-container dialog-actions>
@@ -234,7 +234,7 @@
       <button
         type="submit"
         form="coupon-form"
-        class="rounded-full bg-google-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        class="rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         [disabled]="saving()"
       >
         {{ saving() ? 'Guardando...' : 'Guardar cupón' }}
@@ -256,7 +256,7 @@
         >? Esta acción es permanente y el código dejará de funcionar.
       </p>
       @if (deleteError(); as err) {
-        <p class="font-medium text-google-red" role="alert">{{ err }}</p>
+        <p class="font-medium text-danger-text" role="alert">{{ err }}</p>
       }
     </div>
     <ng-container dialog-actions>

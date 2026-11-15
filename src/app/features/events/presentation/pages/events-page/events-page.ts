@@ -188,20 +188,20 @@ export class EventsPage implements OnInit {
     if (this.isSuperadmin()) {
       items.push({
         label: 'Asistentes',
-        icon: 'pi pi-users',
-        routerLink: ['/events', event.id, 'attendees'],
+        icon: 'groups',
+        command: () => void this.router.navigate(['/events', event.id, 'attendees']),
       });
     }
     items.push(
       {
         label: 'Check-in',
-        icon: 'pi pi-qrcode',
-        routerLink: ['/checkin'],
-        queryParams: { event: event.id },
+        icon: 'qr_code_scanner',
+        command: () =>
+          void this.router.navigate(['/checkin'], { queryParams: { event: event.id } }),
       },
       {
         label: 'Credenciales',
-        icon: 'pi pi-id-card',
+        icon: 'badge',
         command: () => this.credentialGenerator()?.open(event),
       },
     );

@@ -10,7 +10,7 @@
   [focusTrap]="true"
   [style]="{ width: '96vw', 'max-width': '70rem' }"
   [breakpoints]="{ '768px': '100vw' }"
-  styleClass="max-md:!h-dvh max-md:!max-h-dvh max-md:!rounded-none [&_.p-dialog-header]:!p-4 [&_.p-dialog-footer]:!p-4"
+  styleClass="max-md:h-dvh max-md:max-h-dvh max-md:rounded-none [&_.p-dialog-header]:!p-4 [&_.p-dialog-footer]:!p-4"
   [contentStyle]="{ padding: '0' }"
 >
   @if (attendee(); as a) {
@@ -201,7 +201,7 @@
             <p-tag
               [value]="statusLabel()"
               [severity]="statusSeverity()"
-              styleClass="!text-[11px] !px-2 !py-0.5"
+              styleClass="text-xs px-2 py-0.5"
             />
           </dd>
         </dl>
@@ -210,7 +210,7 @@
           class="rounded-2xl border border-google-blue/30 bg-google-blue-light/30 dark:bg-google-blue/10 p-3 text-center"
         >
           <span
-            class="block text-[11px] font-semibold uppercase tracking-wide text-text-secondary dark:text-neutral-400"
+            class="block text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-neutral-400"
           >
             Monto esperado
           </span>
@@ -218,14 +218,14 @@
             <span class="block text-2xl font-extrabold text-text-primary dark:text-neutral-100"
               >Bs 0</span
             >
-            <span class="block text-[11px] text-text-secondary dark:text-neutral-400">
+            <span class="block text-xs text-text-secondary dark:text-neutral-400">
               Cupón{{ a.couponCode ? ' ' + a.couponCode : '' }} (descuento total)
             </span>
           } @else {
             <span class="block text-2xl font-extrabold text-text-primary dark:text-neutral-100">
               {{ a.amountDue | bs }}
             </span>
-            <span class="block text-[11px] text-text-secondary dark:text-neutral-400">
+            <span class="block text-xs text-text-secondary dark:text-neutral-400">
               {{ entry() }}
             </span>
           }
@@ -237,7 +237,7 @@
           </p>
         }
 
-        <p class="mt-auto hidden text-[11px] text-text-secondary lg:block dark:text-neutral-400">
+        <p class="mt-auto hidden text-xs text-text-secondary lg:block dark:text-neutral-400">
           Atajos: ← → cambian de comprobante, Esc cierra.
         </p>
       </aside>

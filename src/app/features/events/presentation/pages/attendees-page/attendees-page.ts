@@ -516,13 +516,13 @@ export class AttendeesPage implements OnInit {
     return [
       {
         label: `CSV${suffix}`,
-        icon: 'pi pi-file',
+        icon: 'description',
         disabled: count === 0,
         command: () => this.exportToCSV(),
       },
       {
         label: `Excel${suffix}`,
-        icon: 'pi pi-file-excel',
+        icon: 'table_view',
         disabled: count === 0,
         command: () => void this.exportToExcel(),
       },
