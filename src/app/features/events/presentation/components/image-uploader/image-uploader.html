@@ -2,7 +2,7 @@
   <span class="text-sm font-semibold text-text-primary dark:text-neutral-200"
     >{{ label() }}
     @if (note(); as n) {
-      <span class="ml-1 text-xs font-medium text-google-blue">· {{ n }}</span>
+      <span class="ml-1 text-xs font-medium text-accent-text">· {{ n }}</span>
     }
   </span>
 
@@ -14,7 +14,7 @@
     >
       @if (uploading()) {
         <span
-          class="material-symbols-rounded animate-gdg-spin text-2xl text-google-blue"
+          class="material-symbols-rounded animate-gdg-spin text-2xl text-accent-text"
           aria-hidden="true"
           >progress_activity</span
         >
@@ -33,7 +33,7 @@
     <div class="flex flex-1 flex-col gap-2">
       <div class="flex flex-wrap items-center gap-2">
         <label
-          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-google-blue-light/60 px-3 py-1.5 text-xs font-semibold text-google-blue transition-colors hover:bg-google-blue-light focus-within:ring-2 focus-within:ring-google-blue dark:bg-google-blue/20"
+          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-google-blue-light/60 px-3 py-1.5 text-xs font-semibold text-accent-text transition-colors hover:bg-google-blue-light focus-within:ring-2 focus-within:ring-google-blue dark:bg-google-blue/20"
           [class.pointer-events-none]="uploading()"
           [class.opacity-60]="uploading()"
         >
@@ -68,7 +68,7 @@
       <p class="text-xs text-text-secondary dark:text-neutral-400">{{ hint() }}</p>
       @if (error() || invalidMessage(); as err) {
         <p
-          class="text-xs font-medium text-google-red"
+          class="text-xs font-medium text-danger-text"
           role="alert"
           [attr.id]="inputId() ? inputId() + '-error' : null"
         >

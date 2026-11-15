@@ -57,7 +57,10 @@ import { FeedbackService } from '../../../../../core/services/feedback.service';
 import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
 import { MOBILE_QUERY, mediaQuerySignal } from '../../../../../shared/utils/media-query';
 import { EventHeader } from '../../components/event-header/event-header';
-import { PaymentProofDialog } from '../../components/payment-proof-dialog/payment-proof-dialog';
+import {
+  PaymentProofDialog,
+  ProofStatusChange,
+} from '../../components/payment-proof-dialog/payment-proof-dialog';
 
 /** Columnas que el organizador puede mostrar u ocultar (las demás son fijas). */
 const OPTIONAL_COLUMNS: { key: string; label: string }[] = [
@@ -478,16 +481,15 @@ export class AttendeesPage implements OnInit {
     }
   }
 
-  /** Desde el visor: mismo camino que la tabla y el detalle (RegistrationStatusController). */
-  async confirmPayment(attendee: Attendee): Promise<void> {
-    if (await this.changeStatus(attendee, 'CONFIRMED')) this.advanceProof(attendee.id);
-  }
-
-  /** El visor ya pidió confirmación propia: no se vuelve a preguntar. */
-  async cancelFromProof(attendee: Attendee): Promise<void> {
-    if (await this.changeStatus(attendee, 'CANCELLED', { skipConfirmation: true })) {
-      this.advanceProof(attendee.id);
-    }
+  /**
+   * Desde el visor: mismo camino que la tabla y el detalle (RegistrationStatusController), sin
+   * repetir la confirmación que ya pidió el visor. Al resolver un pago pendiente pasa al siguiente
+   * de la cola; cualquier otro cambio (desestimar un pago, restaurar) se queda en la misma persona.
+   */
+  async changeFromProof({ attendee, status }: ProofStatusChange): Promise<void> {
+    const wasPending = parseRegistrationStatus(attendee.status) === 'PENDING';
+    const saved = await this.changeStatus(attendee, status, { skipConfirmation: true });
+    if (saved && wasPending) this.advanceProof(attendee.id);
   }
 
   /** Actualiza la fila en la lista y en el detalle abierto, si es la misma inscripción. */
@@ -516,13 +518,13 @@ export class AttendeesPage implements OnInit {
     return [
       {
         label: `CSV${suffix}`,
-        icon: 'pi pi-file',
+        icon: 'description',
         disabled: count === 0,
         command: () => this.exportToCSV(),
       },
       {
         label: `Excel${suffix}`,
-        icon: 'pi pi-file-excel',
+        icon: 'table_view',
         disabled: count === 0,
         command: () => void this.exportToExcel(),
       },

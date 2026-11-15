@@ -216,7 +216,7 @@ describe('AttendeesPage: revisión de comprobantes', () => {
     const cmp = create([withProof('a'), withProof('c')]);
     cmp.setFilter('status', 'PENDING');
     cmp.openProof(cmp.attendees()[0]);
-    await cmp.confirmPayment(cmp.attendees()[0]);
+    await cmp.changeFromProof({ attendee: cmp.attendees()[0], status: 'CONFIRMED' });
     expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('a', 'CONFIRMED');
     expect(cmp.attendees()[0].status).toBe('CONFIRMED');
     expect(cmp.proofQueue()).toEqual(['a', 'c']);
@@ -225,14 +225,14 @@ describe('AttendeesPage: revisión de comprobantes', () => {
   it('tras confirmar pasa al siguiente comprobante pendiente de la cola', async () => {
     const cmp = create([withProof('a'), withProof('b', { status: 'CONFIRMED' }), withProof('c')]);
     cmp.openProof(cmp.attendees()[0]);
-    await cmp.confirmPayment(cmp.attendees()[0]);
+    await cmp.changeFromProof({ attendee: cmp.attendees()[0], status: 'CONFIRMED' });
     expect(cmp.proofAttendee()?.id).toBe('c');
   });
 
   it('si no quedan pendientes, cierra el visor', async () => {
     const cmp = create([withProof('a'), withProof('b', { status: 'CONFIRMED' })]);
     cmp.openProof(cmp.attendees()[0]);
-    await cmp.confirmPayment(cmp.attendees()[0]);
+    await cmp.changeFromProof({ attendee: cmp.attendees()[0], status: 'CONFIRMED' });
     expect(cmp.proofAttendee()).toBeNull();
   });
 
@@ -247,8 +247,8 @@ describe('AttendeesPage: revisión de comprobantes', () => {
   it('un STAFF no confirma ni cancela desde el visor', async () => {
     role.set('STAFF');
     const cmp = create([withProof('a')]);
-    await cmp.confirmPayment(cmp.attendees()[0]);
-    await cmp.cancelFromProof(cmp.attendees()[0]);
+    await cmp.changeFromProof({ attendee: cmp.attendees()[0], status: 'CONFIRMED' });
+    await cmp.changeFromProof({ attendee: cmp.attendees()[0], status: 'CANCELLED' });
     expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
   });
 
@@ -256,17 +256,27 @@ describe('AttendeesPage: revisión de comprobantes', () => {
     registrationsRepo.updateStatus.mockRejectedValue(new DomainError('Sin permiso', 'FORBIDDEN'));
     const cmp = create([withProof('a')]);
     cmp.openProof(cmp.attendees()[0]);
-    await cmp.confirmPayment(cmp.attendees()[0]);
+    await cmp.changeFromProof({ attendee: cmp.attendees()[0], status: 'CONFIRMED' });
     expect(cmp.attendees()[0].status).toBe('PENDING');
     expect(cmp.proofBusy()).toBe(false);
   });
 
   it('cancelar desde el visor usa el mismo camino sin repetir la confirmación', async () => {
     const cmp = create([withProof('a')]);
-    await cmp.cancelFromProof(cmp.attendees()[0]);
+    await cmp.changeFromProof({ attendee: cmp.attendees()[0], status: 'CANCELLED' });
     expect(lastConfirm).toBeNull();
     expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('a', 'CANCELLED');
     expect(cmp.attendees()[0].status).toBe('CANCELLED');
+  });
+
+  it('desestimar un pago ya confirmado desde el visor lo deja pendiente y no salta de persona', async () => {
+    const cmp = create([withProof('a', { status: 'CONFIRMED' }), withProof('c')]);
+    cmp.openProof(cmp.attendees()[0]);
+    await cmp.changeFromProof({ attendee: cmp.attendees()[0], status: 'PENDING' });
+    expect(lastConfirm).toBeNull();
+    expect(registrationsRepo.updateStatus).toHaveBeenCalledWith('a', 'PENDING');
+    expect(cmp.attendees()[0].status).toBe('PENDING');
+    expect(cmp.proofAttendee()?.id).toBe('a');
   });
 
   it('el check-in manual se bloquea si la inscripción no está confirmada', async () => {

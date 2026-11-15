@@ -32,7 +32,7 @@ Esa guía explica también el flujo de migraciones a producción y los backups.
 
 `scripts/set-env.js` (lo ejecutan `npm start`, `npm run build` y `npm run vercel-build`) sobrescribe
 `environment.ts` y `environment.prod.ts` si existen las variables de entorno `SUPABASE_URL` y
-`SUPABASE_KEY` (o `SUPABASE_ANON_KEY`). No las tengas exportadas con valores de producción en tu shell.
+`SUPABASE_KEY` (o `SUPABASE_ANON_KEY`). No las tengas exportadas con valores de producción en tu shell. `PUBLIC_SITE_URL` (opcional, por defecto `https://eventos.gdgtarija.com`) es la base de los enlaces a la página pública de cada evento.
 
 ## Comandos
 

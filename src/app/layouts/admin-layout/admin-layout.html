@@ -1,7 +1,7 @@
 <a
   href="#contenido"
   (click)="skipToContent($event)"
-  class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-full focus:bg-action focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-on-action focus:shadow-lg"
+  class="sr-only focus:not-sr-only focus:inline-flex focus:min-h-11 focus:items-center focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-full focus:bg-action focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-on-action focus:shadow-lg"
 >
   Saltar al contenido
 </a>
@@ -21,15 +21,19 @@
       <a
         [routerLink]="homeLink()"
         (click)="closeSidebarOnMobile()"
-        class="flex items-center gap-2 rounded-lg"
+        class="flex min-h-11 items-center gap-2 rounded-lg"
         aria-label="GDG Tarija, ir al inicio"
       >
-        <img [src]="logo.src" alt="" class="h-7 w-auto" />
+        <img
+          [src]="logo.src"
+          alt=""
+          class="h-7 w-auto dark:rounded-md dark:bg-white dark:px-2 dark:py-1 dark:box-content"
+        />
       </a>
       <button
         #closeButton
         type="button"
-        class="flex size-11 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden transition-colors"
+        class="flex size-11 shrink-0 items-center justify-center rounded-full text-text-secondary dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden transition-colors"
         (click)="closeSidebar()"
         aria-label="Cerrar menú"
       >
@@ -158,8 +162,16 @@
         >
           <span class="material-symbols-rounded text-2xl" aria-hidden="true">menu</span>
         </button>
-        <a [routerLink]="homeLink()" aria-label="GDG Tarija, ir al inicio" class="rounded-lg">
-          <img [src]="logo.src" alt="" class="h-6 w-auto" />
+        <a
+          [routerLink]="homeLink()"
+          aria-label="GDG Tarija, ir al inicio"
+          class="flex min-h-11 items-center rounded-lg"
+        >
+          <img
+            [src]="logo.src"
+            alt=""
+            class="h-6 w-auto dark:rounded-md dark:bg-white dark:px-2 dark:py-1 dark:box-content"
+          />
         </a>
       </div>
     </header>

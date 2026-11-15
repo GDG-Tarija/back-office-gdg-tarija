@@ -1,34 +1,100 @@
-<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-  <app-stat-card
-    title="Eventos"
-    [value]="totalEventsCount()"
-    icon="calendar_month"
-    iconSeverity="blue"
-    link="/events"
-  />
+<!-- Una sola franja: las celdas comparten superficie y se separan con líneas de 1 px (gap-px sobre
+     el fondo del borde), así funciona igual en 2 o 4 columnas. -->
+<ul
+  role="list"
+  class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-black/5 bg-black/5 lg:grid-cols-4 dark:border-white/10 dark:bg-white/10"
+>
+  <li class="bg-surface-paper">
+    <a
+      routerLink="/events"
+      class="group flex h-full gap-3 p-4 transition-colors hover:bg-surface-main focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-action"
+    >
+      <span
+        class="grid size-8 shrink-0 place-items-center rounded-lg bg-google-blue-light/60 text-google-blue dark:bg-google-blue/20"
+        aria-hidden="true"
+      >
+        <span class="material-symbols-rounded text-lg">calendar_month</span>
+      </span>
+      <span class="flex min-w-0 flex-col">
+        <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">Eventos</span>
+        <span class="text-2xl font-bold leading-tight tracking-tight tabular-nums">
+          {{ totalEventsCount() }}
+        </span>
+        <span
+          class="mt-0.5 inline-flex items-center gap-0.5 text-xs font-semibold text-accent-text"
+        >
+          Ver eventos
+          <span
+            class="material-symbols-rounded text-sm transition-transform group-hover:translate-x-0.5"
+            aria-hidden="true"
+            >arrow_forward</span
+          >
+        </span>
+      </span>
+    </a>
+  </li>
 
-  <app-stat-card
-    title="Inscripciones"
-    [value]="totalRegistrationsCount()"
-    icon="group"
-    [badge]="confirmedCount() + ' confirmadas'"
-    badgeSeverity="green"
-    iconSeverity="red"
-  />
+  <li class="flex gap-3 bg-surface-paper p-4">
+    <span
+      class="grid size-8 shrink-0 place-items-center rounded-lg bg-google-red-light/60 text-google-red dark:bg-google-red/20"
+      aria-hidden="true"
+    >
+      <span class="material-symbols-rounded text-lg">group</span>
+    </span>
+    <div class="flex min-w-0 flex-col">
+      <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">
+        Inscripciones
+      </span>
+      <span class="text-2xl font-bold leading-tight tracking-tight tabular-nums">
+        {{ totalRegistrationsCount() }}
+      </span>
+      <span class="mt-0.5 inline-flex items-start gap-1.5 text-xs font-semibold text-success-text">
+        <span
+          class="mt-1.25 size-1.5 shrink-0 rounded-full bg-google-green"
+          aria-hidden="true"
+        ></span>
+        {{ confirmedCount() }} confirmadas
+      </span>
+    </div>
+  </li>
 
-  <app-stat-card
-    title="Cobrado (confirmadas)"
-    [value]="collected() | bs"
-    icon="account_balance_wallet"
-    iconSeverity="green"
-  />
+  <li class="flex gap-3 bg-surface-paper p-4">
+    <span
+      class="grid size-8 shrink-0 place-items-center rounded-lg bg-google-green-light/60 text-google-green dark:bg-google-green/20"
+      aria-hidden="true"
+    >
+      <span class="material-symbols-rounded text-lg">account_balance_wallet</span>
+    </span>
+    <div class="flex min-w-0 flex-col">
+      <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">Cobrado</span>
+      <span class="text-2xl font-bold leading-tight tracking-tight tabular-nums">
+        {{ collected() | bs }}
+      </span>
+      <span class="mt-0.5 text-xs text-text-muted">De inscripciones confirmadas</span>
+    </div>
+  </li>
 
-  <app-stat-card
-    title="Por cobrar (pendientes)"
-    [value]="receivable() | bs"
-    icon="hourglass_top"
-    [badge]="pendingCount() + ' pendientes de pago'"
-    badgeSeverity="yellow"
-    iconSeverity="yellow"
-  />
-</div>
+  <li class="flex gap-3 bg-surface-paper p-4">
+    <span
+      class="grid size-8 shrink-0 place-items-center rounded-lg bg-google-yellow-light/60 text-google-yellow-dark dark:bg-google-yellow/20 dark:text-google-yellow"
+      aria-hidden="true"
+    >
+      <span class="material-symbols-rounded text-lg">hourglass_top</span>
+    </span>
+    <div class="flex min-w-0 flex-col">
+      <span class="text-xs font-semibold text-text-secondary dark:text-neutral-400">
+        Por cobrar
+      </span>
+      <span class="text-2xl font-bold leading-tight tracking-tight tabular-nums">
+        {{ receivable() | bs }}
+      </span>
+      <span class="mt-0.5 inline-flex items-start gap-1.5 text-xs font-semibold text-warning-text">
+        <span
+          class="mt-1.25 size-1.5 shrink-0 rounded-full bg-google-yellow"
+          aria-hidden="true"
+        ></span>
+        {{ pendingCount() }} pendientes de pago
+      </span>
+    </div>
+  </li>
+</ul>

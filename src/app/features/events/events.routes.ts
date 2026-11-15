@@ -38,4 +38,13 @@ export const EVENTS_ROUTES: Routes = [
     loadComponent: () =>
       import('./presentation/pages/attendees-page/attendees-page').then((m) => m.AttendeesPage),
   },
+  // Portada del evento (Resumen): destino al abrir un evento desde la lista, para todos los roles.
+  {
+    path: ':id',
+    title: 'Evento',
+    loadComponent: () =>
+      import('./presentation/pages/event-overview-page/event-overview-page').then(
+        (m) => m.EventOverviewPage,
+      ),
+  },
 ];
