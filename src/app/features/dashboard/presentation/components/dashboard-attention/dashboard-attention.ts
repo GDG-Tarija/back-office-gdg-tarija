@@ -25,4 +25,8 @@ export class DashboardAttention {
   isEmpty(): boolean {
     return this.proofs().length === 0 && this.drafts().length === 0 && this.upcoming().length === 0;
   }
+
+  fillPercent(u: UpcomingEvent): number {
+    return u.event.capacity > 0 ? Math.min((u.registered / u.event.capacity) * 100, 100) : 0;
+  }
 }

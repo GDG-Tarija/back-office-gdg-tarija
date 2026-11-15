@@ -22,7 +22,7 @@ Usar esta skill cuando la tarea toque UI, layout, PrimeNG, Tailwind, tablas, for
 
 - **PrimeNG 21** con preset propio sobre Aura (`core/config/primeng-preset.ts`, escala de azul GDG).
 - **Tailwind CSS v4** (`@theme static` en `src/styles/_tokens.scss`) + **tailwindcss-primeui**.
-- **Material Symbols Rounded** como único set de iconos: `<span class="material-symbols-rounded" aria-hidden="true">add</span>`. **No usar PrimeIcons** (`pi pi-*`); en `p-button` usar `<ng-template #icon>` y en `MenuItem` un `<ng-template #item>` que pinte el glifo.
+- **Material Symbols Rounded** como único set de iconos: `<span class="material-symbols-rounded" aria-hidden="true">add</span>`. **No usar PrimeIcons** (`pi pi-*`); en `p-button` usar `<ng-template #icon>` y en `MenuItem` un `<ng-template #item>` que pinte el glifo. La fuente se carga en `index.html` con ejes fijos (`opsz 24, wght 400, FILL 1, GRAD 0`, ~460 KB): no volver a pedir los rangos completos (5,4 MB) ni usar otro `FILL`/`wght`/`opsz`, porque no existen en la fuente cargada.
 - **Google Sans** (400/500/700). `font-semibold|extrabold|black` se resuelven a 700.
 
 ### Capas CSS

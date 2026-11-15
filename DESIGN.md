@@ -123,7 +123,7 @@ Fuente única: `src/styles/_tokens.scss` (`@theme static`, tema claro) y `src/st
 - **Cuerpo**: `text-sm` (0,875 rem). Tablas: 0,8125 rem en celdas y 0,75 rem en cabeceras en mayúsculas con `tracking-wide`.
 - **Etiquetas y ayudas**: `text-xs` con `font-semibold`; no bajar de 12 px.
 - **Cifras** (precios, conteos): pipe `bs` para dinero ("Bs 20"), `tabular-nums` cuando se alinean columnas.
-- **Iconos**: Material Symbols Rounded (`.material-symbols-rounded`, `aria-hidden="true"` si son decorativos). No se usa PrimeIcons.
+- **Iconos**: Material Symbols Rounded (`.material-symbols-rounded`, `aria-hidden="true"` si son decorativos). No se usa PrimeIcons. La fuente se carga con ejes fijos (`opsz 24, wght 400, FILL 1, GRAD 0`, ~460 KB en lugar de 5,4 MB); el hueco del icono mide `1em` mientras carga para no mover el layout.
 
 ## Layout
 
@@ -154,7 +154,8 @@ Plano por defecto: bordes finos (`border-black/5`, `dark:border-white/5`) en lug
 - **`p-tag` de estado**: `Publicado` (success) / `Borrador` (secondary) en eventos; `Confirmada` (success), `Pendiente de pago` (warn), `Anulada` (danger) en inscripciones; el rol usa su propia severidad. Siempre texto + color, nunca solo color.
 - **Tablas**: `p-table` con paginación, orden y estado vacío; icono de acción de 16 px; columna de acciones final.
 - **Check-in**: el resultado del QR/manual es una pantalla completa (verde = registrado con vibración y "Deshacer", ámbar/rojo = requiere atención con motivo y qué hacer).
-- **`StatCard`**, `ErrorSummary` (resumen de errores con enlaces a los campos) y `PublishChecklist`.
+- **Métricas de Inicio**: una franja (`DashboardMetrics`) con celdas separadas por líneas de 1 px (`gap-px` sobre el color del borde), icono de 18 px en un chip de 32 px, cifra `text-2xl tabular-nums` y una línea de detalle con su estado. La bandeja "Requiere atención" usa la misma técnica en tres columnas, con filas enlazadas (`chevron_right`) y conteos en píldora del tono semántico.
+- `ErrorSummary` (resumen de errores con enlaces a los campos) y `PublishChecklist`.
 
 ## Do's and Don'ts
 

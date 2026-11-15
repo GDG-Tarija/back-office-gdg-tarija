@@ -1,10 +1,10 @@
 <div
-  class="flex flex-wrap items-end gap-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-neutral-900 p-4"
+  class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
   role="group"
   aria-label="Filtros de las métricas"
 >
-  <div class="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[220px] sm:max-w-xs">
-    <label for="filter-event" class="text-xs font-semibold text-text-secondary">Evento</label>
+  <div class="relative w-full sm:w-56">
+    <label for="filter-event" class="sr-only">Evento</label>
     <p-select
       inputId="filter-event"
       [options]="eventOptions()"
@@ -13,13 +13,20 @@
       optionLabel="label"
       optionValue="value"
       ariaLabel="Filtrar por evento"
-      styleClass="w-full text-sm"
+      [styleClass]="fieldClass(!!selectedEventId())"
       appendTo="body"
-    />
+    >
+      <ng-template #dropdownicon>
+        <span class="material-symbols-rounded text-lg text-text-muted" aria-hidden="true"
+          >expand_more</span
+        >
+      </ng-template>
+    </p-select>
+    <span [class]="iconClass(!!selectedEventId())" aria-hidden="true">event</span>
   </div>
 
-  <div class="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[160px]">
-    <label for="filter-role" class="text-xs font-semibold text-text-secondary">Rol</label>
+  <div class="relative w-full sm:w-44">
+    <label for="filter-role" class="sr-only">Rol</label>
     <p-select
       inputId="filter-role"
       [options]="roleOptions()"
@@ -28,41 +35,48 @@
       optionLabel="label"
       optionValue="value"
       ariaLabel="Filtrar por rol"
-      styleClass="w-full text-sm"
+      [styleClass]="fieldClass(!!selectedRole())"
       appendTo="body"
-    />
+    >
+      <ng-template #dropdownicon>
+        <span class="material-symbols-rounded text-lg text-text-muted" aria-hidden="true"
+          >expand_more</span
+        >
+      </ng-template>
+    </p-select>
+    <span [class]="iconClass(!!selectedRole())" aria-hidden="true">badge</span>
   </div>
 
-  <div class="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[230px]">
-    <label for="filter-date" class="text-xs font-semibold text-text-secondary">
-      Fecha del evento
-    </label>
+  <div class="relative w-full sm:w-60">
+    <label for="filter-date" class="sr-only">Fecha del evento</label>
     <p-datepicker
       inputId="filter-date"
       [ngModel]="selectedDateRange()"
       (ngModelChange)="onDateChange($event)"
       selectionMode="range"
-      [showIcon]="true"
       placeholder="Todas las fechas"
       ariaLabel="Filtrar por rango de fechas del evento"
-      styleClass="w-full text-sm"
+      [styleClass]="dateClass(!!selectedDateRange())"
       dateFormat="dd/mm/yy"
       [readonlyInput]="true"
       appendTo="body"
     />
+    <span [class]="iconClass(!!selectedDateRange())" aria-hidden="true">date_range</span>
+    <span
+      class="material-symbols-rounded pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg text-text-muted"
+      aria-hidden="true"
+      >expand_more</span
+    >
   </div>
 
   @if (selectedEventId() || selectedRole() || selectedDateRange()) {
-    <p-button
-      label="Limpiar filtros"
-      severity="secondary"
-      [text]="true"
-      size="small"
-      (onClick)="onReset()"
+    <button
+      type="button"
+      (click)="onReset()"
+      class="inline-flex min-h-11 items-center gap-1 self-start rounded-full px-3 text-sm font-semibold text-accent-text hover:bg-info-bg sm:self-auto"
     >
-      <ng-template #icon>
-        <span class="material-symbols-rounded text-base" aria-hidden="true">filter_alt_off</span>
-      </ng-template>
-    </p-button>
+      <span class="material-symbols-rounded text-lg" aria-hidden="true">filter_alt_off</span>
+      Limpiar filtros
+    </button>
   }
 </div>

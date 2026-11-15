@@ -2,7 +2,12 @@ import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
-import { ButtonModule } from 'primeng/button';
+
+import {
+  filterDateClass,
+  filterIconClass,
+  filterSelectClass,
+} from '../../../../../shared/utils/filter-field';
 
 export interface OptionItem {
   label: string;
@@ -12,7 +17,7 @@ export interface OptionItem {
 @Component({
   selector: 'app-dashboard-filters',
   standalone: true,
-  imports: [FormsModule, SelectModule, DatePickerModule, ButtonModule],
+  imports: [FormsModule, SelectModule, DatePickerModule],
   templateUrl: './dashboard-filters.html',
 })
 export class DashboardFilters {
@@ -27,6 +32,10 @@ export class DashboardFilters {
   roleChange = output<string | null>();
   dateRangeChange = output<Date[] | null>();
   resetFilters = output<void>();
+
+  readonly fieldClass = (active: boolean) => filterSelectClass(active);
+  readonly dateClass = (active: boolean) => filterDateClass(active);
+  readonly iconClass = filterIconClass;
 
   onEventChange(value: string | null): void {
     this.eventIdChange.emit(value);

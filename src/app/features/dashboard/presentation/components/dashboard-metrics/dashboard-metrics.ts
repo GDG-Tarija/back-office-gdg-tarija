@@ -1,12 +1,12 @@
 import { Component, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
-import { StatCard } from '../../../../../shared/components/stat-card/stat-card';
 
 @Component({
   selector: 'app-dashboard-metrics',
   standalone: true,
-  imports: [BsPipe, StatCard],
+  imports: [BsPipe, RouterLink],
   templateUrl: './dashboard-metrics.html',
 })
 export class DashboardMetrics {
