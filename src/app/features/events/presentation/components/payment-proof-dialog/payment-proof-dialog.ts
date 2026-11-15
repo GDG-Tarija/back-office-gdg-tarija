@@ -18,12 +18,23 @@ import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
 import { attendeeFullName, entryLabel, isImageProof } from '../../../domain/attendee-payment';
 import { Attendee } from '../../../domain/event.model';
 import {
+  REGISTRATION_STATUS_OPTIONS,
+  RegistrationStatus,
+  StatusOption,
+  parseRegistrationStatus,
   registrationStatusLabel,
   registrationStatusSeverity,
 } from '../../../domain/registration-status';
 
 export type ProofImageState = 'loading' | 'loaded' | 'error';
-export type ProofPendingAction = 'confirm' | 'cancel' | null;
+
+export interface ProofStatusChange {
+  attendee: Attendee;
+  status: RegistrationStatus;
+}
+
+// Orden de los botones: lo destructivo a la izquierda, confirmar el pago siempre al final.
+const ACTION_ORDER: readonly RegistrationStatus[] = ['CANCELLED', 'PENDING', 'CONFIRMED'];
 
 export const ZOOM_STEPS: readonly number[] = [1, 1.5, 2, 3];
 
@@ -50,13 +61,14 @@ export class PaymentProofDialog {
   readonly closed = output<void>();
   readonly previous = output<void>();
   readonly next = output<void>();
-  readonly confirmPayment = output<Attendee>();
-  readonly cancelRegistration = output<Attendee>();
+  /** Ya confirmado dentro del visor: quien lo recibe no vuelve a preguntar. */
+  readonly statusChange = output<ProofStatusChange>();
 
   readonly imageState = signal<ProofImageState>('loading');
   /** Índice en ZOOM_STEPS; 0 = ajustado a la ventana. */
   readonly zoomIndex = signal(0);
-  readonly pendingAction = signal<ProofPendingAction>(null);
+  /** Estado al que se quiere pasar, mientras se pide la confirmación. */
+  readonly pendingAction = signal<RegistrationStatus | null>(null);
 
   readonly proofUrl = computed(() => this.attendee()?.paymentProofUrl ?? null);
   readonly isImage = computed(() => isImageProof(this.proofUrl()));
@@ -78,12 +90,22 @@ export class PaymentProofDialog {
   });
   readonly statusLabel = computed(() => registrationStatusLabel(this.attendee()?.status));
   readonly statusSeverity = computed(() => registrationStatusSeverity(this.attendee()?.status));
-  readonly isPending = computed(() => this.attendee()?.status.toUpperCase() === 'PENDING');
-  readonly canAct = computed(() => this.canManage() && this.isPending());
+  readonly currentStatus = computed(() => parseRegistrationStatus(this.attendee()?.status));
+  readonly isPending = computed(() => this.currentStatus() === 'PENDING');
+  readonly canAct = computed(() => this.canManage() && this.currentStatus() !== null);
+  /** Los otros dos estados: confirmar o desestimar el pago, anular o restaurar. */
+  readonly actions = computed<StatusOption<RegistrationStatus>[]>(() => {
+    const current = this.currentStatus();
+    if (!this.canAct()) return [];
+    return ACTION_ORDER.filter((s) => s !== current).map(
+      (s) => REGISTRATION_STATUS_OPTIONS.find((o) => o.value === s)!,
+    );
+  });
 
   private lastFocused: HTMLElement | null = null;
   private wasOpen = false;
   private lastKey = '';
+  private lastStatus: RegistrationStatus | null = null;
 
   constructor() {
     // Al cambiar de inscripción (o url) se reinicia el visor y la confirmación en curso.
@@ -93,6 +115,14 @@ export class PaymentProofDialog {
       this.lastKey = key;
       this.imageState.set('loading');
       this.zoomIndex.set(0);
+      this.pendingAction.set(null);
+    });
+
+    // Si el estado cambió (guardado o desde otra pantalla), la confirmación en curso ya no aplica.
+    effect(() => {
+      const status = this.currentStatus();
+      if (status === this.lastStatus) return;
+      this.lastStatus = status;
       this.pendingAction.set(null);
     });
 
@@ -157,8 +187,8 @@ export class PaymentProofDialog {
     }
   }
 
-  startAction(action: Exclude<ProofPendingAction, null>): void {
-    if (this.canAct()) this.pendingAction.set(action);
+  startAction(status: RegistrationStatus): void {
+    if (this.canAct() && status !== this.currentStatus()) this.pendingAction.set(status);
   }
 
   dismissAction(): void {
@@ -167,9 +197,20 @@ export class PaymentProofDialog {
 
   runAction(): void {
     const attendee = this.attendee();
-    const action = this.pendingAction();
-    if (!attendee || !action || !this.canAct()) return;
-    if (action === 'confirm') this.confirmPayment.emit(attendee);
-    else this.cancelRegistration.emit(attendee);
+    const status = this.pendingAction();
+    if (!attendee || !status || !this.canAct() || status === this.currentStatus()) return;
+    this.statusChange.emit({ attendee, status });
+  }
+
+  /** Estilo del botón según a dónde lleva: confirmar es la acción principal, anular la peligrosa. */
+  actionClass(status: RegistrationStatus): string {
+    switch (status) {
+      case 'CONFIRMED':
+        return 'bg-action text-on-action hover:bg-action-hover';
+      case 'CANCELLED':
+        return 'border border-danger-text text-danger-text hover:bg-error-bg';
+      default:
+        return 'border border-black/15 text-text-primary hover:bg-neutral-100 dark:border-white/20 dark:text-neutral-100 dark:hover:bg-neutral-800';
+    }
   }
 }

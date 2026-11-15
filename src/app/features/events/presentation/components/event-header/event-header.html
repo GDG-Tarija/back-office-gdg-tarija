@@ -11,27 +11,41 @@
           Eventos
         </a>
       </li>
-      @if (event(); as e) {
+      @if (section() === 'overview') {
         <li aria-hidden="true">›</li>
-        <li class="min-w-0">
-          <a
-            [routerLink]="hubLink()"
-            class="inline-flex min-h-11 max-w-[16rem] items-center truncate rounded font-medium underline-offset-2 hover:underline sm:max-w-sm"
-          >
-            {{ e.title }}
-          </a>
+        <li
+          aria-current="page"
+          class="min-w-0 max-w-[16rem] truncate font-semibold text-text-primary sm:max-w-sm dark:text-neutral-200"
+        >
+          {{ event()?.title ?? sectionLabel() }}
+        </li>
+      } @else {
+        @if (event(); as e) {
+          <li aria-hidden="true">›</li>
+          <li class="min-w-0">
+            <a
+              [routerLink]="hubLink()"
+              class="inline-flex min-h-11 max-w-[16rem] items-center truncate rounded font-medium underline-offset-2 hover:underline sm:max-w-sm"
+            >
+              {{ e.title }}
+            </a>
+          </li>
+        }
+        <li aria-hidden="true">›</li>
+        <li aria-current="page" class="font-semibold text-text-primary dark:text-neutral-200">
+          {{ sectionLabel() }}
         </li>
       }
-      <li aria-hidden="true">›</li>
-      <li aria-current="page" class="font-semibold text-text-primary dark:text-neutral-200">
-        {{ sectionLabel() }}
-      </li>
     </ol>
   </nav>
 
   @if (event(); as e) {
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div class="min-w-0 space-y-1.5">
+    <!--
+      Celular: título, secciones y acciones apilados. sm–lg: título | acciones, secciones debajo.
+      xl: título a la izquierda; secciones y acciones a la derecha, para no dejar la fila vacía.
+    -->
+    <div class="grid gap-x-6 gap-y-4 sm:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+      <div class="min-w-0 space-y-1.5 sm:col-start-1 sm:row-start-1 xl:row-span-2">
         <h1 class="text-2xl font-bold tracking-tight text-text-primary dark:text-neutral-100">
           {{ e.title }}
         </h1>
@@ -46,46 +60,67 @@
           <span class="text-xs font-semibold uppercase tracking-wide">{{ timing() }}</span>
         </div>
       </div>
-      <div class="flex flex-wrap items-center gap-2"><ng-content /></div>
-    </div>
 
-    <nav aria-label="Secciones del evento" class="flex flex-wrap gap-2">
-      @if (isSuperadmin()) {
+      <nav
+        aria-label="Secciones del evento"
+        class="flex flex-wrap gap-2 sm:col-span-2 sm:row-start-2 xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:justify-end"
+      >
         <a
-          [routerLink]="['/events', e.id, 'edit']"
-          [attr.aria-current]="section() === 'manage' ? 'page' : null"
+          [routerLink]="['/events', e.id]"
+          [attr.aria-current]="section() === 'overview' ? 'page' : null"
           class="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-colors"
           [class]="
-            section() === 'manage'
+            section() === 'overview'
               ? 'border-accent-text bg-transparent text-accent-text'
               : 'border-black/10 text-text-secondary hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-neutral-800'
           "
         >
-          <span class="material-symbols-rounded text-base" aria-hidden="true">tune</span>
-          Configuración
+          <span class="material-symbols-rounded text-base" aria-hidden="true">space_dashboard</span>
+          Resumen
         </a>
-      }
-      <a
-        [routerLink]="['/events', e.id, 'attendees']"
-        [attr.aria-current]="section() === 'attendees' ? 'page' : null"
-        class="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-colors"
-        [class]="
-          section() === 'attendees'
-            ? 'border-accent-text bg-transparent text-accent-text'
-            : 'border-black/10 text-text-secondary hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-neutral-800'
-        "
+        @if (isSuperadmin()) {
+          <a
+            [routerLink]="['/events', e.id, 'edit']"
+            [attr.aria-current]="section() === 'manage' ? 'page' : null"
+            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-colors"
+            [class]="
+              section() === 'manage'
+                ? 'border-accent-text bg-transparent text-accent-text'
+                : 'border-black/10 text-text-secondary hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-neutral-800'
+            "
+          >
+            <span class="material-symbols-rounded text-base" aria-hidden="true">tune</span>
+            Configuración
+          </a>
+        }
+        <a
+          [routerLink]="['/events', e.id, 'attendees']"
+          [attr.aria-current]="section() === 'attendees' ? 'page' : null"
+          class="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-colors"
+          [class]="
+            section() === 'attendees'
+              ? 'border-accent-text bg-transparent text-accent-text'
+              : 'border-black/10 text-text-secondary hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-neutral-800'
+          "
+        >
+          <span class="material-symbols-rounded text-base" aria-hidden="true">group</span>
+          Asistentes
+        </a>
+        <a
+          routerLink="/checkin"
+          [queryParams]="{ event: e.id }"
+          class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/10 px-4 text-sm font-semibold text-text-secondary transition-colors hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        >
+          <span class="material-symbols-rounded text-base" aria-hidden="true">qr_code_scanner</span>
+          Check-in
+        </a>
+      </nav>
+
+      <div
+        class="flex flex-wrap items-center gap-2 empty:hidden sm:col-start-2 sm:row-start-1 sm:justify-end xl:row-start-2"
       >
-        <span class="material-symbols-rounded text-base" aria-hidden="true">group</span>
-        Asistentes
-      </a>
-      <a
-        routerLink="/checkin"
-        [queryParams]="{ event: e.id }"
-        class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/10 px-4 text-sm font-semibold text-text-secondary transition-colors hover:bg-neutral-100 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-neutral-800"
-      >
-        <span class="material-symbols-rounded text-base" aria-hidden="true">qr_code_scanner</span>
-        Check-in
-      </a>
-    </nav>
+        <ng-content />
+      </div>
+    </div>
   }
 </header>

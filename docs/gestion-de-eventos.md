@@ -29,6 +29,10 @@ El paso actual vive en la URL (`?tab=…`), así que **refrescar la página reto
 - **Publicar** exige: datos completos (descripción, lugar, modalidad, fecha de fin), imagen de portada, al menos un paquete (con fases válidas si las usa), formulario válido y sesiones con fecha y hora completas.
 - **Eliminar**: solo si el evento no tiene personas inscritas (la base de datos lo impide). Con inscritas, **despublicar**: la app pide confirmación y te muestra cuántas personas hay inscritas. Igual para sesiones con inscritas.
 
+## Abrir un evento
+
+En **Eventos**, hacer clic en cualquier parte de la fila (o de la tarjeta en el celular) abre el **Resumen** del evento (`/events/:id`): inscritas sobre la capacidad, confirmadas y pendientes de pago, lo cobrado y lo que falta cobrar, check-ins, lo que requiere atención (comprobantes por revisar, pendientes sin comprobante, borrador sin publicar, cupo lleno), las últimas inscripciones y la ocupación de cada paquete. Desde la cabecera del evento se pasa a **Configuración** (solo SUPERADMIN), **Asistentes** y **Check-in**; el menú `⋮` de la fila lleva directo a esas mismas pantallas y a **Credenciales**.
+
 ## Estado de las inscripciones
 
 En **Eventos > Asistentes** (`/events/:id/attendees`) cada inscripción tiene un estado:
@@ -103,6 +107,7 @@ Lo que ve el staff al revisar un pago pendiente (`/events/:id/attendees`):
 
 - **Entrada**: paquete y, si el paquete vende por fases, la **fase en la que quedó inscrita la persona** (la asigna el servidor al inscribirse) con el monto de esa fase. Las inscripciones anteriores a las fases, o de paquetes sin fases, muestran el precio del paquete. Con cupón de asistente (descuento total) se muestra "Cupón · Bs 0". El mismo dato (fase, monto a pagar, cupón) va en el CSV y el Excel, que exportan lo que muestran los filtros.
 - **Comprobante**: "Ver pago" abre un diálogo con la imagen grande (ajustar, acercar/alejar), a su lado el nombre, el paquete/fase, la fecha de inscripción y el **monto esperado** para compararlo con el comprobante. "Abrir en pestaña" y "Descargar" son secundarios; los PDF u otros tipos solo ofrecen el enlace.
-- **Acciones (solo SUPERADMIN)**: "Confirmar pago" (pasa PENDING → CONFIRMED) y "Anular" (libera el cupo de la fase); ambas piden confirmación y solo operan sobre inscripciones PENDING. STAFF solo ve el comprobante.
+- **Acciones (solo SUPERADMIN)**: el pie del diálogo ofrece pasar a los otros dos estados, sea cual sea el actual: "Confirmar pago" (→ CONFIRMED), "Marcar como pendiente" (desestima un pago ya confirmado, → PENDING) y "Anular" (libera el cupo de la fase); también restaura una anulada. Todas piden confirmación dentro del diálogo. Al resolver un pago pendiente pasa al siguiente pendiente de la lista; cualquier otro cambio se queda en la misma persona. STAFF solo ve el comprobante.
+- **Cerrar**: con la X, Esc o un clic fuera del diálogo (salvo mientras guarda).
 - **Varios comprobantes**: "Anterior/Siguiente" (o las flechas del teclado) recorren los comprobantes de la lista tal como estaba filtrada al abrir el diálogo; filtrar por "Pendiente" + "Con comprobante" permite revisarlos todos de corrido.
 - El check-in manual, la entrega de refrigerio y el ingreso a sesiones solo se permiten en inscripciones **confirmadas**.

@@ -129,7 +129,8 @@ Fuente única: `src/styles/_tokens.scss` (`@theme static`, tema claro) y `src/st
 
 - Shell: `AdminLayout` con barra lateral fija de 16 rem en ≥ md y drawer en móvil (Escape y el botón de cerrar lo cierran; enlace "Saltar al contenido" al inicio).
 - Contenedor de página: `p-4 sm:p-6/8`, `max-w-6xl` en Inicio; cabecera `flex-col` en móvil y `sm:flex-row sm:justify-between` en escritorio (título + subtítulo a la izquierda, acción primaria a la derecha).
-- Gestión de evento: `EventHeader` (migas, título, tag Publicado/Borrador, fechas, acciones) sobre `EventSectionNav` (pestañas o pasos con `?tab=` y `setup=1` en la URL).
+- Pantallas de un evento: `EventHeader` (migas, título, tag Publicado/Borrador, fechas, acciones y las secciones Resumen · Configuración · Asistentes · Check-in). En ≥ xl las secciones van a la derecha del título y las acciones debajo de ellas; más angosto, título | acciones y las secciones en su propia fila. El **Resumen** (`/events/:id`) es la portada y el destino del listado; Configuración suma `EventSectionNav` (pestañas o pasos con `?tab=` y `setup=1` en la URL).
+- Listados: búsqueda y filtros en una barra propia sobre la tabla (nunca dentro de su superficie: `p-table` ya trae borde y radio). Campos de filtro con icono a la izquierda y tinte azul cuando están aplicados (`shared/utils/filter-field.ts`); la fila entera abre el detalle y las acciones secundarias van en `⋮`.
 - Espaciado: escala de Tailwind (`gap-2/3/4/6`); secciones separadas por `space-y-6`.
 - **Tabla → tarjetas**: Eventos y Asistentes usan `mediaQuerySignal(MOBILE_QUERY)` (≤ 768 px) para renderizar tarjetas apiladas en lugar de `p-table`. Ninguna pantalla debe desbordar horizontalmente a 390 px.
 - Objetivos táctiles: `min-h-11`/`size-11` (44 px) en botones, enlaces del shell, `p-select` y `p-datepicker`.
@@ -148,6 +149,7 @@ Plano por defecto: bordes finos (`border-black/5`, `dark:border-white/5`) en lug
 ## Components
 
 - **Botón primario**: píldora azul `action`, texto `on-action`, `min-h-11`. Secundario: tono `google-blue-light` con `accent-text`. Destructivo: `danger-text` / severity `danger`.
+- **Diálogos**: se cierran con X, Esc y clic fuera (salvo mientras guardan o si piden una decisión, como "¿Descartar cambios?"). En un `p-dialog` directo: `[dismissableMask]` (requiere `closable`).
 - **`DialogFrame`** (`shared/components/dialog-frame`): envoltorio sobre `p-dialog` con título, icono, tamaños `sm|md|lg`, maximizar y la entrada `dirty`: si hay cambios, cerrar (X, Esc o máscara) abre "¿Descartar cambios?". Gestiona foco, `role="dialog"` y `aria-modal` por PrimeNG.
 - **`FeedbackService`** (`core/services`): `success()`, `error()` y `confirm({titulo, mensaje, aceptar, peligro})` → `Promise<boolean>`. `p-toast` y `p-confirmdialog` viven en `AdminLayout`; no instanciar otros.
 - **`UnsavedChangesDialog`** + `unsavedChangesGuard` (`CanDeactivate`): páginas con formulario implementan `CanLeave.canLeave()` y ofrecen Guardar / Descartar / Seguir editando.
