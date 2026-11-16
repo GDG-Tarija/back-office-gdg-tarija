@@ -1,0 +1,70 @@
+<ol role="list" class="divide-y divide-black/5 dark:divide-white/10">
+  @for (row of rows(); track row.entry.id) {
+    <li class="flex gap-3 px-4 py-3">
+      <span
+        class="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg"
+        [class]="row.toneClass"
+        aria-hidden="true"
+      >
+        <span class="material-symbols-rounded text-lg">{{ row.icon }}</span>
+      </span>
+      <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p class="text-sm text-text-primary dark:text-neutral-100">
+          <strong class="font-semibold">{{ row.actor }}</strong> {{ row.text }}
+        </p>
+        <p
+          class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary dark:text-neutral-400"
+        >
+          <time [attr.datetime]="row.entry.occurredAt.toISOString()">{{
+            row.entry.occurredAt | date: 'd MMM y, HH:mm'
+          }}</time>
+          @if (showEvent() && row.entry.eventId && row.entry.eventTitle) {
+            <span aria-hidden="true">·</span>
+            <a
+              [routerLink]="['/events', row.entry.eventId]"
+              class="truncate font-semibold text-accent-text underline-offset-2 hover:underline"
+              >{{ row.entry.eventTitle }}</a
+            >
+          }
+          @if (row.badge) {
+            <span
+              class="rounded-full bg-neutral-100 px-2 py-0.5 font-semibold text-text-secondary dark:bg-neutral-800 dark:text-neutral-300"
+              >{{ row.badge }}</span
+            >
+          }
+        </p>
+        @if (row.lines.length > 0) {
+          <details class="group mt-1 text-xs">
+            <summary
+              class="inline-flex min-h-8 cursor-pointer list-none items-center gap-0.5 font-semibold text-accent-text max-md:min-h-11 [&::-webkit-details-marker]:hidden"
+            >
+              <span
+                class="material-symbols-rounded text-base transition-transform group-open:rotate-90"
+                aria-hidden="true"
+                >chevron_right</span
+              >
+              Ver cambios
+            </summary>
+            <dl
+              class="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-xl bg-surface-main p-3"
+            >
+              @for (line of row.lines; track line.field) {
+                <dt class="text-text-secondary dark:text-neutral-400">{{ line.label }}</dt>
+                <dd class="min-w-0 break-words text-text-primary dark:text-neutral-100">
+                  <span class="text-text-muted line-through">{{ line.before }}</span>
+                  <span
+                    class="material-symbols-rounded mx-0.5 align-[-0.2em] text-sm text-text-muted"
+                    aria-hidden="true"
+                    >arrow_forward</span
+                  >
+                  <span class="sr-only">pasó a</span>
+                  <span class="font-semibold">{{ line.after }}</span>
+                </dd>
+              }
+            </dl>
+          </details>
+        }
+      </div>
+    </li>
+  }
+</ol>

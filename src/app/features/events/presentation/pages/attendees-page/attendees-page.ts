@@ -52,6 +52,10 @@ import { formatCustomResponseLabel } from '../../../domain/attendee-search';
 import { ScanMode, ScanResult } from '../../../../checkin/domain/checkin.model';
 import { CheckinRepository } from '../../../../checkin/domain/checkin.repository';
 import { CheckinApi } from '../../../../checkin/data/checkin.api';
+import { AuditApi } from '../../../../activity/data/audit.api';
+import { AuditEntry, EMPTY_AUDIT_FILTERS } from '../../../../activity/domain/audit-entry.model';
+import { AuditRepository } from '../../../../activity/domain/audit.repository';
+import { AuditTimeline } from '../../../../activity/presentation/components/audit-timeline/audit-timeline';
 import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { FeedbackService } from '../../../../../core/services/feedback.service';
 import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
@@ -77,6 +81,7 @@ const PAGE_SIZE = 25;
   standalone: true,
   imports: [
     CommonModule,
+    AuditTimeline,
     FormsModule,
     TableModule,
     ButtonModule,
@@ -97,6 +102,7 @@ const PAGE_SIZE = 25;
     { provide: RegistrationsRepository, useClass: RegistrationsApi },
     { provide: CheckinRepository, useClass: CheckinApi },
     RegistrationStatusController,
+    { provide: AuditRepository, useClass: AuditApi },
   ],
   templateUrl: './attendees-page.html',
   styleUrl: './attendees-page.scss',
@@ -106,6 +112,7 @@ export class AttendeesPage implements OnInit {
   private readonly router = inject(Router);
   private readonly eventsRepo = inject(EventsRepository);
   private readonly checkinRepo = inject(CheckinRepository);
+  private readonly auditRepo = inject(AuditRepository);
   private readonly auth = inject(AuthService);
   private readonly feedback = inject(FeedbackService);
 
@@ -496,7 +503,11 @@ export class AttendeesPage implements OnInit {
   private patchAttendee(id: string, changes: Partial<Attendee>): void {
     this.attendees.update((list) => list.map((a) => (a.id === id ? { ...a, ...changes } : a)));
     const selected = this.selectedAttendee();
-    if (selected?.id === id) this.selectedAttendee.set({ ...selected, ...changes });
+    if (selected?.id === id) {
+      this.selectedAttendee.set({ ...selected, ...changes });
+      // El cambio recién guardado también es parte del historial que se está viendo.
+      if (this.showDetailModal()) void this.loadHistory(id);
+    }
   }
 
   isUrl(val: unknown): boolean {
@@ -580,12 +591,35 @@ export class AttendeesPage implements OnInit {
     }
   }
 
+  /** Solo SUPERADMIN: quién hizo qué con la inscripción abierta en el detalle. */
+  readonly history = signal<AuditEntry[]>([]);
+  readonly loadingHistory = signal(false);
+  readonly historyError = signal<string | null>(null);
+
+  private async loadHistory(registrationId: string): Promise<void> {
+    if (!this.statusCtl.canEdit()) return;
+    this.loadingHistory.set(true);
+    this.historyError.set(null);
+    try {
+      const page = await this.auditRepo.list({ ...EMPTY_AUDIT_FILTERS, registrationId }, 50, 0);
+      if (this.selectedAttendee()?.id === registrationId) this.history.set(page.entries);
+    } catch {
+      if (this.selectedAttendee()?.id === registrationId) {
+        this.historyError.set('No se pudo cargar el historial.');
+      }
+    } finally {
+      this.loadingHistory.set(false);
+    }
+  }
+
   async openAttendeeDetail(attendee: Attendee): Promise<void> {
     const token = ++this.detailToken;
     this.actionError.set(null);
     this.selectedAttendee.set(attendee);
     this.attendeeSessions.set([]);
+    this.history.set([]);
     this.showDetailModal.set(true);
+    void this.loadHistory(attendee.id);
 
     const eventId = this.event()?.id;
     if (!eventId) {

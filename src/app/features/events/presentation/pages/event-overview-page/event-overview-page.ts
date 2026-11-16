@@ -8,6 +8,10 @@ import { TagModule } from 'primeng/tag';
 import { AuthService } from '../../../../../core/auth/services/auth.service';
 import { PUBLIC_SITE_URL, publicEventUrl } from '../../../../../core/config/public-site';
 import { BsPipe } from '../../../../../shared/pipes/bs.pipe';
+import { AuditApi } from '../../../../activity/data/audit.api';
+import { AuditEntry, EMPTY_AUDIT_FILTERS } from '../../../../activity/domain/audit-entry.model';
+import { AuditRepository } from '../../../../activity/domain/audit.repository';
+import { AuditTimeline } from '../../../../activity/presentation/components/audit-timeline/audit-timeline';
 import { EventsApi } from '../../../data/events.api';
 import { TicketTypesApi } from '../../../data/ticket-types.api';
 import { attendeeFullName, attendeeInitials, entryLabel } from '../../../domain/attendee-payment';
@@ -54,10 +58,20 @@ const TONE_CLASSES: Record<AttentionTone, string> = {
 @Component({
   selector: 'app-event-overview-page',
   standalone: true,
-  imports: [DatePipe, PercentPipe, RouterLink, TagModule, BsPipe, CredentialGenerator, EventHeader],
+  imports: [
+    DatePipe,
+    PercentPipe,
+    RouterLink,
+    TagModule,
+    BsPipe,
+    AuditTimeline,
+    CredentialGenerator,
+    EventHeader,
+  ],
   providers: [
     { provide: EventsRepository, useClass: EventsApi },
     { provide: TicketTypesRepository, useClass: TicketTypesApi },
+    { provide: AuditRepository, useClass: AuditApi },
   ],
   templateUrl: './event-overview-page.html',
 })
@@ -65,6 +79,7 @@ export class EventOverviewPage {
   private readonly route = inject(ActivatedRoute);
   private readonly eventsRepo = inject(EventsRepository);
   private readonly ticketsRepo = inject(TicketTypesRepository);
+  private readonly auditRepo = inject(AuditRepository);
   private readonly auth = inject(AuthService);
   private readonly credentialGenerator = viewChild(CredentialGenerator);
 
@@ -76,6 +91,9 @@ export class EventOverviewPage {
   readonly loading = signal(true);
   readonly notFound = signal(false);
   readonly error = signal<string | null>(null);
+  /** Solo SUPERADMIN: los últimos movimientos del evento (la base no se los da a STAFF). */
+  readonly activity = signal<AuditEntry[]>([]);
+  readonly activityError = signal<string | null>(null);
 
   readonly overview = computed(() => {
     const event = this.event();
@@ -174,11 +192,23 @@ export class EventOverviewPage {
       this.event.set(event);
       this.attendees.set(attendees);
       this.packages.set(packageOccupancy(tickets, counts));
+      if (this.isSuperadmin()) void this.loadActivity(id);
     } catch (err) {
       console.error(err);
       this.error.set('No pudimos cargar el evento. Revisa tu conexión e inténtalo de nuevo.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  /** Accesoria: si falla, el resumen se ve igual y el panel lo explica. */
+  private async loadActivity(eventId: string): Promise<void> {
+    this.activityError.set(null);
+    try {
+      const page = await this.auditRepo.list({ ...EMPTY_AUDIT_FILTERS, eventId }, 6, 0);
+      this.activity.set(page.entries);
+    } catch {
+      this.activityError.set('No se pudo cargar la actividad reciente.');
     }
   }
 

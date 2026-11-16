@@ -1,52 +1,52 @@
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
-// Signal Forms es experimental en Angular 21.2; ver nota en event-basics-form.
-import { FormField, form } from '@angular/forms/signals';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
-import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
 
 import { FeedbackService } from '../../../../../core/services/feedback.service';
-import { errorField, toUserMessage } from '../../../data/postgres-error.mapper';
-import { validateStaffEmail } from '../../../domain/event-validators';
+import { UsersApi } from '../../../../users/data/users.api';
+import { BackofficeUser } from '../../../../users/domain/backoffice-user.model';
+import { displayName } from '../../../../users/domain/user-rules';
+import { UsersRepository } from '../../../../users/domain/users.repository';
+import { toUserMessage } from '../../../data/postgres-error.mapper';
 import { StaffAssignment } from '../../../domain/staff-assignment.model';
 import { StaffAssignmentsRepository } from '../../../domain/staff-assignments.repository';
 
+/**
+ * Staff de check-in del evento. Solo se eligen personas que ya tienen acceso al back-office como
+ * STAFF (la base lo exige con una FK): asignar a un evento nunca da acceso por sí solo.
+ */
 @Component({
   selector: 'app-staff-assignment-editor',
   standalone: true,
-  imports: [FormField, InputTextModule],
+  imports: [FormsModule, RouterLink, SelectModule],
+  providers: [{ provide: UsersRepository, useClass: UsersApi }],
   templateUrl: './staff-assignment-editor.html',
 })
 export class StaffAssignmentEditor implements OnInit {
   private readonly repo = inject(StaffAssignmentsRepository);
+  private readonly usersRepo = inject(UsersRepository);
   private readonly feedback = inject(FeedbackService);
 
   readonly eventId = input.required<string>();
 
   readonly assignments = signal<StaffAssignment[]>([]);
+  readonly staffUsers = signal<BackofficeUser[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
 
+  readonly selectedEmail = signal<string | null>(null);
   readonly adding = signal(false);
-  readonly submitted = signal(false);
   readonly removingId = signal<string | null>(null);
-  readonly model = signal({ email: '' });
-  readonly f = form(this.model);
 
-  readonly validation = computed(() =>
-    validateStaffEmail(
-      this.model().email,
-      this.assignments().map((a) => a.staffEmail),
-    ),
-  );
-
-  readonly blurred = signal(false);
-  private readonly serverError = signal<string | null>(null);
-  readonly emailError = computed(
-    () =>
-      this.serverError() ??
-      (this.submitted() || this.blurred() ? (this.validation().errors[0]?.message ?? null) : null),
-  );
+  readonly options = computed(() => {
+    const taken = new Set(this.assignments().map((a) => a.staffEmail));
+    return this.staffUsers()
+      .filter((u) => !taken.has(u.email))
+      .map((u) => ({ label: displayName(u), email: u.email, value: u.email }));
+  });
 
   ngOnInit(): void {
     void this.load();
@@ -56,36 +56,39 @@ export class StaffAssignmentEditor implements OnInit {
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      this.assignments.set(await this.repo.list(this.eventId()));
+      const [assignments, users] = await Promise.all([
+        this.repo.list(this.eventId()),
+        this.usersRepo.list(),
+      ]);
+      this.assignments.set(assignments);
+      this.staffUsers.set(users.filter((u) => u.role === 'STAFF'));
     } catch (err) {
-      this.loadError.set(toUserMessage(err, 'No se pudieron cargar las asignaciones.', 'staff'));
+      this.loadError.set(toUserMessage(err, 'No se pudo cargar el staff del evento.', 'staff'));
     } finally {
       this.loading.set(false);
     }
   }
 
+  nameOf(email: string): string | null {
+    const user = this.staffUsers().find((u) => u.email === email);
+    const name = user ? displayName(user) : null;
+    return name && name !== email ? name : null;
+  }
+
   async add(): Promise<void> {
-    this.submitted.set(true);
+    const email = this.selectedEmail();
+    if (!email || this.adding()) return;
     this.actionError.set(null);
-    this.serverError.set(null);
-    if (this.adding()) return;
-    if (this.validation().errors.length > 0) {
-      document.getElementById('staff-email')?.focus();
-      return;
-    }
-    const email = this.model().email.trim().toLowerCase();
     this.adding.set(true);
     try {
       const saved = await this.repo.add(this.eventId(), email);
       this.assignments.update((list) => [...list, saved]);
-      this.model.set({ email: '' });
-      this.submitted.set(false);
-      this.blurred.set(false);
-      this.feedback.success(`${saved.staffEmail} asignado al evento.`);
+      this.selectedEmail.set(null);
+      this.feedback.success(
+        `${this.nameOf(email) ?? email} ya puede hacer check-in en este evento.`,
+      );
     } catch (err) {
-      const message = toUserMessage(err, 'No se pudo asignar el correo.', 'staff');
-      if (errorField(err)) this.serverError.set(message);
-      else this.actionError.set(message);
+      this.actionError.set(toUserMessage(err, 'No se pudo asignar a la persona.', 'staff'));
     } finally {
       this.adding.set(false);
     }
@@ -93,9 +96,10 @@ export class StaffAssignmentEditor implements OnInit {
 
   async remove(a: StaffAssignment): Promise<void> {
     if (this.removingId()) return;
+    const who = this.nameOf(a.staffEmail) ?? a.staffEmail;
     const ok = await this.feedback.confirm({
       titulo: 'Quitar staff',
-      mensaje: `${a.staffEmail} dejará de poder hacer check-in en este evento.`,
+      mensaje: `${who} dejará de poder hacer check-in en este evento.`,
       aceptar: 'Quitar',
       peligro: true,
     });
@@ -105,7 +109,7 @@ export class StaffAssignmentEditor implements OnInit {
     try {
       await this.repo.remove(a.id);
       this.assignments.update((list) => list.filter((x) => x.id !== a.id));
-      this.feedback.success(`${a.staffEmail} quitado del evento.`);
+      this.feedback.success(`${who} quitado del evento.`);
     } catch (err) {
       this.actionError.set(toUserMessage(err, 'No se pudo quitar la asignación.', 'staff'));
     } finally {

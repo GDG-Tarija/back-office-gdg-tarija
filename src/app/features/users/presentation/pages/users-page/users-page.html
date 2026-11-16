@@ -1,0 +1,340 @@
+<div class="space-y-6 p-4 sm:p-8">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-text-primary dark:text-neutral-100">
+        Usuarios
+      </h1>
+      <p class="mt-1 text-sm text-text-secondary dark:text-neutral-400">
+        Quiénes entran al back-office y con qué rol. El rol que da un cupón en un evento no da
+        acceso aquí.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-action px-5 text-sm font-semibold text-on-action transition-colors hover:bg-action-hover"
+      (click)="addOpen.set(true)"
+    >
+      <span class="material-symbols-rounded text-base" aria-hidden="true">person_add</span>
+      Agregar usuario
+    </button>
+  </div>
+
+  @if (error(); as err) {
+    <div
+      class="flex flex-wrap items-center gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-error-text"
+      role="alert"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">error</span>
+      <span class="flex-1">{{ err }}</span>
+      <button
+        type="button"
+        class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-google-red/30 px-4 font-semibold hover:bg-google-red/10"
+        (click)="load()"
+      >
+        <span class="material-symbols-rounded text-base" aria-hidden="true">refresh</span>
+        Reintentar
+      </button>
+    </div>
+  } @else {
+    <div
+      role="search"
+      aria-label="Buscar y filtrar usuarios"
+      class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center"
+    >
+      <div class="relative min-w-0 md:w-80">
+        <label for="users-search" class="sr-only">Buscar por nombre o correo</label>
+        <input
+          id="users-search"
+          type="search"
+          autocomplete="off"
+          placeholder="Buscar por nombre o correo"
+          class="h-10 w-full rounded-xl border pl-10 pr-3 text-sm max-md:h-11"
+          [class]="
+            query().trim()
+              ? 'border-accent-text bg-info-bg'
+              : 'border-black/15 bg-surface-paper dark:border-white/15'
+          "
+          [ngModel]="query()"
+          (ngModelChange)="query.set($event)"
+        />
+        <span [class]="iconClass(!!query().trim())" aria-hidden="true">search</span>
+      </div>
+
+      <div class="relative w-full md:w-56">
+        <label for="users-role" class="sr-only">Rol</label>
+        <p-select
+          inputId="users-role"
+          [options]="roleFilterOptions"
+          optionLabel="label"
+          optionValue="value"
+          ariaLabel="Filtrar por rol"
+          [ngModel]="roleFilter()"
+          (ngModelChange)="roleFilter.set($event)"
+          [styleClass]="selectClass(roleFilter() !== null)"
+          appendTo="body"
+        >
+          <ng-template #dropdownicon>
+            <span class="material-symbols-rounded text-lg text-text-muted" aria-hidden="true"
+              >expand_more</span
+            >
+          </ng-template>
+        </p-select>
+        <span [class]="iconClass(roleFilter() !== null)" aria-hidden="true">badge</span>
+      </div>
+
+      @if (filtersActive()) {
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center gap-1 self-start rounded-full px-3 text-sm font-semibold text-accent-text hover:bg-info-bg md:self-auto"
+          (click)="clearFilters()"
+        >
+          <span class="material-symbols-rounded text-lg" aria-hidden="true">filter_alt_off</span>
+          Limpiar filtros
+        </button>
+      }
+
+      @if (!loading()) {
+        <p class="text-sm text-text-secondary md:ml-auto dark:text-neutral-400" aria-live="polite">
+          @if (filtersActive()) {
+            {{ visible().length }} de {{ users().length }} usuarios
+          } @else {
+            {{ users().length }} {{ users().length === 1 ? 'usuario' : 'usuarios' }}
+          }
+        </p>
+      }
+    </div>
+
+    @if (loading()) {
+      <div
+        class="flex justify-center rounded-3xl border border-black/[0.06] bg-surface-paper p-12 dark:border-white/[0.06]"
+        role="status"
+        aria-label="Cargando usuarios"
+      >
+        <span
+          class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
+          aria-hidden="true"
+          >progress_activity</span
+        >
+      </div>
+    } @else if (visible().length === 0) {
+      <div
+        class="flex flex-col items-center gap-3 rounded-3xl border border-black/[0.06] bg-surface-paper p-12 text-center dark:border-white/[0.06]"
+      >
+        <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
+          >person_search</span
+        >
+        <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">Sin resultados</h2>
+        <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
+          Nadie coincide con la búsqueda o el filtro.
+        </p>
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center rounded-full border border-black/15 px-5 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
+          (click)="clearFilters()"
+        >
+          Limpiar filtros
+        </button>
+      </div>
+    } @else if (isMobile()) {
+      <ul
+        role="list"
+        aria-label="Usuarios del back-office"
+        class="divide-y divide-black/5 overflow-hidden rounded-3xl border border-black/[0.06] bg-surface-paper dark:divide-white/10 dark:border-white/[0.06]"
+      >
+        @for (u of visible(); track u.email) {
+          <li class="flex gap-3 p-4">
+            <ng-container *ngTemplateOutlet="avatar; context: { $implicit: u }" />
+            <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+              <ng-container *ngTemplateOutlet="identity; context: { $implicit: u }" />
+              <div class="flex flex-wrap items-center gap-2">
+                <p-tag [value]="roleLabel(u)" [severity]="roleSeverity(u)" />
+                <ng-container *ngTemplateOutlet="eventsSummary; context: { $implicit: u }" />
+              </div>
+              <p class="text-xs text-text-secondary dark:text-neutral-400">
+                <ng-container *ngTemplateOutlet="lastSignIn; context: { $implicit: u }" />
+              </p>
+            </div>
+            <ng-container *ngTemplateOutlet="actions; context: { $implicit: u }" />
+          </li>
+        }
+      </ul>
+    } @else {
+      <p-table
+        [value]="visible()"
+        [tableStyle]="{ 'min-width': '52rem' }"
+        aria-label="Usuarios del back-office"
+      >
+        <ng-template #header>
+          <tr>
+            <th scope="col" class="min-w-[16rem]">Persona</th>
+            <th scope="col">Rol</th>
+            <th scope="col">Eventos</th>
+            <th scope="col">Último ingreso</th>
+            <th scope="col">Acceso dado</th>
+            <th scope="col" class="w-16"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-u>
+          <tr>
+            <td>
+              <div class="flex items-center gap-3">
+                <ng-container *ngTemplateOutlet="avatar; context: { $implicit: u }" />
+                <div class="flex min-w-0 flex-col">
+                  <ng-container *ngTemplateOutlet="identity; context: { $implicit: u }" />
+                </div>
+              </div>
+            </td>
+            <td class="whitespace-nowrap">
+              <p-tag [value]="roleLabel(u)" [severity]="roleSeverity(u)" />
+            </td>
+            <td>
+              <ng-container *ngTemplateOutlet="eventsSummary; context: { $implicit: u }" />
+            </td>
+            <td class="whitespace-nowrap text-sm">
+              <ng-container *ngTemplateOutlet="lastSignIn; context: { $implicit: u }" />
+            </td>
+            <td class="text-sm">
+              @if (u.addedAt) {
+                <span class="whitespace-nowrap">{{ u.addedAt | date: 'd MMM y' }}</span>
+              }
+              @if (u.addedByEmail) {
+                <span
+                  class="block max-w-[12rem] truncate text-xs text-text-secondary dark:text-neutral-400"
+                  >por {{ u.addedByEmail }}</span
+                >
+              }
+            </td>
+            <td>
+              <ng-container *ngTemplateOutlet="actions; context: { $implicit: u }" />
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  }
+
+  <ng-template #avatar let-u>
+    @if (u.avatarUrl) {
+      <img
+        [src]="u.avatarUrl"
+        alt=""
+        class="size-10 shrink-0 rounded-full object-cover"
+        referrerpolicy="no-referrer"
+      />
+    } @else {
+      <span
+        class="grid size-10 shrink-0 place-items-center rounded-full bg-neutral-100 text-sm font-bold text-text-secondary dark:bg-neutral-800 dark:text-neutral-300"
+        aria-hidden="true"
+        >{{ initials(u) }}</span
+      >
+    }
+  </ng-template>
+
+  <ng-template #identity let-u>
+    <span class="flex min-w-0 items-center gap-2">
+      <span class="truncate text-sm font-semibold text-text-primary dark:text-neutral-100">{{
+        displayName(u)
+      }}</span>
+      @if (isSelf(u)) {
+        <span
+          class="shrink-0 rounded-full bg-info-bg px-2 py-0.5 text-xs font-semibold text-info-text"
+          >Tú</span
+        >
+      }
+    </span>
+    @if (displayName(u) !== u.email) {
+      <span class="truncate text-xs text-text-secondary dark:text-neutral-400">{{ u.email }}</span>
+    }
+  </ng-template>
+
+  <ng-template #eventsSummary let-u>
+    @if (u.role === 'SUPERADMIN') {
+      <span class="text-sm text-text-muted">Todos los eventos</span>
+    } @else if (u.assignedEvents.length === 0) {
+      <button
+        type="button"
+        class="inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-full px-2 text-sm font-semibold text-warning-text hover:bg-warning-bg max-md:min-h-11"
+        (click)="eventsFor.set(u)"
+      >
+        <span class="material-symbols-rounded text-base" aria-hidden="true">warning</span>
+        Sin eventos asignados
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="inline-flex min-h-9 max-w-[16rem] items-center gap-1 rounded-full px-2 text-left text-sm font-semibold text-accent-text hover:bg-info-bg max-md:min-h-11"
+        [attr.aria-label]="'Ver eventos asignados de ' + displayName(u)"
+        (click)="eventsFor.set(u)"
+      >
+        <span class="truncate">{{ u.assignedEvents[0].title }}</span>
+        @if (u.assignedEvents.length > 1) {
+          <span class="shrink-0 text-text-secondary">+{{ u.assignedEvents.length - 1 }}</span>
+        }
+      </button>
+    }
+  </ng-template>
+
+  <ng-template #lastSignIn let-u>
+    @if (u.lastSignInAt) {
+      Entró el {{ u.lastSignInAt | date: 'd MMM, HH:mm' }}
+    } @else {
+      <span class="text-text-muted">Aún no entró</span>
+    }
+  </ng-template>
+
+  <ng-template #actions let-u>
+    <button
+      type="button"
+      class="flex size-10 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:opacity-40 max-md:size-11 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      [attr.aria-label]="'Acciones de ' + displayName(u)"
+      aria-haspopup="menu"
+      [disabled]="busyEmail() === u.email"
+      (click)="openMenu(u, $event)"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">{{
+        busyEmail() === u.email ? 'progress_activity' : 'more_vert'
+      }}</span>
+    </button>
+  </ng-template>
+
+  <p-menu
+    #rowMenu
+    styleClass="row-actions-menu"
+    [popup]="true"
+    [model]="menuItems()"
+    appendTo="body"
+  >
+    <ng-template #item let-item>
+      <a
+        class="p-menu-item-link flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium"
+        [class.text-danger-text]="item.state?.danger && !item.disabled"
+      >
+        <span
+          class="material-symbols-rounded mt-0.5 shrink-0 text-lg leading-none"
+          aria-hidden="true"
+          >{{ item.icon }}</span
+        >
+        <span class="flex flex-col">
+          <span class="whitespace-nowrap">{{ item.label }}</span>
+          @if (item.state?.hint) {
+            <span class="max-w-[15rem] text-xs font-normal text-text-secondary">{{
+              item.state.hint
+            }}</span>
+          }
+        </span>
+      </a>
+    </ng-template>
+  </p-menu>
+
+  @if (addOpen()) {
+    <app-add-user-dialog
+      [existingEmails]="existingEmails()"
+      (closed)="addOpen.set(false)"
+      (added)="onAdded($event)"
+    />
+  }
+
+  @if (eventsFor(); as u) {
+    <app-user-events-dialog [user]="u" (closed)="onEventsClosed($event)" />
+  }
+</div>

@@ -55,7 +55,25 @@ En **Eventos > Asistentes** (`/events/:id/attendees`) cada inscripción tiene un
 | SUPERADMIN | Crear, editar, publicar, despublicar y eliminar eventos; gestionar cupones, staff y fases de preventa; subir imágenes; ver asistentes, hacer check-in y anular inscripciones pendientes.                                             |
 | STAFF      | Al entrar va directo a **Check-in** con su evento de hoy (o el único asignado, o el último usado en ese dispositivo) ya elegido. Puede ver sus eventos asignados y sus asistentes. No crea ni edita ni ve el Inicio (flujo de caja). |
 
-El rol se define en la tabla `staff_whitelist`; el staff se asigna a cada evento en el paso/pestaña "Cupones y staff".
+## Usuarios y accesos
+
+En **Usuarios** (`/users`, solo SUPERADMIN) se ve quién entra al back-office, con qué rol, cuándo entró por última vez y quién le dio el acceso.
+
+- **Agregar usuario**: correo de Google + rol. La persona entra con "Continuar con Google" usando ese correo.
+- **Roles**: **Superadmin** ve y gestiona todo; **Staff de check-in** solo ve asistentes y hace check-in en los eventos que tenga asignados.
+- **El rol "Staff" de un cupón es otra cosa**: da la credencial del evento (moderadores, asistencia técnica), no acceso a este panel.
+- **Eventos de un Staff de check-in**: desde Usuarios (menú `⋮` → "Eventos asignados") o en la Configuración del evento → "Cupones y staff", donde solo aparecen personas con acceso de Staff de check-in.
+- **Cambiar rol / Quitar acceso**: desde el menú `⋮`. Nadie puede cambiar su propio rol ni quitarse el acceso, y siempre queda al menos un superadmin. Quitar el acceso también lo quita de sus eventos.
+- **Auditoría**: cada alta, cambio o baja de accesos, eventos, paquetes, cupones, inscripciones y check-ins queda registrada con quién la hizo y cuándo.
+
+## Actividad (quién hizo qué)
+
+En **Actividad** (`/activity`, solo SUPERADMIN) está el historial completo, del más nuevo al más viejo, con filtros por persona, evento, tipo (Inscripciones, Check-in, Configuración de eventos, Accesos) y fechas. Cada línea dice quién hizo qué ("Ana confirmó el pago de Luis") y "Ver cambios" muestra el antes y el después. El historial no se puede editar ni borrar.
+
+- **Historial de una inscripción**: en Asistentes → Detalle, al final (inscripción, pagos confirmados o desestimados, anulaciones, check-ins y sus "Deshacer").
+- **Actividad reciente de un evento**: en su Resumen, con enlace a toda la actividad del evento.
+- **Actividad de una persona del equipo**: en Usuarios → `⋮` → "Ver actividad".
+- **Etiquetas**: "Desde la web" = lo hizo la propia persona en eventos GDG; "Fuera de la app" = un cambio hecho directo en la base (consola o migración); "Importado" = lo que ya existía antes de que empezara la auditoría (solo inscripciones y check-ins: los cambios de estado anteriores no quedaron registrados).
 
 ## Checklist manual de pruebas end-to-end
 

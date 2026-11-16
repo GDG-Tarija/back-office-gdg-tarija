@@ -1,52 +1,63 @@
 <div class="flex flex-col gap-5">
   <div>
-    <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">Staff asignado</h2>
+    <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">Staff de check-in</h2>
     <p class="text-sm text-text-secondary dark:text-neutral-400">
-      Personas del staff que pueden gestionar asistentes y check-in de este evento.
+      Quiénes pueden ver asistentes y hacer check-in en este evento. Los superadmins ya ven todos
+      los eventos.
     </p>
   </div>
 
-  <div
-    class="flex items-center gap-3 rounded-2xl bg-google-yellow-light/40 p-3 text-sm font-medium text-text-primary dark:text-neutral-200"
-    role="note"
-  >
-    <span class="material-symbols-rounded text-xl text-google-yellow" aria-hidden="true">info</span>
-    <span
-      >El correo debe estar autorizado como STAFF en el sistema para poder entrar al panel.
-      Asignarlo aquí no le da acceso por sí solo.</span
-    >
-  </div>
-
   <form class="flex flex-col gap-1.5" novalidate (submit)="$event.preventDefault(); add()">
-    <label for="staff-email" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
-      >Correo del staff <span aria-hidden="true">*</span></label
+    <label for="staff-user" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+      >Asignar a una persona</label
     >
-    <div class="flex gap-2">
-      <input
-        id="staff-email"
-        type="email"
-        pInputText
-        class="w-full rounded-xl"
-        placeholder="persona@correo.com"
-        autocomplete="off"
-        aria-required="true"
-        [formField]="f.email"
-        (blur)="blurred.set(true)"
-        [attr.aria-invalid]="!!emailError()"
-        [attr.aria-describedby]="emailError() ? 'staff-email-error' : null"
-      />
+    <div class="flex flex-col gap-2 sm:flex-row">
+      <p-select
+        inputId="staff-user"
+        [options]="options()"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="selectedEmail()"
+        (ngModelChange)="selectedEmail.set($event)"
+        name="staff"
+        [filter]="true"
+        filterBy="label,email"
+        [loading]="loading()"
+        placeholder="Elige a alguien del Staff de check-in"
+        [emptyMessage]="
+          staffUsers().length === 0
+            ? 'Todavía no hay Staff de check-in'
+            : 'Todo el Staff de check-in ya está asignado'
+        "
+        emptyFilterMessage="Nadie coincide"
+        styleClass="w-full min-w-0"
+        appendTo="body"
+      >
+        <ng-template #item let-option>
+          <span class="flex flex-col">
+            <span class="text-sm font-medium">{{ option.label }}</span>
+            @if (option.label !== option.email) {
+              <span class="text-xs text-text-secondary">{{ option.email }}</span>
+            }
+          </span>
+        </ng-template>
+      </p-select>
       <button
         type="submit"
-        class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        [disabled]="adding()"
+        class="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-action px-4 text-sm font-semibold text-on-action transition-colors hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="!selectedEmail() || adding()"
       >
         <span class="material-symbols-rounded text-base" aria-hidden="true">person_add</span>
         {{ adding() ? 'Asignando...' : 'Asignar' }}
       </button>
     </div>
-    @if (emailError(); as err) {
-      <small id="staff-email-error" class="font-medium text-danger-text">{{ err }}</small>
-    }
+    <small class="text-text-secondary dark:text-neutral-400">
+      Solo aparecen quienes tienen acceso como Staff de check-in. Para dar acceso a alguien nuevo,
+      agrégalo en
+      <a routerLink="/users" class="font-semibold text-accent-text underline underline-offset-2"
+        >Usuarios</a
+      >.
+    </small>
   </form>
 
   @if (actionError(); as err) {
@@ -78,7 +89,7 @@
       >
       <p class="text-base font-bold text-text-primary dark:text-neutral-200">Sin staff asignado</p>
       <p class="text-sm text-text-secondary dark:text-neutral-400">
-        Agrega el correo de quien hará el check-in en este evento.
+        Asigna a quien hará el check-in en este evento.
       </p>
     </div>
   } @else {
@@ -87,14 +98,24 @@
         <li
           class="flex items-center justify-between gap-3 rounded-2xl border border-black/5 p-3 dark:border-white/5"
         >
-          <span
-            class="min-w-0 truncate text-sm font-medium text-text-primary dark:text-neutral-100"
-            >{{ a.staffEmail }}</span
-          >
+          <span class="flex min-w-0 flex-col">
+            @if (nameOf(a.staffEmail); as name) {
+              <span
+                class="truncate text-sm font-semibold text-text-primary dark:text-neutral-100"
+                >{{ name }}</span
+              >
+            }
+            <span
+              class="truncate text-sm text-text-primary dark:text-neutral-100"
+              [class.text-xs]="!!nameOf(a.staffEmail)"
+              [class.text-text-secondary]="!!nameOf(a.staffEmail)"
+              >{{ a.staffEmail }}</span
+            >
+          </span>
           <button
             type="button"
-            class="flex size-9 shrink-0 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40"
-            [attr.aria-label]="'Quitar a ' + a.staffEmail + ' del evento'"
+            class="flex size-11 shrink-0 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/40 disabled:cursor-not-allowed disabled:opacity-40"
+            [attr.aria-label]="'Quitar a ' + (nameOf(a.staffEmail) ?? a.staffEmail) + ' del evento'"
             [disabled]="removingId() !== null"
             (click)="remove(a)"
           >

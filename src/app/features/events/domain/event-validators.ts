@@ -623,23 +623,6 @@ export function validateCoupon(input: CouponInput, ctx: CouponValidationContext)
 }
 
 // ---------------------------------------------------------------------------
-// Staff
-// ---------------------------------------------------------------------------
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export function validateStaffEmail(email: string, existing: string[]): ValidationResult {
-  const r = newResult();
-  const clean = email.trim().toLowerCase();
-  if (!EMAIL_RE.test(clean)) {
-    r.errors.push({ field: 'staffEmail', message: 'Ingresa un correo electrónico válido.' });
-  } else if (existing.some((e) => e.trim().toLowerCase() === clean)) {
-    r.errors.push({ field: 'staffEmail', message: 'Ese correo ya está asignado al evento.' });
-  }
-  return r;
-}
-
-// ---------------------------------------------------------------------------
 // Formulario de registro
 // ---------------------------------------------------------------------------
 
