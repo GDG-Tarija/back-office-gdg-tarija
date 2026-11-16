@@ -1,0 +1,122 @@
+<app-dialog-frame
+  #frame
+  [title]="'Eventos de ' + name()"
+  icon="event_available"
+  initialSize="md"
+  [busy]="busy()"
+  (closeDialog)="close()"
+>
+  <div class="flex flex-col gap-5">
+    <p class="text-sm text-text-secondary dark:text-neutral-400">
+      En estos eventos puede ver asistentes y hacer check-in. Los superadmins ya ven todos los
+      eventos.
+    </p>
+
+    <form class="flex flex-col gap-1.5" novalidate (submit)="$event.preventDefault(); add()">
+      <label
+        for="assign-event"
+        class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Asignar a un evento</label
+      >
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <p-select
+          inputId="assign-event"
+          [options]="options()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="selectedEventId()"
+          (ngModelChange)="selectedEventId.set($event)"
+          name="event"
+          [filter]="true"
+          filterBy="label"
+          [loading]="loading()"
+          placeholder="Elige un evento"
+          emptyMessage="No quedan eventos por asignar"
+          emptyFilterMessage="Ningún evento coincide"
+          styleClass="w-full min-w-0"
+          appendTo="body"
+        >
+          <ng-template #item let-option>
+            <span class="flex flex-col">
+              <span class="text-sm font-medium">{{ option.label }}</span>
+              <span class="text-xs text-text-secondary">{{
+                option.dateStart | date: 'EEE d MMM y'
+              }}</span>
+            </span>
+          </ng-template>
+        </p-select>
+        <button
+          type="submit"
+          class="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-action px-4 text-sm font-semibold text-on-action hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="!selectedEventId() || busy()"
+        >
+          <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+          Asignar
+        </button>
+      </div>
+    </form>
+
+    @if (error(); as err) {
+      <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
+    }
+
+    @if (assigned().length === 0) {
+      <div
+        class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 p-8 text-center dark:border-white/10"
+      >
+        <span class="material-symbols-rounded text-4xl text-neutral-400" aria-hidden="true"
+          >event_busy</span
+        >
+        <p class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+          Sin eventos asignados
+        </p>
+        <p class="text-xs text-text-secondary dark:text-neutral-400">
+          Puede entrar al panel, pero no verá asistentes ni podrá hacer check-in hasta que le
+          asignes un evento.
+        </p>
+      </div>
+    } @else {
+      <ul
+        role="list"
+        class="divide-y divide-black/5 overflow-hidden rounded-2xl border border-black/5 dark:divide-white/10 dark:border-white/10"
+      >
+        @for (a of assigned(); track a.assignmentId) {
+          <li class="flex min-h-12 items-center gap-3 px-4 py-2">
+            <span class="flex min-w-0 flex-1 flex-col">
+              <a
+                [routerLink]="['/events', a.eventId]"
+                class="truncate text-sm font-semibold underline-offset-2 hover:underline"
+                (click)="frame.requestClose()"
+                >{{ a.title }}</a
+              >
+              @if (a.dateStart) {
+                <span class="text-xs text-text-secondary dark:text-neutral-400">{{
+                  a.dateStart | date: 'EEE d MMM y'
+                }}</span>
+              }
+            </span>
+            <button
+              type="button"
+              class="flex size-10 shrink-0 items-center justify-center rounded-full text-danger-text hover:bg-error-bg disabled:opacity-40 max-md:size-11"
+              [attr.aria-label]="'Quitar ' + a.title"
+              [disabled]="busy()"
+              (click)="remove(a)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">close</span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <ng-container dialog-actions>
+    <button
+      type="button"
+      class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+      (click)="frame.requestClose()"
+    >
+      Listo
+    </button>
+  </ng-container>
+</app-dialog-frame>

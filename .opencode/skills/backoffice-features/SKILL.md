@@ -23,9 +23,10 @@ No asumir que es una landing pública ni una PWA de eventos. Si se necesita una 
 Inicio (/dashboard)      solo SUPERADMIN: atención de hoy, métricas, tendencia, flujo de caja
 Eventos (/events)        listado, alta, gestión por pestañas, asistentes (+ credenciales)
 Check-in (/checkin)      QR y búsqueda manual; STAFF entra directo aquí
+Usuarios (/users)        solo SUPERADMIN: accesos al back-office, roles y eventos de cada STAFF
 ```
 
-No existen módulos de Usuarios, Sponsors, Comunidades, Configuración ni Reportes: si se pide uno, tratarlo como feature nueva (`/create-crud`) y confirmar la entidad. Rutas en `app.routes.ts` (`homeGuard` oculta Inicio a STAFF y lo redirige a `/checkin`).
+No existen módulos de Sponsors, Comunidades, Configuración ni Reportes: si se pide uno, tratarlo como feature nueva (`/create-crud`) y confirmar la entidad. Rutas en `app.routes.ts` (`homeGuard` oculta Inicio a STAFF y lo redirige a `/checkin`).
 
 ---
 
@@ -198,6 +199,13 @@ Filtros por estado/rol/entrada/check-in/comprobante, tarjetas de estado, menú d
 - SUPERADMIN: crea, edita, publica y elimina; sube imágenes; cambia estados de inscripción; ve Inicio.
 - STAFF: ve eventos asignados, asistentes y hace check-in; sin acceso a `/events/new`, `/events/:id/edit` ni Inicio.
 - El rol sale de `AuthService.role()` (RPC `get_my_role`). La seguridad real es RLS.
+
+### Usuarios (`src/app/features/users/`)
+
+- `/users` (SUPERADMIN): lista de `staff_whitelist` vía RPC `list_backoffice_users` (nombre, último ingreso, quién dio el acceso, eventos asignados). Agregar (correo + rol), cambiar rol y quitar acceso pasan por RPCs (`add_backoffice_user`, `set_backoffice_user_role`, `remove_backoffice_user`); la base impide actuar sobre uno mismo y dejar el panel sin superadmin, y `domain/user-rules.ts` lo replica para avisar antes.
+- En la UI el rol STAFF se llama **"Staff de check-in"**: no confundir con el rol de evento "Staff" que da un cupón (`registrations.event_role`), que no da acceso al panel.
+- Eventos de un STAFF: diálogo `user-events-dialog` en Usuarios o `staff-assignment-editor` en la Configuración del evento, que solo ofrece personas con acceso STAFF (la FK a `staff_whitelist` lo exige).
+- Todo cambio queda en `audit_log` (ver skill `database`).
 
 ### Tests
 

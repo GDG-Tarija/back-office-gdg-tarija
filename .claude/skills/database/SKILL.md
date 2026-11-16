@@ -20,7 +20,9 @@ Rutas reales del back-office (`src/app/app.routes.ts`, `features/events/events.r
 | `/events/new`           | SUPERADMIN (`superadminGuard`) | Wizard de creación.                                  |
 | `/events/:id/edit`      | SUPERADMIN                     | Gestión por pestañas.                                |
 | `/events/:id/attendees` | autenticado                    | Asistentes del evento.                               |
+| `/events/:id`           | autenticado                    | Resumen del evento (portada).                        |
 | `/checkin`              | autenticado                    | Check-in (STAFF solo en eventos asignados, por RLS). |
+| `/users`                | SUPERADMIN (`superadminGuard`) | Usuarios del back-office (accesos y roles).          |
 
 Los guards son solo UX; la seguridad real son las políticas RLS.
 
@@ -94,7 +96,7 @@ Trigger `trg_process_registration_coupon` (BEFORE INSERT en registrations; únic
 
 ### 2.7. `event_staff_assignments`
 
-`id`, `event_id` (FK events, CASCADE), `staff_email` varchar, `assigned_at` timestamptz default now(). UNIQUE (`event_id`, `staff_email`). No tiene `created_at`/`updated_at` (excepción a la regla general).
+`id`, `event_id` (FK events, CASCADE), `staff_email` varchar (FK `staff_whitelist.email`, ON UPDATE/DELETE CASCADE desde `20261115235749`), `assigned_at` timestamptz default now(). UNIQUE (`event_id`, `staff_email`). No tiene `created_at`/`updated_at` (excepción a la regla general). Solo se puede asignar un correo con acceso al back-office; quitarle el acceso borra sus asignaciones. El correo se guarda en minúsculas (trigger `normalize_staff_email`).
 
 - Policy `staff_read_own_assignments` (SELECT, corregida en `20261114171703`): `is_superadmin()` o `lower(staff_email) = lower(auth.jwt() ->> 'email')`. La versión original leía `auth.users` como `authenticated` (sin permiso) y fallaba con 42501 para todo STAFF; ahora cada STAFF lee solo sus asignaciones sin tocar `auth.users`. Escritura: solo SUPERADMIN.
 
@@ -122,7 +124,15 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 
 ### 2.11. `staff_whitelist`
 
-`id`, `email` varchar(255) UNIQUE, `role` varchar(20) (CHECK `SUPERADMIN|STAFF`), `created_at`, `updated_at`. Fuente del rol del operador.
+`id`, `email` varchar(255) UNIQUE (en minúsculas, trigger `normalize_staff_email`), `role` varchar(20) (CHECK `SUPERADMIN|STAFF`), `created_at`, `updated_at`. Fuente del rol del operador. Sin policies de escritura: se gestiona desde `/users` con las RPCs `add_backoffice_user`, `set_backoffice_user_role` y `remove_backoffice_user` (solo SUPERADMIN). Es el rol **del back-office**; no tiene relación con `registrations.event_role` (el "Staff" que da un cupón no entra al panel).
+
+### 2.11.1. `audit_log` (auditoría)
+
+`id` bigint identity, `occurred_at`, `actor_id` (`auth.uid()`; NULL = Sistema: consola, migración o service role), `actor_email` (claim del JWT), `actor_role` (rol del back-office en ese momento; NULL = persona sin acceso, p. ej. inscripción desde la web), `action` (`INSERT|UPDATE|DELETE`), `table_name`, `record_id` (id de la fila; en `session_registrations`, la inscripción), `event_id` (resuelto por tabla), `changes` jsonb (INSERT/DELETE: la fila sin `created_at`/`updated_at`; UPDATE: solo lo que cambió, `{campo: [antes, después]}`), `source` (`app|backfill`).
+
+- Lo escribe `audit_row_change()` (AFTER INSERT/UPDATE/DELETE, SECURITY DEFINER) en: `staff_whitelist`, `event_staff_assignments`, `events`, `ticket_types`, `ticket_phases`, `event_coupons`, `tracks`, `sessions`, `registrations`, `scan_logs`, `session_registrations`. Un UPDATE que solo toca `updated_at` no se registra. No se auditan `users` (sincroniza el perfil en cada login), `sponsors` ni `inscripciones_sessions`.
+- Solo agregar: SELECT solo `is_superadmin()`; INSERT/UPDATE/DELETE/TRUNCATE revocados a `anon` y `authenticated`.
+- Backfill (`source = 'backfill'`): altas de las inscripciones y escaneos que existían al desplegar `20261115235749`. Los cambios de estado anteriores no existen. El seed hace lo mismo con sus datos.
 
 ### 2.12. `users`
 
@@ -141,9 +151,15 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 
 | Función                                           | Descripción                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_my_role()`                                   | Rol (`SUPERADMIN`/`STAFF`) del usuario actual vía `staff_whitelist` + `auth.users` (SECURITY DEFINER).                                                                                                                                                                                                                           |
+| `get_my_role()`                                   | Rol (`SUPERADMIN`/`STAFF`) del usuario actual vía `staff_whitelist` + `auth.users`, sin distinguir mayúsculas (SECURITY DEFINER).                                                                                                                                                                                                |
 | `is_superadmin()`                                 | `get_my_role() = 'SUPERADMIN'`.                                                                                                                                                                                                                                                                                                  |
-| `has_event_access(event_id)`                      | SUPERADMIN o email asignado en `event_staff_assignments`.                                                                                                                                                                                                                                                                        |
+| `has_event_access(event_id)`                      | SUPERADMIN o email asignado en `event_staff_assignments` **y** presente en `staff_whitelist` (desde `20261115235749`).                                                                                                                                                                                                           |
+| `list_backoffice_users()`                         | RPC SECURITY DEFINER, solo SUPERADMIN (`require_superadmin()`, si no 42501). Correo, rol, `user_id`, nombre/avatar, último ingreso (`auth.users`), alta y quién la dio, última actividad (`audit_log`) y eventos asignados (`assignment_id, event_id, title, date_start`).                                                       |
+| `add_backoffice_user(p_email, p_role)`            | Solo SUPERADMIN. Normaliza el correo. Errores: P0020 dato no válido, P0021 ya tiene acceso.                                                                                                                                                                                                                                      |
+| `set_backoffice_user_role(p_email, p_role)`       | Solo SUPERADMIN. P0022 sobre uno mismo, P0023 dejaría el panel sin superadmin (filas bloqueadas FOR UPDATE), P0024 sin acceso.                                                                                                                                                                                                   |
+| `remove_backoffice_user(p_email)`                 | Solo SUPERADMIN. Mismas reglas; borra sus asignaciones por la FK en cascada.                                                                                                                                                                                                                                                     |
+| `audit_row_change()`                              | Trigger de auditoría (SECURITY DEFINER); ver 2.11.1.                                                                                                                                                                                                                                                                             |
+| `normalize_staff_email()`                         | Trigger: correos de `staff_whitelist` / `event_staff_assignments` en minúsculas.                                                                                                                                                                                                                                                 |
 | `validate_coupon(p_event_id, p_code)`             | RPC SECURITY DEFINER; devuelve `id, role, max_uses, uses_left` del cupón (case-insensitive). Solo `authenticated`.                                                                                                                                                                                                               |
 | `get_coupon_uses(coupon_id)`                      | Conteo de usos del cupón.                                                                                                                                                                                                                                                                                                        |
 | `is_staff()`                                      | Definida en `017`, usada por políticas no reescritas (p. ej. sponsors). Estado actual **por verificar**.                                                                                                                                                                                                                         |
@@ -182,7 +198,7 @@ El rol del operador viene de `get_my_role()` (tabla `staff_whitelist`). `AUTH_WH
 
 Políticas relevantes: `public_read_published_events`, `staff_write_events` (solo superadmin), `staff_write_ticket_types`, `staff_write_ticket_phases`, `superadmin_write_tracks|sessions|event_coupons|assignments`, `select_own_or_staff_registrations`, `staff_select_scan_logs`/`staff_insert_scan_logs`/`staff_delete_recent_own_scan_logs`, `staff_select_users_for_assigned_events`.
 
-**Regla crítica**: para dar acceso a un operador, agregar su email a `staff_whitelist` (migración/SQL con rol `SUPERADMIN` o `STAFF`) y, si es STAFF, asignarlo al evento en `event_staff_assignments`. Sin fila en `staff_whitelist`, `get_my_role()` devuelve NULL y no podrá operar.
+**Regla crítica**: los accesos se dan en `/users` (SUPERADMIN): correo + rol `SUPERADMIN` o `STAFF`, y al STAFF se le asignan eventos desde Usuarios o desde la Configuración del evento. Sin fila en `staff_whitelist`, `get_my_role()` devuelve NULL y no podrá operar. Toda escritura en las tablas auditadas queda en `audit_log` con su actor.
 
 Fuga conocida: `authenticated_read_event_coupons` (SELECT con `USING (true)`) deja que cualquier autenticado liste todos los códigos de cupón hasta aplicar `20261023120000_close_coupon_read_leak.sql`.
 

@@ -52,7 +52,6 @@ import { CredentialGenerator } from '../../components/credential-generator/crede
   ],
   providers: [{ provide: EventsRepository, useClass: EventsApi }],
   templateUrl: './events-page.html',
-  styleUrl: './events-page.scss',
 })
 export class EventsPage implements OnInit {
   private readonly eventsRepo = inject(EventsRepository);

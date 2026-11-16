@@ -145,6 +145,14 @@
 /* Los overrides globales de PrimeNG viven en `components`: ganan a la capa `primeng`
    y pierden contra las utilidades de Tailwind, sin necesidad de `!important`. */
 @layer components {
+  /* Menú ⋮ de filas (Eventos, Usuarios): se monta en <body>. En la capa de componentes para que
+     `text-danger-text` de la plantilla gane en las acciones peligrosas. */
+  .row-actions-menu .p-menu-item-link,
+  .row-actions-menu .p-menu-item-label,
+  .row-actions-menu .p-menu-item-icon {
+    color: var(--color-text-primary);
+  }
+
   .gdg-btn {
     @apply rounded-full font-semibold transition-all duration-300 ease-in-out;
   }

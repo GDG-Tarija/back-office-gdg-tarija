@@ -130,7 +130,7 @@ npx supabase gen types typescript --local   # tipos para src/app/core/supabase/s
 - Fuente de verdad del schema: `supabase/migrations/20261024032707_baseline.sql` + posteriores. Si alguien mergeó a `dev` una migración más nueva que la tuya, renombra la tuya con un timestamp nuevo antes del PR.
 - Si agregas una tabla, agrega datos ficticios en `supabase/seed.sql`.
 - Esquema, RLS y funciones documentados en `.claude/skills/database/SKILL.md` (gemelo en `.opencode/skills/`): leerlo antes de usar una tabla o columna y actualizarlo con cada migración.
-- Rol del operador: `get_my_role()` vía `staff_whitelist` (SUPERADMIN escribe; STAFF lee y hace check-in en eventos asignados). Ya no existe `AUTH_WHITELIST` ni `is_staff()` en el back-office.
+- Rol del operador: `get_my_role()` vía `staff_whitelist` (SUPERADMIN escribe; STAFF lee y hace check-in en eventos asignados). Los accesos se gestionan en `/users` (RPCs, solo SUPERADMIN) y toda escritura en las tablas operativas queda en `audit_log`. Ya no existe `AUTH_WHITELIST` ni `is_staff()` en el back-office.
 - `20261024155150_close_coupon_read_leak.sql` solo se aprueba en prod tras desplegar el checkout público con `rpc validate_coupon`.
 - Guía de usuario del módulo de eventos: `docs/gestion-de-eventos.md`.
 

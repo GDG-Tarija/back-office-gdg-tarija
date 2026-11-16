@@ -618,6 +618,7 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      add_backoffice_user: { Args: { p_email: string; p_role: string }; Returns: undefined };
       get_coupon_uses: { Args: { p_coupon_id: string }; Returns: number };
       get_my_profile: {
         Args: never;
@@ -680,10 +681,29 @@ export interface Database {
       has_event_access: { Args: { p_event_id: string }; Returns: boolean };
       is_staff: { Args: never; Returns: boolean };
       is_superadmin: { Args: never; Returns: boolean };
+      list_backoffice_users: {
+        Args: never;
+        Returns: {
+          added_at: string | null;
+          added_by_email: string | null;
+          assigned_events: Json;
+          avatar_url: string | null;
+          email: string;
+          first_name: string | null;
+          last_activity_at: string | null;
+          last_name: string | null;
+          last_sign_in_at: string | null;
+          role: string;
+          user_id: string | null;
+        }[];
+      };
       registrar_asistencia_qr: {
         Args: { p_session_id: string; p_usuario_id: string };
         Returns: string;
       };
+      remove_backoffice_user: { Args: { p_email: string }; Returns: undefined };
+      require_superadmin: { Args: never; Returns: undefined };
+      set_backoffice_user_role: { Args: { p_email: string; p_role: string }; Returns: undefined };
       update_user_profile: {
         Args: { p_first_name: string; p_last_name: string; p_phone: string };
         Returns: {
