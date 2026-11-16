@@ -894,6 +894,31 @@
           </dl>
         </section>
       }
+
+      @if (statusCtl.canEdit()) {
+        <section class="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+          <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">Historial</h3>
+          @if (loadingHistory() && history().length === 0) {
+            <div class="flex justify-center p-4" role="status" aria-label="Cargando historial">
+              <span
+                class="material-symbols-rounded animate-gdg-spin text-2xl text-accent-text"
+                aria-hidden="true"
+                >progress_activity</span
+              >
+            </div>
+          } @else if (historyError(); as err) {
+            <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
+          } @else if (history().length === 0) {
+            <p class="text-sm text-text-secondary dark:text-neutral-400">
+              Todavía no hay movimientos registrados para esta inscripción.
+            </p>
+          } @else {
+            <div class="overflow-hidden rounded-2xl border border-black/5 dark:border-white/10">
+              <app-audit-timeline [entries]="history()" [showEvent]="false" />
+            </div>
+          }
+        </section>
+      }
     </div>
   }
 

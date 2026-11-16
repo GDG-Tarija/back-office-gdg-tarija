@@ -1,6 +1,7 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { MenuItem } from 'primeng/api';
 import { Menu, MenuModule } from 'primeng/menu';
@@ -51,6 +52,7 @@ export class UsersPage implements OnInit {
   private readonly repo = inject(UsersRepository);
   private readonly auth = inject(AuthService);
   private readonly feedback = inject(FeedbackService);
+  private readonly router = inject(Router);
   private readonly rowMenu = viewChild.required<Menu>('rowMenu');
 
   readonly isMobile = mediaQuerySignal(MOBILE_QUERY);
@@ -125,6 +127,14 @@ export class UsersPage implements OnInit {
         label: 'Eventos asignados',
         icon: 'event_available',
         command: () => this.eventsFor.set(u),
+      });
+    }
+    if (u.userId) {
+      items.push({
+        label: 'Ver actividad',
+        icon: 'history',
+        command: () =>
+          void this.router.navigate(['/activity'], { queryParams: { persona: u.userId } }),
       });
     }
     items.push(

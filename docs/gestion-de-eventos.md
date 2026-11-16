@@ -66,6 +66,15 @@ En **Usuarios** (`/users`, solo SUPERADMIN) se ve quién entra al back-office, c
 - **Cambiar rol / Quitar acceso**: desde el menú `⋮`. Nadie puede cambiar su propio rol ni quitarse el acceso, y siempre queda al menos un superadmin. Quitar el acceso también lo quita de sus eventos.
 - **Auditoría**: cada alta, cambio o baja de accesos, eventos, paquetes, cupones, inscripciones y check-ins queda registrada con quién la hizo y cuándo.
 
+## Actividad (quién hizo qué)
+
+En **Actividad** (`/activity`, solo SUPERADMIN) está el historial completo, del más nuevo al más viejo, con filtros por persona, evento, tipo (Inscripciones, Check-in, Configuración de eventos, Accesos) y fechas. Cada línea dice quién hizo qué ("Ana confirmó el pago de Luis") y "Ver cambios" muestra el antes y el después. El historial no se puede editar ni borrar.
+
+- **Historial de una inscripción**: en Asistentes → Detalle, al final (inscripción, pagos confirmados o desestimados, anulaciones, check-ins y sus "Deshacer").
+- **Actividad reciente de un evento**: en su Resumen, con enlace a toda la actividad del evento.
+- **Actividad de una persona del equipo**: en Usuarios → `⋮` → "Ver actividad".
+- **Etiquetas**: "Desde la web" = lo hizo la propia persona en eventos GDG; "Fuera de la app" = un cambio hecho directo en la base (consola o migración); "Importado" = lo que ya existía antes de que empezara la auditoría (solo inscripciones y check-ins: los cambios de estado anteriores no quedaron registrados).
+
 ## Checklist manual de pruebas end-to-end
 
 Marcar cada punto con un usuario SUPERADMIN, salvo donde se indique.

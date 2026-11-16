@@ -1,0 +1,199 @@
+<div class="space-y-6 p-4 sm:p-8">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-text-primary dark:text-neutral-100">
+      Actividad
+    </h1>
+    <p class="mt-1 text-sm text-text-secondary dark:text-neutral-400">
+      Quién hizo qué y cuándo: accesos, configuración de eventos, inscripciones y check-in. El
+      historial no se puede editar ni borrar.
+    </p>
+  </div>
+
+  <div
+    role="search"
+    aria-label="Filtrar actividad"
+    class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center"
+  >
+    <div class="relative w-full md:w-56">
+      <label for="activity-person" class="sr-only">Persona</label>
+      <p-select
+        inputId="activity-person"
+        [options]="peopleOptions()"
+        optionLabel="label"
+        optionValue="value"
+        ariaLabel="Filtrar por persona"
+        [ngModel]="actorId()"
+        (ngModelChange)="setActor($event)"
+        [filter]="true"
+        filterBy="label"
+        emptyFilterMessage="Nadie coincide"
+        [styleClass]="selectClass(!!actorId())"
+        appendTo="body"
+      >
+        <ng-template #dropdownicon>
+          <span class="material-symbols-rounded text-lg text-text-muted" aria-hidden="true"
+            >expand_more</span
+          >
+        </ng-template>
+      </p-select>
+      <span [class]="iconClass(!!actorId())" aria-hidden="true">person</span>
+    </div>
+
+    <div class="relative w-full md:w-60">
+      <label for="activity-event" class="sr-only">Evento</label>
+      <p-select
+        inputId="activity-event"
+        [options]="eventOptions()"
+        optionLabel="label"
+        optionValue="value"
+        ariaLabel="Filtrar por evento"
+        [ngModel]="eventId()"
+        (ngModelChange)="setEvent($event)"
+        [filter]="true"
+        filterBy="label"
+        emptyFilterMessage="Ningún evento coincide"
+        [styleClass]="selectClass(!!eventId())"
+        appendTo="body"
+      >
+        <ng-template #dropdownicon>
+          <span class="material-symbols-rounded text-lg text-text-muted" aria-hidden="true"
+            >expand_more</span
+          >
+        </ng-template>
+      </p-select>
+      <span [class]="iconClass(!!eventId())" aria-hidden="true">event</span>
+    </div>
+
+    <div class="relative w-full md:w-56">
+      <label for="activity-type" class="sr-only">Tipo de acción</label>
+      <p-select
+        inputId="activity-type"
+        [options]="categoryOptions"
+        optionLabel="label"
+        optionValue="value"
+        ariaLabel="Filtrar por tipo de acción"
+        [ngModel]="category()"
+        (ngModelChange)="setCategory($event)"
+        [styleClass]="selectClass(!!category())"
+        appendTo="body"
+      >
+        <ng-template #dropdownicon>
+          <span class="material-symbols-rounded text-lg text-text-muted" aria-hidden="true"
+            >expand_more</span
+          >
+        </ng-template>
+      </p-select>
+      <span [class]="iconClass(!!category())" aria-hidden="true">category</span>
+    </div>
+
+    <div class="relative w-full md:w-60">
+      <label for="activity-dates" class="sr-only">Fechas</label>
+      <p-datepicker
+        inputId="activity-dates"
+        [ngModel]="range()"
+        (ngModelChange)="setRange($event)"
+        selectionMode="range"
+        placeholder="Todas las fechas"
+        ariaLabel="Filtrar por rango de fechas"
+        [styleClass]="dateClass(!!range()?.[0])"
+        dateFormat="dd/mm/yy"
+        [readonlyInput]="true"
+        appendTo="body"
+      />
+      <span [class]="iconClass(!!range()?.[0])" aria-hidden="true">date_range</span>
+      <span
+        class="material-symbols-rounded pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg text-text-muted"
+        aria-hidden="true"
+        >expand_more</span
+      >
+    </div>
+
+    @if (filtersActive()) {
+      <button
+        type="button"
+        class="inline-flex min-h-11 items-center gap-1 self-start rounded-full px-3 text-sm font-semibold text-accent-text hover:bg-info-bg md:self-auto"
+        (click)="clearFilters()"
+      >
+        <span class="material-symbols-rounded text-lg" aria-hidden="true">filter_alt_off</span>
+        Limpiar filtros
+      </button>
+    }
+
+    @if (!loading() && !error()) {
+      <p class="text-sm text-text-secondary md:ml-auto dark:text-neutral-400" aria-live="polite">
+        {{ total() }} {{ total() === 1 ? 'movimiento' : 'movimientos' }}
+      </p>
+    }
+  </div>
+
+  @if (error(); as err) {
+    <div
+      class="flex flex-wrap items-center gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-error-text"
+      role="alert"
+    >
+      <span class="material-symbols-rounded text-xl" aria-hidden="true">error</span>
+      <span class="flex-1">{{ err }}</span>
+      <button
+        type="button"
+        class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-google-red/30 px-4 font-semibold hover:bg-google-red/10"
+        (click)="load()"
+      >
+        <span class="material-symbols-rounded text-base" aria-hidden="true">refresh</span>
+        Reintentar
+      </button>
+    </div>
+  } @else if (loading()) {
+    <div
+      class="flex justify-center rounded-3xl border border-black/[0.06] bg-surface-paper p-12 dark:border-white/[0.06]"
+      role="status"
+      aria-label="Cargando actividad"
+    >
+      <span
+        class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
+        aria-hidden="true"
+        >progress_activity</span
+      >
+    </div>
+  } @else if (entries().length === 0) {
+    <div
+      class="flex flex-col items-center gap-3 rounded-3xl border border-black/[0.06] bg-surface-paper p-12 text-center dark:border-white/[0.06]"
+    >
+      <span class="material-symbols-rounded text-5xl text-neutral-400" aria-hidden="true"
+        >history</span
+      >
+      <h2 class="text-lg font-bold text-text-primary dark:text-neutral-200">Sin actividad</h2>
+      <p class="max-w-sm text-sm text-text-secondary dark:text-neutral-400">
+        {{
+          filtersActive()
+            ? 'No hay movimientos con estos filtros.'
+            : 'Todavía no hay movimientos registrados.'
+        }}
+      </p>
+      @if (filtersActive()) {
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center rounded-full border border-black/15 px-5 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
+          (click)="clearFilters()"
+        >
+          Limpiar filtros
+        </button>
+      }
+    </div>
+  } @else {
+    <section
+      aria-label="Movimientos"
+      class="overflow-hidden rounded-3xl border border-black/[0.06] bg-surface-paper dark:border-white/[0.06]"
+    >
+      <app-audit-timeline [entries]="entries()" />
+      @if (total() > pageSize) {
+        <p-paginator
+          [first]="first()"
+          [rows]="pageSize"
+          [totalRecords]="total()"
+          [showCurrentPageReport]="false"
+          (onPageChange)="onPage($event)"
+        />
+      }
+    </section>
+  }
+</div>

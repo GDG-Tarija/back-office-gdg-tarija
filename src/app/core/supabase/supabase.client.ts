@@ -681,6 +681,35 @@ export interface Database {
       has_event_access: { Args: { p_event_id: string }; Returns: boolean };
       is_staff: { Args: never; Returns: boolean };
       is_superadmin: { Args: never; Returns: boolean };
+      list_audit_log: {
+        Args: {
+          p_actor_id?: string;
+          p_category?: string;
+          p_event_id?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_registration_id?: string;
+          p_to?: string;
+        };
+        Returns: {
+          action: string;
+          actor_email: string | null;
+          actor_id: string | null;
+          actor_name: string | null;
+          actor_role: string | null;
+          changes: Json;
+          event_id: string | null;
+          event_title: string | null;
+          id: number;
+          occurred_at: string;
+          record_id: string | null;
+          source: string;
+          subject_name: string | null;
+          table_name: string;
+          total_count: number;
+        }[];
+      };
       list_backoffice_users: {
         Args: never;
         Returns: {
