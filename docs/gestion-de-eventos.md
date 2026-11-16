@@ -46,10 +46,10 @@ En **Eventos > Asistentes** (`/events/:id/attendees`) cada inscripción tiene un
 
 ## Roles
 
-| Rol        | Puede                                                                                                                                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| SUPERADMIN | Crear, editar, publicar, despublicar y eliminar eventos; gestionar cupones, staff y fases de preventa; subir imágenes; ver asistentes, hacer check-in y cancelar inscripciones pendientes. |
-| STAFF      | Ver los eventos que se le asignaron, sus asistentes y hacer check-in. No crea ni edita.                                                                                                    |
+| Rol        | Puede                                                                                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SUPERADMIN | Crear, editar, publicar, despublicar y eliminar eventos; gestionar cupones, staff y fases de preventa; subir imágenes; ver asistentes, hacer check-in y cancelar inscripciones pendientes; gestionar la Tienda y validar sus compras. |
+| STAFF      | Ver los eventos que se le asignaron, sus asistentes y hacer check-in. No crea ni edita.                                                                                                                                               |
 
 El rol se define en la tabla `staff_whitelist`; el staff se asigna a cada evento en el paso/pestaña "Cupones y staff".
 
@@ -103,3 +103,46 @@ Lo que ve el staff al revisar un pago pendiente (`/events/:id/attendees`):
 - **Acciones (solo SUPERADMIN)**: "Confirmar pago" (pasa PENDING → CONFIRMED) y "Cancelar inscripción" (libera el cupo de la fase); ambas piden confirmación y solo operan sobre inscripciones PENDING. STAFF solo ve el comprobante.
 - **Varios comprobantes**: "Anterior/Siguiente" (o las flechas del teclado) recorren los comprobantes de la lista tal como estaba filtrada al abrir el diálogo; filtrar por "Pendiente" + "Con comprobante" permite revisarlos todos de corrido.
 - El check-in manual, la entrega de refrigerio y el ingreso a sesiones solo se permiten en inscripciones **confirmadas**.
+
+## Tienda del evento
+
+Productos opcionales (kits, merch, combos) que las personas **ya inscritas** compran desde la página del evento. Se gestiona en **Eventos > (evento) > Tienda** (`/events/:id/store`), solo con rol **SUPERADMIN** (STAFF no ve el enlace y la ruta lo bloquea). Tiene dos pestañas: **Productos** y **Compras** (`?vista=compras`); al cambiar de pestaña no se pierden los filtros.
+
+Mientras falte el QR de pago o no haya productos activos, la página muestra el aviso "La tienda todavía no puede recibir compras".
+
+### Productos e imágenes
+
+- **Producto**: nombre obligatorio (máx. 100) y único en la tienda del evento, sin distinguir mayúsculas; descripción opcional (máx. 1000); precio **mayor que 0** con hasta 2 decimales (se acepta coma decimal); activo o inactivo. Solo los productos **activos** se ofrecen al público.
+- **Galería**: varias imágenes por producto (JPG, PNG o WebP, hasta 2 MB cada una), sin máximo fijo. La **primera es la portada**; se reordena con las flechas o con "Usar como portada", y cada imagen admite un texto alternativo (máx. 200). Sin imágenes, el producto se puede guardar, pero aparece un aviso.
+- Las imágenes nuevas se suben al elegirlas, pero **cuentan recién al guardar**: si se cancela el diálogo, se borran; las imágenes quitadas de un producto guardado se borran del almacenamiento después de guardar.
+- **Eliminar**: solo si el producto **nunca tuvo compras** (ni siquiera anuladas); la base de datos lo impide igual. Con compras, **desactivarlo**: deja de venderse y las compras existentes no cambian.
+- Cada fila muestra cuántas compras tiene el producto (pendientes, pagadas y unidades pagadas).
+
+### QR de pago
+
+- Un solo QR por evento para toda la tienda (independiente del QR de los paquetes): JPG, PNG o WebP de hasta 500 KB. **Se guarda al subirlo**; si el guardado falla, se conserva el anterior.
+
+### Compras y validación de pagos
+
+- Cada compra tiene uno o varios productos con su cantidad (1 a 5 por producto) y **un comprobante**. El precio queda **fijado al momento de la compra**: cambiar después el precio o el nombre del producto no altera compras existentes.
+- Solo compran personas con inscripción **pagada o pendiente** en el evento; los comprobantes están en un almacenamiento **privado** y se ven con un enlace temporal (10 minutos) que solo pueden abrir el comprador y SUPERADMIN.
+- Estados: **Pendiente de pago** (`PENDING`), **Pagada** (`PAID`) y **Anulada** (`CANCELLED`).
+- La pestaña **Compras** muestra un resumen (por revisar y monto, pagadas, cobrado, anuladas), filtros por estado, buscador (comprador, correo, teléfono o producto, sin importar tildes) y la lista con las **pendientes primero** (las más antiguas antes). En móvil, la tabla pasa a tarjetas.
+- **Revisar/Ver** abre el detalle: comprobante (los PDF se abren en otra pestaña), productos, total, estado de la inscripción del comprador e historial de cambios. "Anterior/Siguiente" (o ← / →) recorren la lista filtrada; Esc cierra.
+- **Flujo normal** (desde Pendiente): **Marcar como pagada** o **Anular** (motivo opcional); ambas piden confirmación. No se puede marcar pagada una compra cuya inscripción está anulada.
+- **Corrección excepcional** ("Corregir estado…", solo SUPERADMIN): devuelve una compra **Pagada o Anulada a Pendiente**. Exige un **motivo de 10 a 500 caracteres en esa misma operación** y no se permite si ya se entregó algún producto. Queda en el historial, que no se puede editar ni borrar.
+- Si otra persona cambió la compra mientras se revisaba, se muestra el error y la lista se recarga con el estado real.
+
+### Checklist manual de la Tienda
+
+- [ ] Como SUPERADMIN, abrir un evento: aparece "Tienda" en la cabecera; como STAFF no aparece y `/events/:id/store` redirige.
+- [ ] Sin QR ni productos activos aparece el aviso; subir un QR válido (y probar uno > 500 KB, que debe rechazarse).
+- [ ] Crear un producto con 3 imágenes; cambiar la portada, reordenar, agregar texto alternativo y guardar. Reabrir: el orden se conserva.
+- [ ] Probar errores: nombre repetido (con otras mayúsculas), precio 0 o con 3 decimales, imagen PDF o > 2 MB.
+- [ ] Subir una imagen y cancelar el diálogo: no queda en el producto. Quitar una imagen y guardar: desaparece.
+- [ ] Desactivar y reactivar un producto. Eliminar uno sin compras; uno con compras (incluso solo anuladas) tiene el botón deshabilitado.
+- [ ] En **Compras**: el resumen coincide con la lista; filtrar por estado y buscar por nombre sin tildes y por producto.
+- [ ] Abrir una compra pendiente: se ve el comprobante (y un PDF ofrece abrirlo); marcarla pagada (pide confirmación) y anular otra con motivo. La lista y el contador de la pestaña se actualizan sin recargar.
+- [ ] Corregir una compra pagada: sin motivo o con menos de 10 caracteres no deja; con motivo vuelve a Pendiente y el historial muestra el motivo.
+- [ ] Una compra de una inscripción anulada no permite "Marcar como pagada".
+- [ ] Revisar la página en 360, 768 y 1280 px y en modo claro y oscuro; recorrer pestañas y el diálogo solo con teclado.

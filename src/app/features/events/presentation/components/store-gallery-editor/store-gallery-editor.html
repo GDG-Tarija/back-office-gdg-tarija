@@ -1,0 +1,159 @@
+<section class="flex flex-col gap-3" aria-labelledby="gallery-title">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div>
+      <h3 id="gallery-title" class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+        Imágenes
+      </h3>
+      <p class="text-xs text-text-secondary dark:text-neutral-400">
+        JPG, PNG o WebP, máximo 2 MB cada una. La primera es la portada.
+      </p>
+    </div>
+    <label
+      class="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-google-blue-light/60 px-4 text-sm font-semibold text-accent-text transition-colors hover:bg-google-blue-light focus-within:ring-2 focus-within:ring-google-blue dark:bg-google-blue/20"
+      [class.pointer-events-none]="disabled() || uploading() > 0"
+      [class.opacity-60]="disabled() || uploading() > 0"
+    >
+      <span class="material-symbols-rounded text-base" aria-hidden="true">add_photo_alternate</span>
+      <span>Agregar imágenes</span>
+      <input
+        id="gallery-input"
+        type="file"
+        class="sr-only"
+        multiple
+        accept="image/jpeg,image/png,image/webp"
+        [disabled]="disabled() || uploading() > 0"
+        (change)="onFilesSelected($event)"
+      />
+    </label>
+  </div>
+
+  @if (uploading() > 0) {
+    <p
+      class="flex items-center gap-2 text-sm font-medium text-text-secondary dark:text-neutral-300"
+      role="status"
+    >
+      <span
+        class="material-symbols-rounded animate-gdg-spin text-lg text-accent-text"
+        aria-hidden="true"
+        >progress_activity</span
+      >
+      Subiendo {{ uploadTotal() - uploading() + 1 }} de {{ uploadTotal() }}...
+    </p>
+  }
+
+  @if (errors().length) {
+    <ul
+      class="flex flex-col gap-1 rounded-xl bg-error-bg p-3 text-xs font-medium text-error-text"
+      role="alert"
+    >
+      @for (err of errors(); track err) {
+        <li>{{ err }}</li>
+      }
+    </ul>
+  }
+
+  @if (images().length === 0) {
+    <div
+      class="flex flex-col items-center gap-1 rounded-2xl border border-dashed border-black/15 p-6 text-center dark:border-white/15"
+    >
+      <span class="material-symbols-rounded text-3xl text-text-muted" aria-hidden="true"
+        >photo_library</span
+      >
+      <p class="text-sm font-semibold text-text-primary dark:text-neutral-200">Sin imágenes</p>
+      <p class="text-xs text-text-secondary dark:text-neutral-400">
+        Agrega una o varias fotos del producto.
+      </p>
+    </div>
+  } @else {
+    <ol class="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label="Orden de la galería">
+      @for (img of images(); track img.url; let i = $index; let first = $first; let last = $last) {
+        <li
+          [id]="'gallery-item-' + i"
+          tabindex="-1"
+          class="flex flex-col gap-2 rounded-2xl border border-black/10 p-2 outline-none focus-visible:ring-2 focus-visible:ring-google-blue dark:border-white/10"
+        >
+          <div class="relative overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
+            <img
+              [src]="img.url"
+              [alt]="img.altText || 'Imagen ' + (i + 1) + ' del producto'"
+              class="aspect-[4/3] w-full object-cover"
+            />
+            <span
+              class="absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-bold shadow-sm"
+              [class]="
+                first
+                  ? 'bg-action text-on-action'
+                  : 'bg-white/90 text-text-primary dark:bg-neutral-900/90 dark:text-neutral-100'
+              "
+            >
+              {{ first ? 'Portada' : i + 1 }}
+            </span>
+          </div>
+
+          <label
+            class="flex flex-col gap-1 text-xs font-semibold text-text-secondary dark:text-neutral-400"
+          >
+            Descripción (opcional)
+            <input
+              type="text"
+              class="min-h-11 w-full rounded-xl border border-black/15 bg-transparent px-3 text-sm font-normal text-text-primary dark:border-white/15 dark:text-neutral-100"
+              [maxLength]="altMax"
+              [value]="img.altText ?? ''"
+              [disabled]="disabled()"
+              placeholder="Ej.: Polera negra, vista frontal"
+              (input)="setAlt(i, $any($event.target).value)"
+            />
+          </label>
+
+          <div
+            class="flex flex-wrap items-center gap-1"
+            role="group"
+            [attr.aria-label]="'Acciones de la imagen ' + (i + 1)"
+          >
+            <button
+              type="button"
+              class="flex size-11 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:opacity-30 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              [disabled]="first || disabled()"
+              [attr.aria-label]="'Mover la imagen ' + (i + 1) + ' antes'"
+              (click)="move(i, -1)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">arrow_back</span>
+            </button>
+            <button
+              type="button"
+              class="flex size-11 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 disabled:opacity-30 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              [disabled]="last || disabled()"
+              [attr.aria-label]="'Mover la imagen ' + (i + 1) + ' después'"
+              (click)="move(i, 1)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">arrow_forward</span>
+            </button>
+            @if (!first) {
+              <button
+                type="button"
+                class="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold text-accent-text hover:bg-info-bg disabled:opacity-40"
+                [disabled]="disabled()"
+                [attr.aria-label]="'Usar la imagen ' + (i + 1) + ' como portada'"
+                (click)="setCover(i)"
+              >
+                <span class="material-symbols-rounded text-base" aria-hidden="true">star</span>
+                Portada
+              </button>
+            }
+            <button
+              type="button"
+              class="ml-auto flex size-11 items-center justify-center rounded-full text-danger-text hover:bg-error-bg disabled:opacity-40"
+              [disabled]="disabled()"
+              [attr.aria-label]="'Quitar la imagen ' + (i + 1)"
+              (click)="remove(i)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">delete</span>
+            </button>
+          </div>
+        </li>
+      }
+    </ol>
+  }
+
+  <p class="sr-only" aria-live="polite">{{ announcement() }}</p>
+</section>

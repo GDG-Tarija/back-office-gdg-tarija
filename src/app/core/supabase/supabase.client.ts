@@ -96,6 +96,7 @@ export interface Database {
           location_name: string | null;
           location_type: string | null;
           slug: string;
+          store_payment_qr_url: string | null;
           title: string;
           updated_at: string | null;
         };
@@ -116,6 +117,7 @@ export interface Database {
           location_name?: string | null;
           location_type?: string | null;
           slug: string;
+          store_payment_qr_url?: string | null;
           title: string;
           updated_at?: string | null;
         };
@@ -136,6 +138,7 @@ export interface Database {
           location_name?: string | null;
           location_type?: string | null;
           slug?: string;
+          store_payment_qr_url?: string | null;
           title?: string;
           updated_at?: string | null;
         };
@@ -458,6 +461,272 @@ export interface Database {
         };
         Relationships: [];
       };
+      store_order_items: {
+        Row: {
+          created_at: string;
+          delivered_at: string | null;
+          delivered_by: string | null;
+          delivered_quantity: number;
+          id: string;
+          order_id: string;
+          product_id: string;
+          product_name: string;
+          quantity: number;
+          subtotal: number | null;
+          unit_price: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          delivered_at?: string | null;
+          delivered_by?: string | null;
+          delivered_quantity?: number;
+          id?: string;
+          order_id: string;
+          product_id: string;
+          product_name: string;
+          quantity: number;
+          subtotal?: never;
+          unit_price: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          delivered_at?: string | null;
+          delivered_by?: string | null;
+          delivered_quantity?: number;
+          id?: string;
+          order_id?: string;
+          product_id?: string;
+          product_name?: string;
+          quantity?: number;
+          subtotal?: never;
+          unit_price?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'store_order_items_delivered_by_fkey';
+            columns: ['delivered_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'store_order_items_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'store_orders';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'store_order_items_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'store_products';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      store_order_status_history: {
+        Row: {
+          changed_at: string;
+          changed_by: string | null;
+          from_status: string | null;
+          id: number;
+          is_correction: boolean;
+          order_id: string;
+          reason: string | null;
+          to_status: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          changed_at?: string;
+          changed_by?: string | null;
+          from_status?: string | null;
+          id?: never;
+          is_correction?: boolean;
+          order_id: string;
+          reason?: string | null;
+          to_status: string;
+        };
+        Update: {
+          changed_at?: string;
+          changed_by?: string | null;
+          from_status?: string | null;
+          id?: never;
+          is_correction?: boolean;
+          order_id?: string;
+          reason?: string | null;
+          to_status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'store_order_status_history_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'store_orders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      store_orders: {
+        Row: {
+          created_at: string;
+          event_id: string;
+          id: string;
+          payment_proof_path: string;
+          registration_id: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          status: string;
+          total: number;
+          updated_at: string;
+          user_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          event_id: string;
+          id?: string;
+          payment_proof_path: string;
+          registration_id: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: string;
+          total: number;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          event_id?: string;
+          id?: string;
+          payment_proof_path?: string;
+          registration_id?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: string;
+          total?: number;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'store_orders_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'store_orders_registration_id_fkey';
+            columns: ['registration_id'];
+            isOneToOne: false;
+            referencedRelation: 'registrations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'store_orders_reviewed_by_fkey';
+            columns: ['reviewed_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'store_orders_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      store_product_images: {
+        Row: {
+          alt_text: string | null;
+          created_at: string;
+          id: string;
+          position: number;
+          product_id: string;
+          updated_at: string;
+          url: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          alt_text?: string | null;
+          created_at?: string;
+          id?: string;
+          position: number;
+          product_id: string;
+          updated_at?: string;
+          url: string;
+        };
+        Update: {
+          alt_text?: string | null;
+          created_at?: string;
+          id?: string;
+          position?: number;
+          product_id?: string;
+          updated_at?: string;
+          url?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'store_product_images_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'store_products';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      store_products: {
+        Row: {
+          created_at: string;
+          description: string | null;
+          event_id: string;
+          id: string;
+          is_active: boolean;
+          name: string;
+          position: number;
+          price: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          description?: string | null;
+          event_id: string;
+          id?: string;
+          is_active?: boolean;
+          name: string;
+          position?: number;
+          price: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          description?: string | null;
+          event_id?: string;
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          position?: number;
+          price?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'store_products_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       ticket_phases: {
         Row: {
           capacity: number | null;
@@ -618,6 +887,10 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      create_store_order: {
+        Args: { p_event_id: string; p_items: Json; p_payment_proof_path: string };
+        Returns: string;
+      };
       get_coupon_uses: { Args: { p_coupon_id: string }; Returns: number };
       get_my_profile: {
         Args: never;
@@ -683,6 +956,40 @@ export interface Database {
       registrar_asistencia_qr: {
         Args: { p_session_id: string; p_usuario_id: string };
         Returns: string;
+      };
+      save_store_product: {
+        Args: {
+          p_description: string;
+          p_event_id: string;
+          p_images?: Json;
+          p_is_active: boolean;
+          p_name: string;
+          p_price: number;
+          p_product_id: string;
+        };
+        Returns: string;
+      };
+      set_store_order_status: {
+        Args: { p_order_id: string; p_reason?: string; p_status: string };
+        Returns: {
+          created_at: string;
+          event_id: string;
+          id: string;
+          payment_proof_path: string;
+          registration_id: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          status: string;
+          total: number;
+          updated_at: string;
+          user_id: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'store_orders';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       update_user_profile: {
         Args: { p_first_name: string; p_last_name: string; p_phone: string };

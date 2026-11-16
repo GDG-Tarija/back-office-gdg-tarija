@@ -10,11 +10,12 @@ import { composeTitle } from '../../../../../core/services/page-title.strategy';
 import { Event } from '../../../domain/event.model';
 import { EVENT_TIMING_LABELS, eventTiming } from '../../../domain/event-list';
 
-export type EventSection = 'manage' | 'attendees';
+export type EventSection = 'manage' | 'attendees' | 'store';
 
 const SECTION_LABELS: Record<EventSection, string> = {
   manage: 'Configuración',
   attendees: 'Asistentes',
+  store: 'Tienda',
 };
 
 /**

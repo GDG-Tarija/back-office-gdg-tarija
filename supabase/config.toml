@@ -127,6 +127,17 @@ allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
 [storage.buckets.payment-proofs]
 public = true
 
+# Tienda del evento (issue #6). También los crea la migración store_products_orders.
+[storage.buckets.store-images]
+public = true
+file_size_limit = "2MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
+
+[storage.buckets.store-payment-proofs]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
+
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
 enabled = true

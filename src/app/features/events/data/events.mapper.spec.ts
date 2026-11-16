@@ -12,6 +12,7 @@ import { EventRow, RegistrationWithDetailsRow } from './events.dto';
 describe('Events Mapper', () => {
   it('should map EventRow to Domain Event', () => {
     const rawRow: EventRow = {
+      store_payment_qr_url: null,
       id: 'event-uuid-1',
       title: 'DevFest Tarija 2026',
       slug: 'devfest-tarija-2026',
