@@ -3,10 +3,10 @@
 Ambas apps (`eventos-gdg-tarija` y `back-office-gdg-tarija`) comparten una base Supabase. Para que
 nadie rompa producción mientras desarrolla, hay dos entornos:
 
-| Entorno | Dónde | Quién entra | Datos | Cómo llegan los cambios |
-|---|---|---|---|---|
-| **Local** | La máquina de cada dev (Docker) | Cada dev | Ficticios (`supabase/seed.sql`) | `npm run db:reset` cuando quiera |
-| **Prod** | Proyecto `gdgtarija` (org `gdg-tarija`) | Solo organizadores | Reales | Release `dev → main`, **con aprobación manual** |
+| Entorno   | Dónde                                   | Quién entra        | Datos                           | Cómo llegan los cambios                         |
+| --------- | --------------------------------------- | ------------------ | ------------------------------- | ----------------------------------------------- |
+| **Local** | La máquina de cada dev (Docker)         | Cada dev           | Ficticios (`supabase/seed.sql`) | `npm run db:reset` cuando quiera                |
+| **Prod**  | Proyecto `gdgtarija` (org `gdg-tarija`) | Solo organizadores | Reales                          | Release `dev → main`, **con aprobación manual** |
 
 Reglas:
 
@@ -37,12 +37,12 @@ npm start                       # back-office → http://localhost:4300
 En `eventos-gdg-tarija`: `cp src/environments/environment.eg.ts src/environments/environment.ts` y
 `npm start` → http://localhost:4200. Las dos apps usan el mismo Supabase local.
 
-| Servicio | URL |
-|---|---|
-| API | http://127.0.0.1:54321 |
-| Studio (tablas, SQL editor) | http://127.0.0.1:54323 |
-| Mailpit (correos de prueba) | http://127.0.0.1:54324 |
-| Postgres | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` |
+| Servicio                    | URL                                                       |
+| --------------------------- | --------------------------------------------------------- |
+| API                         | http://127.0.0.1:54321                                    |
+| Studio (tablas, SQL editor) | http://127.0.0.1:54323                                    |
+| Mailpit (correos de prueba) | http://127.0.0.1:54324                                    |
+| Postgres                    | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` |
 
 **Login:** las apps solo usan Google. Sin `supabase/.env` el stack levanta igual, pero el botón de
 Google falla. Los usuarios del seed (`*@gdg-tarija.test`, `*@ejemplo.test`) son solo datos: no pueden
@@ -57,7 +57,7 @@ panel"**. Es lo esperado:
 1. Entra una vez a http://localhost:4300 con **"Continuar con Google"**. Eso crea tu usuario en tu
    base local, aunque te diga que no estás autorizado.
 2. Date el rol. Elige una opción:
-   - **Studio:** abre http://127.0.0.1:54323 → **SQL Editor**, pega esto con tu correo y dale *Run*:
+   - **Studio:** abre http://127.0.0.1:54323 → **SQL Editor**, pega esto con tu correo y dale _Run_:
      ```sql
      insert into public.staff_whitelist (email, role)
      values ('tu-correo@gmail.com', 'SUPERADMIN')
@@ -72,10 +72,10 @@ panel"**. Es lo esperado:
 
 Roles disponibles:
 
-| Rol | Qué puede hacer |
-|---|---|
-| `SUPERADMIN` | Todo: crear y editar eventos, cupones, staff, check-in |
-| `STAFF` | Ver y hacer check-in solo en los eventos que tenga asignados |
+| Rol          | Qué puede hacer                                              |
+| ------------ | ------------------------------------------------------------ |
+| `SUPERADMIN` | Todo: crear y editar eventos, cupones, staff, check-in       |
+| `STAFF`      | Ver y hacer check-in solo en los eventos que tenga asignados |
 
 Para probar como `STAFF`, usa `'STAFF'` en el paso 2 y asígnate un evento del seed (por ejemplo, el
 DevFest de prueba):
@@ -87,8 +87,9 @@ values ('00000000-0000-4000-8000-0000000000e2', 'tu-correo@gmail.com');
 
 Ten en cuenta:
 
-- Esto solo cambia **tu base local**. En producción los accesos los gestiona un organizador; nunca
-  corras estos `insert` contra prod.
+- Esto solo cambia **tu base local**. En producción los accesos los da un superadmin desde la
+  pantalla **Usuarios** (`/users`); nunca corras estos `insert` contra prod. En local, una vez que
+  eres SUPERADMIN, también puedes dar accesos desde esa pantalla.
 - `npm run db:reset` borra tu base local, y con ella tu acceso: vuelve a entrar con Google y repite el
   paso 2.
 - Después del aviso de "no autorizado" verás en la consola varios `POST …/logout 403`. Es normal: la
@@ -99,11 +100,11 @@ hasta el próximo `db:reset`.
 
 ## Ramas: `main` no se toca
 
-| Rama | Para qué | Quién escribe |
-|---|---|---|
-| `main` | Producción. Vercel publica desde aquí y desde aquí salen las migraciones a prod. | Nadie directo: solo PRs de release `dev → main`, mergeados por un organizador |
-| `dev` | Integración: lo que va a salir en el próximo release | Solo vía PR desde una rama de trabajo |
-| `feat/…`, `fix/…`, `chore/…` | Tu trabajo | Tú, creada desde `dev` |
+| Rama                         | Para qué                                                                         | Quién escribe                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `main`                       | Producción. Vercel publica desde aquí y desde aquí salen las migraciones a prod. | Nadie directo: solo PRs de release `dev → main`, mergeados por un organizador |
+| `dev`                        | Integración: lo que va a salir en el próximo release                             | Solo vía PR desde una rama de trabajo                                         |
+| `feat/…`, `fix/…`, `chore/…` | Tu trabajo                                                                       | Tú, creada desde `dev`                                                        |
 
 ### Ciclo diario
 
@@ -159,10 +160,10 @@ feat/x ──PR──▶ dev ──PR de release──▶ main ─┬─▶ Verc
    └─ DB CI re-aplica todas las migraciones + seed en un Postgres vacío (verde = ok)
 ```
 
-| Qué | Cómo se publica | ¿Espera aprobación? |
-|---|---|---|
-| **Código** de eventos o back-office | Vercel, al mergear a `main` de cada repo (y una *preview* por cada PR y por `dev`) | No: es automático |
-| **Base de datos** (migraciones) | Workflow `DB deploy (prod)` de back-office, al mergear a `main` | **Sí**, de un organizador |
+| Qué                                 | Cómo se publica                                                                    | ¿Espera aprobación?       |
+| ----------------------------------- | ---------------------------------------------------------------------------------- | ------------------------- |
+| **Código** de eventos o back-office | Vercel, al mergear a `main` de cada repo (y una _preview_ por cada PR y por `dev`) | No: es automático         |
+| **Base de datos** (migraciones)     | Workflow `DB deploy (prod)` de back-office, al mergear a `main`                    | **Sí**, de un organizador |
 
 Las migraciones viven solo en back-office, aunque el cambio sea para eventos. Las previews de Vercel
 usan la base de **producción** (no hay otra en la nube): sirven para ver la UI, no para crear datos
@@ -177,10 +178,10 @@ de prueba.
 
 ### Regla: la base va primero
 
-| Tipo de cambio | Ejemplos | Cómo se libera |
-|---|---|---|
-| **Agrega** | tabla, columna nullable, función, policy más permisiva | En un release: back-office primero (base aprobada), eventos después |
-| **Quita o restringe** | borrar/renombrar columna, policy más estricta, `not null` | En dos releases: 1º el código que ya no lo usa; 2º la migración |
+| Tipo de cambio        | Ejemplos                                                  | Cómo se libera                                                      |
+| --------------------- | --------------------------------------------------------- | ------------------------------------------------------------------- |
+| **Agrega**            | tabla, columna nullable, función, policy más permisiva    | En un release: back-office primero (base aprobada), eventos después |
+| **Quita o restringe** | borrar/renombrar columna, policy más estricta, `not null` | En dos releases: 1º el código que ya no lo usa; 2º la migración     |
 
 ### Al aprobar el deploy de la base
 
@@ -241,7 +242,7 @@ solo, sin aprobación obligatoria.
 - Vercel (ambos repos): las variables `SUPABASE_URL` / `SUPABASE_KEY` de Preview y Production apuntan
   a prod. No uses las previews para crear datos de prueba.
 
-Usa siempre el *session pooler* (`aws-…pooler.supabase.com:5432`): la conexión directa del plan
+Usa siempre el _session pooler_ (`aws-…pooler.supabase.com:5432`): la conexión directa del plan
 Free es solo IPv6 y los runners de GitHub no la alcanzan. Si la contraseña tiene caracteres
 especiales, va percent-encoded en la URL.
 

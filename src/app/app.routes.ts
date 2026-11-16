@@ -56,6 +56,15 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/checkin/presentation/checkin.routes').then((m) => m.CHECKIN_ROUTES),
       },
+      {
+        path: 'users',
+        loadChildren: () => import('./features/users/users.routes').then((m) => m.USERS_ROUTES),
+      },
+      {
+        path: 'activity',
+        loadChildren: () =>
+          import('./features/activity/activity.routes').then((m) => m.ACTIVITY_ROUTES),
+      },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

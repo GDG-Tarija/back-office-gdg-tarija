@@ -209,3 +209,32 @@ insert into public.scan_logs (registration_id, scanned_by, scan_type, scanned_at
    date_trunc('day', now()) - interval '30 days' + interval '8 hours 55 minutes'),
   ('00000000-0000-4000-8000-000000000102', '00000000-0000-4000-8000-0000000000a2', 'refrigerio',
    date_trunc('day', now()) - interval '30 days' + interval '10 hours 35 minutes');
+
+-- ---------------------------------------------------------------------------
+-- Auditoría: los inserts de arriba no son actividad de nadie (los registró el trigger como
+-- "Sistema"). Se reemplazan por lo mismo que hace el backfill de la migración
+-- 20261115235749_backoffice_users_and_audit en prod: altas de inscripciones y escaneos.
+-- ---------------------------------------------------------------------------
+truncate public.audit_log restart identity;
+
+insert into public.audit_log
+  (occurred_at, actor_id, actor_email, actor_role, action, table_name, record_id, event_id, changes, source)
+select coalesce(r.created_at, now()), r.user_id, lower(au.email), null, 'INSERT', 'registrations',
+       r.id::text, r.event_id,
+       jsonb_build_object('user_id', r.user_id, 'ticket_type_id', r.ticket_type_id,
+                          'event_role', r.event_role, 'coupon_id', r.coupon_id),
+       'backfill'
+from public.registrations r
+left join auth.users au on au.id = r.user_id;
+
+insert into public.audit_log
+  (occurred_at, actor_id, actor_email, actor_role, action, table_name, record_id, event_id, changes, source)
+select coalesce(s.scanned_at, s.created_at, now()), s.scanned_by, lower(au.email), sw.role, 'INSERT',
+       'scan_logs', s.id::text, r.event_id,
+       jsonb_build_object('registration_id', s.registration_id, 'scan_type', s.scan_type,
+                          'scanned_by', s.scanned_by, 'scanned_at', s.scanned_at),
+       'backfill'
+from public.scan_logs s
+join public.registrations r on r.id = s.registration_id
+left join auth.users au on au.id = s.scanned_by
+left join public.staff_whitelist sw on sw.email = lower(au.email);

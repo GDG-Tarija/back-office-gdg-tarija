@@ -108,6 +108,13 @@ export function toDomainError(error: PostgresLikeError, context: ErrorContext): 
       // "insert or update on table … violates" = este apunta a algo que ya no existe.
       const blocksDelete = /update or delete on table/i.test(error.message ?? '');
       const blocksSave = /insert or update on table/i.test(error.message ?? '');
+      if (blocksSave && !blocksDelete && context === 'staff') {
+        // FK a staff_whitelist: la persona perdió el acceso al back-office mientras se asignaba.
+        return new DomainError(
+          'Esa persona ya no tiene acceso al back-office. Recarga la página.',
+          'REFERENCED',
+        );
+      }
       if (blocksSave && !blocksDelete) {
         return new DomainError(
           'Un dato relacionado ya no existe (puede haberlo eliminado otra persona). Recarga la página e inténtalo de nuevo.',

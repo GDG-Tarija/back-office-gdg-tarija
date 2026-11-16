@@ -76,6 +76,29 @@
         <span class="material-symbols-rounded text-xl" aria-hidden="true">qr_code_scanner</span>
         <span>Check-in</span>
       </a>
+
+      @if (isSuperadmin()) {
+        <a
+          routerLink="/users"
+          routerLinkActive="bg-google-blue-light/50 dark:bg-google-blue/15 text-accent-text font-semibold shadow-sm"
+          ariaCurrentWhenActive="page"
+          class="flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
+          (click)="closeSidebarOnMobile()"
+        >
+          <span class="material-symbols-rounded text-xl" aria-hidden="true">manage_accounts</span>
+          <span>Usuarios</span>
+        </a>
+        <a
+          routerLink="/activity"
+          routerLinkActive="bg-google-blue-light/50 dark:bg-google-blue/15 text-accent-text font-semibold shadow-sm"
+          ariaCurrentWhenActive="page"
+          class="flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-text-secondary dark:text-neutral-300 transition-all hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-text-primary dark:hover:text-neutral-100"
+          (click)="closeSidebarOnMobile()"
+        >
+          <span class="material-symbols-rounded text-xl" aria-hidden="true">history</span>
+          <span>Actividad</span>
+        </a>
+      }
     </nav>
 
     <div class="border-t border-black/5 dark:border-white/5 p-4 flex flex-col gap-2">

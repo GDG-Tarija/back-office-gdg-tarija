@@ -18,7 +18,6 @@ import {
   validateImageFile,
   validatePublish,
   validateSession,
-  validateStaffEmail,
   validateTicketCapacities,
   validateTicketType,
   validateTrack,
@@ -328,14 +327,6 @@ describe('validateCoupon', () => {
   });
   it('normaliza el código', () => {
     expect(normalizeCouponCode('  vip2026 ')).toBe('VIP2026');
-  });
-});
-
-describe('validateStaffEmail', () => {
-  it('valida formato y duplicados', () => {
-    expect(validateStaffEmail('a@b.com', []).errors).toEqual([]);
-    expect(fields(validateStaffEmail('nope', []))).toContain('staffEmail');
-    expect(fields(validateStaffEmail('A@B.com', ['a@b.com']))).toContain('staffEmail');
   });
 });
 

@@ -304,6 +304,41 @@
               </p>
             }
           </section>
+
+          @if (isSuperadmin()) {
+            <section
+              aria-labelledby="activity-title"
+              class="overflow-hidden rounded-2xl border border-black/5 bg-surface-paper dark:border-white/10"
+            >
+              <h2
+                id="activity-title"
+                class="px-4 py-3 text-base font-bold text-text-primary dark:text-neutral-100"
+              >
+                Actividad reciente
+              </h2>
+              @if (activity().length > 0) {
+                <div class="border-t border-black/5 dark:border-white/10">
+                  <app-audit-timeline [entries]="activity()" [showEvent]="false" />
+                </div>
+                <a
+                  routerLink="/activity"
+                  [queryParams]="{ evento: e.id }"
+                  class="group flex min-h-12 items-center gap-1 border-t border-black/5 px-4 text-sm font-semibold text-accent-text transition-colors hover:bg-info-bg dark:border-white/10"
+                >
+                  Ver toda la actividad del evento
+                  <span
+                    class="material-symbols-rounded text-lg transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                    >arrow_forward</span
+                  >
+                </a>
+              } @else {
+                <p class="px-4 pb-4 text-sm text-text-secondary dark:text-neutral-400">
+                  {{ activityError() ?? 'Todavía no hay movimientos en este evento.' }}
+                </p>
+              }
+            </section>
+          }
         </div>
 
         <div class="flex min-w-0 flex-col gap-6">

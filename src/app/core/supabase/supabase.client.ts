@@ -618,6 +618,7 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      add_backoffice_user: { Args: { p_email: string; p_role: string }; Returns: undefined };
       get_coupon_uses: { Args: { p_coupon_id: string }; Returns: number };
       get_my_profile: {
         Args: never;
@@ -680,10 +681,58 @@ export interface Database {
       has_event_access: { Args: { p_event_id: string }; Returns: boolean };
       is_staff: { Args: never; Returns: boolean };
       is_superadmin: { Args: never; Returns: boolean };
+      list_audit_log: {
+        Args: {
+          p_actor_id?: string;
+          p_category?: string;
+          p_event_id?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_registration_id?: string;
+          p_to?: string;
+        };
+        Returns: {
+          action: string;
+          actor_email: string | null;
+          actor_id: string | null;
+          actor_name: string | null;
+          actor_role: string | null;
+          changes: Json;
+          event_id: string | null;
+          event_title: string | null;
+          id: number;
+          occurred_at: string;
+          record_id: string | null;
+          source: string;
+          subject_name: string | null;
+          table_name: string;
+          total_count: number;
+        }[];
+      };
+      list_backoffice_users: {
+        Args: never;
+        Returns: {
+          added_at: string | null;
+          added_by_email: string | null;
+          assigned_events: Json;
+          avatar_url: string | null;
+          email: string;
+          first_name: string | null;
+          last_activity_at: string | null;
+          last_name: string | null;
+          last_sign_in_at: string | null;
+          role: string;
+          user_id: string | null;
+        }[];
+      };
       registrar_asistencia_qr: {
         Args: { p_session_id: string; p_usuario_id: string };
         Returns: string;
       };
+      remove_backoffice_user: { Args: { p_email: string }; Returns: undefined };
+      require_superadmin: { Args: never; Returns: undefined };
+      set_backoffice_user_role: { Args: { p_email: string; p_role: string }; Returns: undefined };
       update_user_profile: {
         Args: { p_first_name: string; p_last_name: string; p_phone: string };
         Returns: {

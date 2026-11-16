@@ -7,6 +7,7 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
+import { AuditRepository } from '../../../../activity/domain/audit.repository';
 import { DomainError } from '../../../domain/domain-error';
 import { Attendee, Event } from '../../../domain/event.model';
 import { EventsRepository } from '../../../domain/events.repository';
@@ -18,6 +19,7 @@ import { RegistrationStatusController } from './registration-status-controller';
 
 const registrationsRepo = { updateStatus: vi.fn() };
 const checkinRepo = { registerScan: vi.fn() };
+const auditRepo = { list: vi.fn() };
 let lastConfirm: Confirmation | null = null;
 
 /** Providers de la página con repos falsos; la confirmación de anular se captura en `lastConfirm`. */
@@ -26,12 +28,15 @@ function pageProviders(repo: object) {
     { provide: EventsRepository, useValue: repo },
     { provide: RegistrationsRepository, useValue: registrationsRepo },
     { provide: CheckinRepository, useValue: checkinRepo },
+    { provide: AuditRepository, useValue: auditRepo },
     RegistrationStatusController,
   ];
 }
 
 function resetStatusMocks(): void {
   lastConfirm = null;
+  auditRepo.list.mockReset();
+  auditRepo.list.mockResolvedValue({ entries: [], total: 0 });
   registrationsRepo.updateStatus.mockReset();
   registrationsRepo.updateStatus.mockImplementation((id: string, status: RegistrationStatus) =>
     Promise.resolve({ id, status, updatedAt: new Date() }),
@@ -127,6 +132,24 @@ describe('AttendeesPage: cambio de estado desde el detalle', () => {
     const cmp = create();
     await cmp.changeStatus(pending, 'CANCELLED');
     expect(registrationsRepo.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('al abrir el detalle, el SUPERADMIN ve el historial de esa inscripción', async () => {
+    const cmp = create();
+    await cmp.openAttendeeDetail(pending);
+    await vi.waitFor(() => expect(cmp.loadingHistory()).toBe(false));
+    expect(auditRepo.list).toHaveBeenCalledWith(
+      expect.objectContaining({ registrationId: 'r1' }),
+      50,
+      0,
+    );
+  });
+
+  it('el STAFF no consulta el historial (la base no se lo da)', async () => {
+    role.set('STAFF');
+    const cmp = create();
+    await cmp.openAttendeeDetail(pending);
+    expect(auditRepo.list).not.toHaveBeenCalled();
   });
 });
 
