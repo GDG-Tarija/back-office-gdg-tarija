@@ -8,6 +8,7 @@ import { of } from 'rxjs';
 import { Confirmation, ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 
 import { AuthService } from '../../../../../core/auth/services/auth.service';
+import { AuditRepository } from '../../../../activity/domain/audit.repository';
 import { BackofficeRole } from '../../../../../core/models/role.model';
 import { Attendee, Event } from '../../../domain/event.model';
 import { EventsRepository } from '../../../domain/events.repository';
@@ -119,6 +120,10 @@ describe('AttendeesPage — estado de inscripción', () => {
           { provide: EventsRepository, useValue: eventsRepo },
           { provide: RegistrationsRepository, useValue: registrationsRepo },
           { provide: CheckinRepository, useValue: checkinRepo },
+          {
+            provide: AuditRepository,
+            useValue: { list: vi.fn().mockResolvedValue({ entries: [], total: 0 }) },
+          },
           RegistrationStatusController,
         ],
       },

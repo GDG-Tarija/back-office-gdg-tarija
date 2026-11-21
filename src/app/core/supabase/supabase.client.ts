@@ -78,6 +78,38 @@ export interface Database {
           },
         ];
       };
+      event_whatsapp_groups: {
+        Row: {
+          created_at: string;
+          event_id: string;
+          id: string;
+          updated_at: string;
+          url: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_id: string;
+          id?: string;
+          updated_at?: string;
+          url: string;
+        };
+        Update: {
+          created_at?: string;
+          event_id?: string;
+          id?: string;
+          updated_at?: string;
+          url?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_whatsapp_groups_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: true;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       events: {
         Row: {
           address_link: string | null;
@@ -887,6 +919,7 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      add_backoffice_user: { Args: { p_email: string; p_role: string }; Returns: undefined };
       create_store_order: {
         Args: { p_event_id: string; p_items: Json; p_payment_proof_path: string };
         Returns: string;
@@ -953,10 +986,57 @@ export interface Database {
       has_event_access: { Args: { p_event_id: string }; Returns: boolean };
       is_staff: { Args: never; Returns: boolean };
       is_superadmin: { Args: never; Returns: boolean };
+      list_audit_log: {
+        Args: {
+          p_actor_id?: string;
+          p_category?: string;
+          p_event_id?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_registration_id?: string;
+          p_to?: string;
+        };
+        Returns: {
+          action: string;
+          actor_email: string | null;
+          actor_id: string | null;
+          actor_name: string | null;
+          actor_role: string | null;
+          changes: Json;
+          event_id: string | null;
+          event_title: string | null;
+          id: number;
+          occurred_at: string;
+          record_id: string | null;
+          source: string;
+          subject_name: string | null;
+          table_name: string;
+          total_count: number;
+        }[];
+      };
+      list_backoffice_users: {
+        Args: never;
+        Returns: {
+          added_at: string | null;
+          added_by_email: string | null;
+          assigned_events: Json;
+          avatar_url: string | null;
+          email: string;
+          first_name: string | null;
+          last_activity_at: string | null;
+          last_name: string | null;
+          last_sign_in_at: string | null;
+          role: string;
+          user_id: string | null;
+        }[];
+      };
       registrar_asistencia_qr: {
         Args: { p_session_id: string; p_usuario_id: string };
         Returns: string;
       };
+      remove_backoffice_user: { Args: { p_email: string }; Returns: undefined };
+      require_superadmin: { Args: never; Returns: undefined };
       save_store_product: {
         Args: {
           p_description: string;
@@ -969,6 +1049,7 @@ export interface Database {
         };
         Returns: string;
       };
+      set_backoffice_user_role: { Args: { p_email: string; p_role: string }; Returns: undefined };
       set_store_order_status: {
         Args: { p_order_id: string; p_reason?: string; p_status: string };
         Returns: {

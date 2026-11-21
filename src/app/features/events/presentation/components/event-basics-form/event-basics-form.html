@@ -17,7 +17,7 @@
         id="ev-title"
         type="text"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         autocomplete="off"
         aria-required="true"
         [formField]="f.title"
@@ -39,7 +39,7 @@
         id="ev-slug"
         type="text"
         pInputText
-        class="w-full !rounded-xl font-mono"
+        class="w-full rounded-xl font-mono"
         autocomplete="off"
         aria-required="true"
         [formField]="f.slug"
@@ -72,7 +72,7 @@
       <select
         id="ev-type"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         aria-required="true"
         [formField]="f.eventType"
         [attr.aria-invalid]="!!fieldError('eventType')"
@@ -96,7 +96,7 @@
         id="ev-category"
         type="text"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         list="ev-category-list"
         placeholder="Ej. Inteligencia Artificial"
         [formField]="f.category"
@@ -119,7 +119,7 @@
       <select
         id="ev-mode"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         [formField]="f.locationType"
         [attr.aria-invalid]="!!fieldError('locationType')"
         [attr.aria-describedby]="describedBy('locationType')"
@@ -143,7 +143,7 @@
         type="text"
         inputmode="numeric"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         aria-required="true"
         [formField]="f.capacity"
         [attr.aria-invalid]="!!fieldError('capacity')"
@@ -170,7 +170,7 @@
         id="ev-place"
         type="text"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         placeholder="Ej. Auditorio UAJMS"
         [formField]="f.locationName"
       />
@@ -185,7 +185,7 @@
         id="ev-link"
         type="url"
         pInputText
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         placeholder="https://..."
         [formField]="f.addressLink"
         [attr.aria-invalid]="!!fieldError('addressLink')"
@@ -197,6 +197,30 @@
       >
       @if (fieldError('addressLink'); as err) {
         <small id="ev-link-error" class="font-medium text-danger-text">{{ err }}</small>
+      }
+    </div>
+
+    <!-- Grupo de WhatsApp -->
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label for="ev-whatsapp" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Grupo de WhatsApp</label
+      >
+      <input
+        id="ev-whatsapp"
+        type="url"
+        pInputText
+        class="w-full rounded-xl"
+        placeholder="https://chat.whatsapp.com/..."
+        [formField]="f.whatsappGroupUrl"
+        [attr.aria-invalid]="!!fieldError('whatsappGroupUrl')"
+        [attr.aria-describedby]="describedBy('whatsappGroupUrl', true)"
+        (blur)="markBlurred('whatsappGroupUrl')"
+      />
+      <small id="ev-whatsapp-hint" class="text-text-secondary dark:text-neutral-400"
+        >Opcional. Solo lo ven las personas inscritas (también con el pago en revisión).</small
+      >
+      @if (fieldError('whatsappGroupUrl'); as err) {
+        <small id="ev-whatsapp-error" class="font-medium text-danger-text">{{ err }}</small>
       }
     </div>
 
@@ -299,7 +323,7 @@
         id="ev-desc"
         pInputText
         rows="5"
-        class="w-full !rounded-xl"
+        class="w-full rounded-xl"
         [formField]="f.description"
       ></textarea>
     </div>

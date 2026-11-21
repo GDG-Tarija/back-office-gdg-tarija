@@ -1,6 +1,5 @@
 @use './styles/layers';
 @use 'tailwindcss';
-@use 'primeicons/primeicons.css';
 @use './styles/variables';
 @use './styles/tokens';
 @plugin "tailwindcss-primeui";
@@ -72,6 +71,10 @@
   line-height: 1;
   display: inline-block;
   vertical-align: middle;
+  // Mientras la fuente carga, el nombre del icono ("qr_code_scanner") ocuparía su ancho en texto y
+  // movería el layout; así el hueco ya mide lo mismo que el icono.
+  width: 1em;
+  overflow: hidden;
 }
 
 @layer base {
@@ -142,6 +145,14 @@
 /* Los overrides globales de PrimeNG viven en `components`: ganan a la capa `primeng`
    y pierden contra las utilidades de Tailwind, sin necesidad de `!important`. */
 @layer components {
+  /* Menú ⋮ de filas (Eventos, Usuarios): se monta en <body>. En la capa de componentes para que
+     `text-danger-text` de la plantilla gane en las acciones peligrosas. */
+  .row-actions-menu .p-menu-item-link,
+  .row-actions-menu .p-menu-item-label,
+  .row-actions-menu .p-menu-item-icon {
+    color: var(--color-text-primary);
+  }
+
   .gdg-btn {
     @apply rounded-full font-semibold transition-all duration-300 ease-in-out;
   }
@@ -251,6 +262,26 @@
     }
   }
 
+  @media (max-width: 768px) {
+    .p-paginator .p-paginator-first,
+    .p-paginator .p-paginator-prev,
+    .p-paginator .p-paginator-next,
+    .p-paginator .p-paginator-last,
+    .p-paginator .p-paginator-page {
+      min-width: 2.75rem;
+      height: 2.75rem;
+    }
+  }
+
+  /* Objetivo táctil de 44 px en móvil/tablet (las utilidades `h-*` de cada pantalla ganan). */
+  @media (max-width: 768px) {
+    .p-select,
+    .p-inputtext,
+    .p-datepicker-input {
+      height: 2.75rem;
+    }
+  }
+
   .p-select {
     display: inline-flex;
     align-items: center;
@@ -299,7 +330,7 @@
         'FILL' 1,
         'wght' 400,
         'GRAD' 0,
-        'opsz' 20 !important;
+        'opsz' 24 !important; // la fuente se carga solo con opsz 24 (index.html)
     }
 
     .p-sortable-column-icon,

@@ -1,7 +1,7 @@
 <div class="p-4 sm:p-6">
   <div class="mx-auto flex max-w-6xl flex-col gap-6">
     <header class="flex flex-col gap-1">
-      <h1 class="text-2xl font-extrabold tracking-tight text-text-primary dark:text-neutral-100">
+      <h1 class="text-2xl font-bold tracking-tight text-text-primary dark:text-neutral-100">
         Inicio
       </h1>
       <p class="text-sm text-text-secondary dark:text-neutral-400">
@@ -19,30 +19,45 @@
         class="flex flex-col items-center justify-center py-10 gap-3 border border-google-red/20 rounded-2xl p-6"
         role="alert"
       >
-        <span class="material-symbols-rounded text-4xl text-google-red" aria-hidden="true">
+        <span class="material-symbols-rounded text-4xl text-danger-text" aria-hidden="true">
           warning
         </span>
-        <p class="text-sm text-google-red font-semibold text-center">{{ error() }}</p>
-        <p-button label="Reintentar" icon="pi pi-refresh" size="small" (onClick)="load()" />
+        <p class="text-sm text-danger-text font-semibold text-center">{{ error() }}</p>
+        <p-button label="Reintentar" size="small" (onClick)="load()">
+          <ng-template #icon>
+            <span class="material-symbols-rounded text-base" aria-hidden="true">refresh</span>
+          </ng-template>
+        </p-button>
       </div>
     } @else {
       <app-dashboard-attention [proofs]="proofs()" [drafts]="drafts()" [upcoming]="upcoming()" />
 
-      <section aria-labelledby="metrics-title" class="flex flex-col gap-4">
-        <h2 id="metrics-title" class="text-lg font-bold text-text-primary dark:text-neutral-100">
-          Métricas
-        </h2>
-        <app-dashboard-filters
-          [eventOptions]="eventOptions()"
-          [roleOptions]="roleOptions"
-          [selectedEventId]="filterEventId()"
-          [selectedRole]="filterRole()"
-          [selectedDateRange]="filterDateRange()"
-          (eventIdChange)="filterEventId.set($event)"
-          (roleChange)="filterRole.set($event)"
-          (dateRangeChange)="filterDateRange.set($event)"
-          (resetFilters)="resetFilters()"
-        />
+      <section aria-labelledby="metrics-title" class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div class="flex flex-col gap-0.5">
+            <h2
+              id="metrics-title"
+              class="text-lg font-bold text-text-primary dark:text-neutral-100"
+            >
+              Métricas
+            </h2>
+            <p class="text-xs text-text-secondary dark:text-neutral-400">
+              El filtro de fechas se aplica a la fecha del evento.
+            </p>
+          </div>
+          <app-dashboard-filters
+            class="block w-full sm:w-auto"
+            [eventOptions]="eventOptions()"
+            [roleOptions]="roleOptions"
+            [selectedEventId]="filterEventId()"
+            [selectedRole]="filterRole()"
+            [selectedDateRange]="filterDateRange()"
+            (eventIdChange)="filterEventId.set($event)"
+            (roleChange)="filterRole.set($event)"
+            (dateRangeChange)="filterDateRange.set($event)"
+            (resetFilters)="resetFilters()"
+          />
+        </div>
         <app-dashboard-metrics
           [totalEventsCount]="filteredEvents().length"
           [totalRegistrationsCount]="filteredRegistrations().length"
@@ -52,8 +67,7 @@
           [receivable]="cashFlow().receivable"
         />
         <p class="text-xs text-text-secondary dark:text-neutral-400">
-          Los montos usan el precio real de cada inscripción (fase y cupón). El filtro de fechas se
-          aplica a la fecha del evento.
+          Los montos usan el precio real de cada inscripción (fase y cupón).
         </p>
       </section>
 
@@ -82,7 +96,7 @@
               Ocupación
             </h2>
             <p class="text-xs text-text-secondary dark:text-neutral-400">
-              Asistentes inscritos sobre la capacidad de los eventos (sin anuladas).
+              Personas inscritas sobre la capacidad de los eventos (sin anuladas).
             </p>
           </div>
           <div class="relative mx-auto flex items-center justify-center">

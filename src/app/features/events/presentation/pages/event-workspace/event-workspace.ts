@@ -45,6 +45,7 @@ export class EventWorkspace {
   private readonly sessionsRepo = inject(SessionsRepository);
 
   readonly event = signal<Event | null>(null);
+  readonly whatsappGroupUrl = signal<string | null>(null);
   /** Con anuladas: bloquea borrar el evento y cambiar el slug. */
   readonly registrationCount = signal(0);
   /** Sin anuladas: lo que se le muestra a la persona como inscritas. */
@@ -61,8 +62,12 @@ export class EventWorkspace {
 
   /** Carga el evento y lo necesario para el checklist. Devuelve false si no existe. */
   async load(id: string): Promise<boolean> {
-    const event = await this.eventsRepo.getEventById(id);
+    const [event, whatsappGroupUrl] = await Promise.all([
+      this.eventsRepo.getEventById(id),
+      this.eventsRepo.getWhatsappGroupUrl(id),
+    ]);
     if (!event) return false;
+    this.whatsappGroupUrl.set(whatsappGroupUrl);
     this.event.set(event);
     await this.refreshPublishData();
     return true;
@@ -90,6 +95,10 @@ export class EventWorkspace {
       ? await this.eventsRepo.update(current.id, input)
       : await this.eventsRepo.create(input);
     this.event.set(saved);
+    if (input.whatsappGroupUrl !== undefined) {
+      await this.eventsRepo.saveWhatsappGroupUrl(saved.id, input.whatsappGroupUrl);
+      this.whatsappGroupUrl.set(input.whatsappGroupUrl);
+    }
     await assets?.commitAssets();
     return saved;
   }

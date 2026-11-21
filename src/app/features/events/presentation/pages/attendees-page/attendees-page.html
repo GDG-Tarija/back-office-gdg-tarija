@@ -109,7 +109,7 @@
             type="search"
             pInputText
             placeholder="Nombre, correo, celular, ID o respuestas"
-            class="w-full !rounded-xl !text-sm"
+            class="w-full rounded-xl text-sm"
             [value]="filters().search"
             (input)="setFilter('search', $any($event.target).value)"
           />
@@ -127,7 +127,7 @@
             (ngModelChange)="setFilter('status', $event)"
             optionLabel="label"
             optionValue="value"
-            styleClass="w-full !text-sm"
+            styleClass="w-full text-sm"
           />
         </div>
         <button
@@ -175,7 +175,7 @@
               [showToggleAll]="false"
               [maxSelectedLabels]="0"
               selectedItemsLabel="Columnas ({0})"
-              styleClass="!text-sm"
+              styleClass="text-sm"
             />
           }
           <button
@@ -220,7 +220,7 @@
               (ngModelChange)="setFilter('role', $event)"
               optionLabel="label"
               optionValue="value"
-              styleClass="w-full !text-sm"
+              styleClass="w-full text-sm"
             />
           </div>
           <div class="flex flex-col gap-1">
@@ -236,7 +236,7 @@
               (ngModelChange)="setFilter('entry', $event)"
               optionLabel="label"
               optionValue="value"
-              styleClass="w-full !text-sm"
+              styleClass="w-full text-sm"
             />
           </div>
           <div class="flex flex-col gap-1">
@@ -252,7 +252,7 @@
               (ngModelChange)="setFilter('checkin', $event)"
               optionLabel="label"
               optionValue="value"
-              styleClass="w-full !text-sm"
+              styleClass="w-full text-sm"
             />
           </div>
           <div class="flex flex-col gap-1">
@@ -268,7 +268,7 @@
               (ngModelChange)="setFilter('proof', $event)"
               optionLabel="label"
               optionValue="value"
-              styleClass="w-full !text-sm"
+              styleClass="w-full text-sm"
             />
           </div>
         </div>
@@ -427,7 +427,7 @@
                       <p-tag
                         [value]="roleLabel(attendee.role)"
                         [severity]="roleSeverity(attendee.role)"
-                        styleClass="!text-[11px] !px-2 !py-0"
+                        styleClass="text-xs px-2 py-0"
                       />
                     }
                   </div>
@@ -595,6 +595,7 @@
   (visibleChange)="showDetailModal.set($event)"
   [modal]="true"
   [closeOnEscape]="true"
+  [dismissableMask]="true"
   [style]="{ width: '90vw', 'max-width': '650px' }"
   [draggable]="false"
   [resizable]="false"
@@ -794,7 +795,7 @@
             class="flex items-center gap-2 text-sm text-text-secondary dark:text-neutral-300"
             role="status"
           >
-            <div class="gdg-spinner !size-4"></div>
+            <div class="gdg-spinner size-4"></div>
             Cargando sesiones...
           </div>
         } @else if (attendeeSessions().length === 0) {
@@ -893,6 +894,31 @@
           </dl>
         </section>
       }
+
+      @if (statusCtl.canEdit()) {
+        <section class="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+          <h3 class="text-sm font-bold text-text-primary dark:text-neutral-100">Historial</h3>
+          @if (loadingHistory() && history().length === 0) {
+            <div class="flex justify-center p-4" role="status" aria-label="Cargando historial">
+              <span
+                class="material-symbols-rounded animate-gdg-spin text-2xl text-accent-text"
+                aria-hidden="true"
+                >progress_activity</span
+              >
+            </div>
+          } @else if (historyError(); as err) {
+            <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
+          } @else if (history().length === 0) {
+            <p class="text-sm text-text-secondary dark:text-neutral-400">
+              Todavía no hay movimientos registrados para esta inscripción.
+            </p>
+          } @else {
+            <div class="overflow-hidden rounded-2xl border border-black/5 dark:border-white/10">
+              <app-audit-timeline [entries]="history()" [showEvent]="false" />
+            </div>
+          }
+        </section>
+      }
     </div>
   }
 
@@ -914,11 +940,11 @@
   [popup]="true"
   appendTo="body"
   ariaLabel="Cambiar estado de la inscripción"
-  styleClass="!min-w-56 !rounded-[0.875rem] !p-1 !border-black/10 dark:!border-white/10 !shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+  styleClass="min-w-56 rounded-[0.875rem] p-1 border-black/10 dark:border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
 >
   <ng-template #item let-item>
     <a
-      class="p-menu-item-link flex items-center gap-2.5 !rounded-lg !px-3 !py-2.5 text-[0.9375rem] font-medium whitespace-nowrap"
+      class="p-menu-item-link flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium whitespace-nowrap"
       [ngClass]="{ 'text-danger-text': item.state?.danger && !item.disabled }"
     >
       <span class="material-symbols-rounded text-lg leading-none shrink-0" aria-hidden="true">{{
@@ -938,7 +964,18 @@
   [popup]="true"
   appendTo="body"
   ariaLabel="Exportar inscritas"
-/>
+>
+  <ng-template #item let-item>
+    <a
+      class="p-menu-item-link flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium whitespace-nowrap"
+    >
+      <span class="material-symbols-rounded text-lg leading-none shrink-0" aria-hidden="true">{{
+        item.icon
+      }}</span>
+      <span>{{ item.label }}</span>
+    </a>
+  </ng-template>
+</p-menu>
 
 <app-payment-proof-dialog
   [attendee]="proofAttendee()"
@@ -950,6 +987,5 @@
   (closed)="closeProof()"
   (previous)="stepProof(-1)"
   (next)="stepProof(1)"
-  (confirmPayment)="confirmPayment($event)"
-  (cancelRegistration)="cancelFromProof($event)"
+  (statusChange)="changeFromProof($event)"
 />

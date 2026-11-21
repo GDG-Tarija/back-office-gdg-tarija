@@ -3,7 +3,7 @@
     @if (ws.event() && canDelete()) {
       <button
         type="button"
-        class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-red-light/40 px-4 text-sm font-semibold text-google-red transition-colors hover:bg-google-red-light/70"
+        class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-google-red-light/40 px-4 text-sm font-semibold text-danger-text transition-colors hover:bg-google-red-light/70"
         (click)="openDelete()"
       >
         <span class="material-symbols-rounded text-base" aria-hidden="true">delete</span>
@@ -54,6 +54,7 @@
         @case ('datos') {
           <app-event-basics-form
             [event]="e"
+            [whatsappGroupUrl]="ws.whatsappGroupUrl()"
             [registrationCount]="ws.registrationCount()"
             [saving]="saving()"
             [serverError]="serverError()"

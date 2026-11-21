@@ -1,0 +1,100 @@
+<app-dialog-frame
+  #frame
+  title="Agregar usuario"
+  icon="person_add"
+  initialSize="sm"
+  [dirty]="dirty()"
+  [busy]="saving()"
+  (closeDialog)="closed.emit()"
+>
+  <form
+    id="add-user-form"
+    class="flex flex-col gap-5"
+    novalidate
+    (submit)="$event.preventDefault(); save()"
+  >
+    <div class="flex flex-col gap-1.5">
+      <label
+        for="new-user-email"
+        class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Correo de Google <span aria-hidden="true">*</span></label
+      >
+      <input
+        id="new-user-email"
+        type="email"
+        pInputText
+        class="w-full rounded-xl"
+        placeholder="persona@gmail.com"
+        autocomplete="off"
+        aria-required="true"
+        [ngModel]="email()"
+        (ngModelChange)="setEmail($event)"
+        name="email"
+        [attr.aria-invalid]="!!emailError()"
+        [attr.aria-describedby]="emailError() ? 'new-user-email-error' : 'new-user-email-help'"
+      />
+      @if (emailError(); as err) {
+        <small id="new-user-email-error" class="font-medium text-danger-text">{{ err }}</small>
+      } @else {
+        <small id="new-user-email-help" class="text-text-secondary dark:text-neutral-400"
+          >Con este correo entrará usando "Continuar con Google".</small
+        >
+      }
+    </div>
+
+    <fieldset class="flex flex-col gap-2">
+      <legend class="mb-1.5 text-sm font-semibold text-text-primary dark:text-neutral-200">
+        Rol en el back-office
+      </legend>
+      @for (option of roleOptions; track option.value) {
+        <label
+          class="flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors"
+          [class]="
+            role() === option.value
+              ? 'border-accent-text bg-info-bg'
+              : 'border-black/10 hover:bg-surface-main dark:border-white/15'
+          "
+        >
+          <input
+            type="radio"
+            name="role"
+            class="mt-1 accent-action"
+            [value]="option.value"
+            [checked]="role() === option.value"
+            (change)="role.set(option.value)"
+          />
+          <span class="flex flex-col gap-0.5">
+            <span class="text-sm font-semibold text-text-primary dark:text-neutral-100">{{
+              option.label
+            }}</span>
+            <span class="text-xs text-text-secondary dark:text-neutral-400">{{
+              option.description
+            }}</span>
+          </span>
+        </label>
+      }
+      <p class="text-xs text-text-secondary dark:text-neutral-400">
+        El rol "Staff" que da un cupón en un evento es otra cosa: solo da la credencial, no acceso a
+        este panel.
+      </p>
+    </fieldset>
+  </form>
+
+  <ng-container dialog-actions>
+    <button
+      type="button"
+      class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+      (click)="frame.requestClose()"
+    >
+      Cancelar
+    </button>
+    <button
+      type="submit"
+      form="add-user-form"
+      class="rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
+      [disabled]="saving()"
+    >
+      {{ saving() ? 'Dando acceso...' : 'Dar acceso' }}
+    </button>
+  </ng-container>
+</app-dialog-frame>

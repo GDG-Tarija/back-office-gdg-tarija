@@ -47,6 +47,7 @@ const FIELD_DOM_IDS: Record<string, string> = {
   locationType: 'ev-mode',
   locationName: 'ev-place',
   addressLink: 'ev-link',
+  whatsappGroupUrl: 'ev-whatsapp',
   capacity: 'ev-capacity',
   dateStart: 'ev-start-date',
   dateEnd: 'ev-end-date',

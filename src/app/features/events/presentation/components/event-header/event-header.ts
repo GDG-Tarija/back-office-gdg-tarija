@@ -10,9 +10,10 @@ import { composeTitle } from '../../../../../core/services/page-title.strategy';
 import { Event } from '../../../domain/event.model';
 import { EVENT_TIMING_LABELS, eventTiming } from '../../../domain/event-list';
 
-export type EventSection = 'manage' | 'attendees' | 'store';
+export type EventSection = 'overview' | 'manage' | 'attendees' | 'store';
 
 const SECTION_LABELS: Record<EventSection, string> = {
+  overview: 'Resumen',
   manage: 'Configuración',
   attendees: 'Asistentes',
   store: 'Tienda',
@@ -20,13 +21,15 @@ const SECTION_LABELS: Record<EventSection, string> = {
 
 /**
  * Cabecera compartida de las pantallas de un evento: migas, nombre, fecha, estado y salto entre
- * Configuración · Asistentes · Check-in. El contenido proyectado son acciones de la página.
+ * Resumen · Configuración · Asistentes · Tienda · Check-in. El contenido proyectado son acciones de la página.
  */
 @Component({
   selector: 'app-event-header',
   standalone: true,
   imports: [RouterLink, DatePipe, TagModule],
   templateUrl: './event-header.html',
+  // Bloque: el `space-y-*` de la página (margen inferior en Tailwind v4) no separa un elemento inline.
+  host: { class: 'block' },
 })
 export class EventHeader {
   private readonly auth = inject(AuthService);
@@ -37,11 +40,10 @@ export class EventHeader {
 
   readonly isSuperadmin = computed(() => this.auth.role() === 'SUPERADMIN');
   readonly sectionLabel = computed(() => SECTION_LABELS[this.section()]);
-  /** Página principal del evento según el rol: Configuración para SUPERADMIN, Asistentes para STAFF. */
+  /** Portada del evento (Resumen), igual para todos los roles. */
   readonly hubLink = computed(() => {
     const id = this.event()?.id;
-    if (!id) return ['/events'];
-    return ['/events', id, this.isSuperadmin() ? 'edit' : 'attendees'];
+    return id ? ['/events', id] : ['/events'];
   });
   readonly timing = computed(() => {
     const e = this.event();

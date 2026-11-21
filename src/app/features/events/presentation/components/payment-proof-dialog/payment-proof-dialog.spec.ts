@@ -3,7 +3,7 @@ import localeEsBo from '@angular/common/locales/es-BO';
 import { TestBed } from '@angular/core/testing';
 
 import { Attendee } from '../../../domain/event.model';
-import { PaymentProofDialog } from './payment-proof-dialog';
+import { PaymentProofDialog, ProofStatusChange } from './payment-proof-dialog';
 
 const attendee: Attendee = {
   id: 'r1',
@@ -70,29 +70,62 @@ describe('PaymentProofDialog', () => {
   it('confirma solo tras la confirmación y solo para quien puede gestionar', () => {
     const fixture = create({ canManage: true });
     const cmp = fixture.componentInstance;
-    const confirmed: Attendee[] = [];
-    cmp.confirmPayment.subscribe((a) => confirmed.push(a));
+    const changes: ProofStatusChange[] = [];
+    cmp.statusChange.subscribe((c) => changes.push(c));
 
     cmp.runAction();
-    expect(confirmed).toEqual([]);
+    expect(changes).toEqual([]);
 
-    cmp.startAction('confirm');
+    cmp.startAction('CONFIRMED');
     cmp.runAction();
-    expect(confirmed).toEqual([attendee]);
+    expect(changes).toEqual([{ attendee, status: 'CONFIRMED' }]);
     fixture.destroy();
   });
 
   it('un STAFF no puede iniciar acciones', () => {
     const fixture = create({ canManage: false });
     const cmp = fixture.componentInstance;
-    cmp.startAction('cancel');
+    cmp.startAction('CANCELLED');
     expect(cmp.pendingAction()).toBeNull();
+    expect(cmp.actions()).toEqual([]);
     fixture.destroy();
   });
 
-  it('no ofrece acciones si la inscripción ya no está pendiente', () => {
-    const fixture = create({ canManage: true, attendee: { ...attendee, status: 'CONFIRMED' } });
-    expect(fixture.componentInstance.canAct()).toBe(false);
+  it('ofrece los otros dos estados: anular a la izquierda, confirmar el pago al final', () => {
+    const pendingCmp = create({ canManage: true }).componentInstance;
+    expect(pendingCmp.actions().map((o) => o.value)).toEqual(['CANCELLED', 'CONFIRMED']);
+    TestBed.resetTestingModule();
+
+    const confirmed = create({ canManage: true, attendee: { ...attendee, status: 'CONFIRMED' } });
+    expect(confirmed.componentInstance.actions().map((o) => o.value)).toEqual([
+      'CANCELLED',
+      'PENDING',
+    ]);
+    confirmed.destroy();
+  });
+
+  it('un pago confirmado se puede desestimar (volver a pendiente) y una anulada restaurar', () => {
+    const fixture = create({ canManage: true, attendee: { ...attendee, status: 'CANCELLED' } });
+    const cmp = fixture.componentInstance;
+    const changes: ProofStatusChange[] = [];
+    cmp.statusChange.subscribe((c) => changes.push(c));
+
+    cmp.startAction('CANCELLED');
+    expect(cmp.pendingAction()).toBeNull();
+
+    cmp.startAction('PENDING');
+    cmp.runAction();
+    expect(changes.map((c) => c.status)).toEqual(['PENDING']);
+    fixture.destroy();
+  });
+
+  it('si el estado cambia, descarta la confirmación en curso', () => {
+    const fixture = create({ canManage: true });
+    const cmp = fixture.componentInstance;
+    cmp.startAction('CANCELLED');
+    fixture.componentRef.setInput('attendee', { ...attendee, status: 'CONFIRMED' });
+    fixture.detectChanges();
+    expect(cmp.pendingAction()).toBeNull();
     fixture.destroy();
   });
 

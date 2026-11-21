@@ -108,6 +108,9 @@ export interface EventValidationContext {
   originalEvent?: Pick<EventInput, 'dateStart' | 'dateEnd' | 'capacity'> | null;
 }
 
+/** Igual al CHECK de `event_whatsapp_groups.url`. */
+export const WHATSAPP_GROUP_URL = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+([?#].*)?$/;
+
 function isValidHttpUrl(value: string): boolean {
   try {
     const u = new URL(value);
@@ -182,6 +185,14 @@ export function validateEvent(
     r.errors.push({
       field: 'addressLink',
       message: 'El enlace es obligatorio en eventos virtuales o híbridos.',
+    });
+  }
+
+  const whatsapp = input.whatsappGroupUrl?.trim() ?? '';
+  if (whatsapp && !WHATSAPP_GROUP_URL.test(whatsapp)) {
+    r.errors.push({
+      field: 'whatsappGroupUrl',
+      message: 'Pega el link de invitación del grupo (https://chat.whatsapp.com/...).',
     });
   }
 
@@ -618,23 +629,6 @@ export function validateCoupon(input: CouponInput, ctx: CouponValidationContext)
 
   if (!COUPON_ROLES.includes(input.role)) {
     r.errors.push({ field: 'role', message: 'Selecciona un rol válido.' });
-  }
-  return r;
-}
-
-// ---------------------------------------------------------------------------
-// Staff
-// ---------------------------------------------------------------------------
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export function validateStaffEmail(email: string, existing: string[]): ValidationResult {
-  const r = newResult();
-  const clean = email.trim().toLowerCase();
-  if (!EMAIL_RE.test(clean)) {
-    r.errors.push({ field: 'staffEmail', message: 'Ingresa un correo electrónico válido.' });
-  } else if (existing.some((e) => e.trim().toLowerCase() === clean)) {
-    r.errors.push({ field: 'staffEmail', message: 'Ese correo ya está asignado al evento.' });
   }
   return r;
 }
