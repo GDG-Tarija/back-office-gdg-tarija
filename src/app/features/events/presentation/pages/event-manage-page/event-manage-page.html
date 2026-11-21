@@ -54,6 +54,7 @@
         @case ('datos') {
           <app-event-basics-form
             [event]="e"
+            [whatsappGroupUrl]="ws.whatsappGroupUrl()"
             [registrationCount]="ws.registrationCount()"
             [saving]="saving()"
             [serverError]="serverError()"

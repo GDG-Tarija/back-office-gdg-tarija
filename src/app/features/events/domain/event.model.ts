@@ -51,6 +51,8 @@ export interface EventInput {
   locationType: string | null;
   locationName: string | null;
   addressLink: string | null;
+  /** Solo lo envía el formulario de "Datos"; sin él, el guardado no toca el grupo. */
+  whatsappGroupUrl?: string | null;
   dateStart: Date | null;
   dateEnd: Date | null;
   capacity: number | null;

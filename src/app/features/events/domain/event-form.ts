@@ -20,6 +20,7 @@ export interface EventFormValue {
   locationType: string;
   locationName: string;
   addressLink: string;
+  whatsappGroupUrl: string;
   startDate: string;
   startTime: string;
   endDate: string;
@@ -39,6 +40,7 @@ export function emptyEventFormValue(): EventFormValue {
     locationType: 'PHYSICAL',
     locationName: '',
     addressLink: '',
+    whatsappGroupUrl: '',
     startDate: '',
     startTime: '09:00',
     endDate: '',
@@ -61,6 +63,8 @@ export function eventToFormValue(event: Event): EventFormValue {
     locationType: event.locationType ?? '',
     locationName: event.locationName ?? '',
     addressLink: event.addressLink ?? '',
+    // El link no viene en Event: el formulario lo completa con su propio input.
+    whatsappGroupUrl: '',
     startDate: start.date,
     startTime: start.time,
     endDate: end?.date ?? '',
@@ -97,6 +101,7 @@ export function formValueToEventInput(
     locationType: orNull(value.locationType),
     locationName: orNull(value.locationName),
     addressLink: orNull(value.addressLink),
+    whatsappGroupUrl: orNull(value.whatsappGroupUrl),
     dateStart: toInstant(value.startDate, value.startTime),
     dateEnd: value.endDate ? toInstant(value.endDate, value.endTime) : null,
     capacity: capacity !== null && Number.isNaN(capacity) ? null : capacity,

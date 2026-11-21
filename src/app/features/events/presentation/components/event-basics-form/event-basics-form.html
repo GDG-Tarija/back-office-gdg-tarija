@@ -200,6 +200,30 @@
       }
     </div>
 
+    <!-- Grupo de WhatsApp -->
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label for="ev-whatsapp" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+        >Grupo de WhatsApp</label
+      >
+      <input
+        id="ev-whatsapp"
+        type="url"
+        pInputText
+        class="w-full rounded-xl"
+        placeholder="https://chat.whatsapp.com/..."
+        [formField]="f.whatsappGroupUrl"
+        [attr.aria-invalid]="!!fieldError('whatsappGroupUrl')"
+        [attr.aria-describedby]="describedBy('whatsappGroupUrl', true)"
+        (blur)="markBlurred('whatsappGroupUrl')"
+      />
+      <small id="ev-whatsapp-hint" class="text-text-secondary dark:text-neutral-400"
+        >Opcional. Solo lo ven las personas inscritas (también con el pago en revisión).</small
+      >
+      @if (fieldError('whatsappGroupUrl'); as err) {
+        <small id="ev-whatsapp-error" class="font-medium text-danger-text">{{ err }}</small>
+      }
+    </div>
+
     <!-- Fechas -->
     <fieldset class="flex min-w-0 flex-col gap-1.5">
       <legend class="text-sm font-semibold text-text-primary dark:text-neutral-200">

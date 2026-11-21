@@ -72,6 +72,25 @@ export class EventsApi implements EventsRepository {
     return toDomainEvent(data);
   }
 
+  async getWhatsappGroupUrl(eventId: string): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from('event_whatsapp_groups')
+      .select('url')
+      .eq('event_id', eventId)
+      .maybeSingle();
+    if (error) throw toDomainError(error, 'event');
+    return data?.url ?? null;
+  }
+
+  async saveWhatsappGroupUrl(eventId: string, url: string | null): Promise<void> {
+    const { error } = url
+      ? await this.supabase
+          .from('event_whatsapp_groups')
+          .upsert({ event_id: eventId, url }, { onConflict: 'event_id' })
+      : await this.supabase.from('event_whatsapp_groups').delete().eq('event_id', eventId);
+    if (error) throw toDomainError(error, 'event');
+  }
+
   async setPublished(eventId: string, published: boolean): Promise<Event> {
     const { data, error } = await this.supabase
       .from('events')

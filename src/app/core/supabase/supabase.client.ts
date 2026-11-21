@@ -78,6 +78,38 @@ export interface Database {
           },
         ];
       };
+      event_whatsapp_groups: {
+        Row: {
+          created_at: string;
+          event_id: string;
+          id: string;
+          updated_at: string;
+          url: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_id: string;
+          id?: string;
+          updated_at?: string;
+          url: string;
+        };
+        Update: {
+          created_at?: string;
+          event_id?: string;
+          id?: string;
+          updated_at?: string;
+          url?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_whatsapp_groups_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: true;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       events: {
         Row: {
           address_link: string | null;

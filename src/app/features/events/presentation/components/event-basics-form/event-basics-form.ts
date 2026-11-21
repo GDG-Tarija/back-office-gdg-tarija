@@ -71,6 +71,7 @@ const FIELD_REFS: Record<string, FieldRef> = {
   locationType: { id: 'ev-mode', label: 'Modalidad' },
   capacity: { id: 'ev-capacity', label: 'Capacidad' },
   addressLink: { id: 'ev-link', label: 'Enlace de mapa o reunión' },
+  whatsappGroupUrl: { id: 'ev-whatsapp', label: 'Grupo de WhatsApp' },
   dateStart: { id: 'ev-start-date', label: 'Fecha de inicio' },
   dateEnd: { id: 'ev-end-date', label: 'Fecha de fin' },
 };
@@ -89,6 +90,8 @@ export class EventBasicsForm implements OnInit, OnDestroy {
 
   /** Evento existente (editar). Null al crear. */
   readonly event = input<Event | null>(null);
+  /** Link guardado del grupo de WhatsApp (va en otra tabla, no en Event). */
+  readonly whatsappGroupUrl = input<string | null>(null);
   readonly registrationCount = input(0);
   readonly saving = input(false);
   readonly submitLabel = input('Guardar');
@@ -194,7 +197,10 @@ export class EventBasicsForm implements OnInit, OnDestroy {
   ngOnInit(): void {
     const existing = this.event();
     if (existing) {
-      this.model.set(eventToFormValue(existing));
+      this.model.set({
+        ...eventToFormValue(existing),
+        whatsappGroupUrl: this.whatsappGroupUrl() ?? '',
+      });
       this.slugManual.set(true);
     }
     this.baseline.set(JSON.stringify(this.model()));

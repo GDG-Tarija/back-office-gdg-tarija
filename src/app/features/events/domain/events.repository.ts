@@ -16,6 +16,10 @@ export abstract class EventsRepository {
   /** Inscritos activos (no anuladas) por evento; los eventos sin inscritos no aparecen. */
   abstract countActiveRegistrationsByEvent(): Promise<Record<string, number>>;
   abstract getAttendees(eventId: string): Promise<Attendee[]>;
+  /** Link del grupo de WhatsApp. Vive en otra tabla porque `events` es de lectura pública. */
+  abstract getWhatsappGroupUrl(eventId: string): Promise<string | null>;
+  /** Guarda el link del grupo; null lo borra. */
+  abstract saveWhatsappGroupUrl(eventId: string, url: string | null): Promise<void>;
   abstract getAttendeeSessions(
     eventId: string,
     registrationId: string,
