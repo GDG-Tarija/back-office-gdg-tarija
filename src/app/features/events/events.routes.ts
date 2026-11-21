@@ -33,6 +33,13 @@ export const EVENTS_ROUTES: Routes = [
       ),
   },
   {
+    path: ':id/store',
+    title: 'Tienda',
+    canActivate: [superadminGuard],
+    loadComponent: () =>
+      import('./presentation/pages/store-page/store-page').then((m) => m.StorePage),
+  },
+  {
     path: ':id/attendees',
     title: 'Asistentes',
     loadComponent: () =>

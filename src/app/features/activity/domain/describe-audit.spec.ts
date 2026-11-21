@@ -93,6 +93,13 @@ describe('describeAudit — accesos y configuración', () => {
     expect(text({ table: 'event_coupons', subjectName: 'AMIGOS', action: 'INSERT' })).toBe(
       'Creó el cupón AMIGOS',
     );
+    expect(
+      text({
+        table: 'store_products',
+        subjectName: 'Polera',
+        changes: { price: [60, 65], is_active: [true, false] },
+      }),
+    ).toBe('Editó el producto Polera (Precio, Activo)');
   });
 });
 

@@ -1,0 +1,416 @@
+<div class="flex flex-col gap-5">
+  @if (loading()) {
+    <div class="flex justify-center p-8" role="status" aria-label="Cargando la tienda">
+      <span
+        class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
+        aria-hidden="true"
+        >progress_activity</span
+      >
+    </div>
+  } @else if (loadError(); as err) {
+    <div
+      class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger-text/30 bg-error-bg p-4 text-sm font-medium text-error-text"
+      role="alert"
+    >
+      <span>{{ err }}</span>
+      <button type="button" class="min-h-11 font-semibold underline" (click)="load()">
+        Reintentar
+      </button>
+    </div>
+  } @else {
+    <!-- QR de pago de la tienda -->
+    <section
+      class="flex flex-col gap-3 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900"
+      aria-labelledby="store-qr-title"
+    >
+      <div>
+        <h2 id="store-qr-title" class="text-base font-bold text-text-primary dark:text-neutral-100">
+          QR de pago de la tienda
+        </h2>
+        <p class="text-sm text-text-secondary dark:text-neutral-400">
+          Un solo QR para todo el evento, sin monto fijo: la persona paga el total de su compra y
+          sube el comprobante. Sin QR la tienda no recibe compras.
+        </p>
+      </div>
+      <app-image-uploader
+        kind="qr"
+        label="QR de pago"
+        inputId="store-qr"
+        hint="JPG, PNG o WebP, máximo 500 KB. Se guarda al subirlo."
+        [eventId]="eventId()"
+        [value]="qrUrl()"
+        [disabled]="qrSaving()"
+        (valueChange)="onQrChange($event)"
+        (uploaded)="onQrUploaded()"
+        (discarded)="onQrDiscarded($event)"
+      />
+      @if (qrSaving()) {
+        <p class="text-sm font-medium text-text-secondary dark:text-neutral-300" role="status">
+          Guardando QR...
+        </p>
+      }
+      @if (qrError(); as err) {
+        <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
+      }
+    </section>
+
+    <!-- Productos -->
+    <section class="flex flex-col gap-4" aria-labelledby="store-products-title">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2
+            id="store-products-title"
+            class="text-base font-bold text-text-primary dark:text-neutral-100"
+          >
+            Productos
+          </h2>
+          <p class="text-sm text-text-secondary dark:text-neutral-400">
+            Kits, merch y combos. Cada persona puede llevar hasta 5 unidades de cada uno por compra.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-action px-4 text-sm font-semibold text-on-action transition-colors hover:bg-action-hover"
+          (click)="openCreate()"
+        >
+          <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+          Nuevo producto
+        </button>
+      </div>
+
+      @if (!eventPublished()) {
+        <p
+          class="flex items-start gap-2 rounded-2xl bg-info-bg p-3 text-sm font-medium text-info-text"
+          role="note"
+        >
+          <span class="material-symbols-rounded text-lg" aria-hidden="true">info</span>
+          El evento es un borrador: la tienda no se muestra al público hasta publicarlo.
+        </p>
+      }
+
+      @if (products().length === 0) {
+        <div
+          class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/15 p-10 text-center dark:border-white/15"
+        >
+          <span class="material-symbols-rounded text-4xl text-text-muted" aria-hidden="true"
+            >storefront</span
+          >
+          <p class="text-base font-bold text-text-primary dark:text-neutral-200">
+            Aún no hay productos
+          </p>
+          <p class="max-w-md text-sm text-text-secondary dark:text-neutral-400">
+            Crea el primero: un kit, una polera o un combo con varias fotos.
+          </p>
+        </div>
+      } @else {
+        <ul class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          @for (p of products(); track p.id) {
+            <li
+              class="flex flex-col gap-3 rounded-2xl border border-black/10 bg-white p-4 sm:flex-row sm:items-start dark:border-white/10 dark:bg-neutral-900"
+              [class.opacity-75]="!p.isActive"
+            >
+              <div
+                class="flex aspect-[4/3] w-full shrink-0 items-center justify-center overflow-hidden rounded-xl bg-neutral-100 sm:size-24 sm:aspect-square dark:bg-neutral-800"
+              >
+                @if (p.images[0]; as cover) {
+                  <img
+                    [src]="cover.url"
+                    [alt]="cover.altText || 'Portada de ' + p.name"
+                    class="size-full object-cover"
+                  />
+                } @else {
+                  <span class="material-symbols-rounded text-3xl text-text-muted" aria-hidden="true"
+                    >image</span
+                  >
+                }
+              </div>
+
+              <div class="min-w-0 flex-1 space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p
+                    class="min-w-0 truncate text-base font-bold text-text-primary dark:text-neutral-100"
+                  >
+                    {{ p.name }}
+                  </p>
+                  <p-tag
+                    [value]="p.isActive ? 'Activo' : 'Inactivo'"
+                    [severity]="p.isActive ? 'success' : 'secondary'"
+                  />
+                </div>
+                <p class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+                  {{ p.price | bs }}
+                </p>
+                @if (orderCounts(p); as c) {
+                  <p class="text-xs text-text-secondary dark:text-neutral-400">
+                    {{ c.pending }}
+                    {{ c.pending === 1 ? 'compra pendiente' : 'compras pendientes' }} · {{ c.paid }}
+                    {{ c.paid === 1 ? 'pagada' : 'pagadas' }}
+                    @if (c.paidUnits > 0) {
+                      ({{ c.paidUnits }} {{ c.paidUnits === 1 ? 'unidad' : 'unidades' }})
+                    }
+                    @if (c.cancelled > 0) {
+                      · {{ c.cancelled }} {{ c.cancelled === 1 ? 'anulada' : 'anuladas' }}
+                    }
+                  </p>
+                }
+                <p class="text-xs text-text-secondary dark:text-neutral-400">
+                  {{ p.images.length }} {{ p.images.length === 1 ? 'imagen' : 'imágenes' }}
+                </p>
+                @if (p.description) {
+                  <p class="line-clamp-2 text-xs text-text-secondary dark:text-neutral-400">
+                    {{ p.description }}
+                  </p>
+                }
+              </div>
+
+              <div class="flex shrink-0 items-center gap-1 self-end sm:self-start">
+                <button
+                  type="button"
+                  class="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold text-text-primary hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-50 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                  [disabled]="togglingId() === p.id"
+                  [attr.aria-label]="(p.isActive ? 'Desactivar ' : 'Activar ') + p.name"
+                  (click)="toggleActive(p)"
+                >
+                  <span class="material-symbols-rounded text-lg" aria-hidden="true">{{
+                    p.isActive ? 'visibility_off' : 'visibility'
+                  }}</span>
+                  <span>{{ p.isActive ? 'Desactivar' : 'Activar' }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="flex size-11 items-center justify-center rounded-full text-accent-text hover:bg-info-bg"
+                  [attr.aria-label]="'Editar ' + p.name"
+                  (click)="openEdit(p)"
+                >
+                  <span class="material-symbols-rounded text-xl" aria-hidden="true">edit</span>
+                </button>
+                <span
+                  [pTooltip]="deleteBlockReason(p) ?? ''"
+                  [tooltipDisabled]="!deleteBlockReason(p)"
+                >
+                  <button
+                    type="button"
+                    class="flex size-11 items-center justify-center rounded-full text-danger-text hover:bg-error-bg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                    [attr.aria-label]="
+                      deleteBlockReason(p)
+                        ? 'Eliminar ' + p.name + ' (no disponible: tiene compras)'
+                        : 'Eliminar ' + p.name
+                    "
+                    [disabled]="!!deleteBlockReason(p)"
+                    (click)="askDelete(p)"
+                  >
+                    <span class="material-symbols-rounded text-xl" aria-hidden="true">delete</span>
+                  </button>
+                </span>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</div>
+
+@if (dialogOpen()) {
+  <app-dialog-frame
+    #frame
+    [title]="editing() ? 'Editar producto' : 'Nuevo producto'"
+    icon="storefront"
+    initialSize="lg"
+    [dirty]="dirty()"
+    [busy]="saving()"
+    (closeDialog)="closeDialog()"
+  >
+    <form
+      id="store-product-form"
+      class="flex flex-col gap-5"
+      novalidate
+      (submit)="$event.preventDefault(); save()"
+    >
+      <p class="text-xs text-text-secondary dark:text-neutral-400">
+        <span aria-hidden="true">*</span> obligatorio
+      </p>
+      <app-error-summary [items]="summary()" />
+
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_12rem]">
+        <div class="flex flex-col gap-1.5">
+          <label for="sp-name" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Nombre *</label
+          >
+          <input
+            id="sp-name"
+            type="text"
+            pInputText
+            class="w-full !rounded-xl"
+            [formField]="f.name"
+            aria-required="true"
+            [attr.aria-invalid]="!!fieldError('name')"
+            [attr.aria-describedby]="fieldError('name') ? 'sp-name-error' : null"
+          />
+          @if (fieldError('name'); as err) {
+            <small class="font-medium text-danger-text" id="sp-name-error">{{ err }}</small>
+          }
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label
+            for="sp-price"
+            class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Precio (Bs) *</label
+          >
+          <input
+            id="sp-price"
+            type="text"
+            inputmode="decimal"
+            pInputText
+            class="w-full !rounded-xl"
+            placeholder="0,00"
+            [formField]="f.price"
+            aria-required="true"
+            [attr.aria-invalid]="!!fieldError('price')"
+            [attr.aria-describedby]="fieldError('price') ? 'sp-price-error' : null"
+          />
+          @if (fieldError('price'); as err) {
+            <small class="font-medium text-danger-text" id="sp-price-error">{{ err }}</small>
+          }
+        </div>
+
+        <div class="flex flex-col gap-1.5 md:col-span-2">
+          <label for="sp-desc" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+            >Descripción</label
+          >
+          <textarea
+            id="sp-desc"
+            rows="3"
+            pInputText
+            class="w-full !rounded-xl"
+            [formField]="f.description"
+            [attr.aria-invalid]="!!fieldError('description')"
+            aria-describedby="sp-desc-count"
+          ></textarea>
+          <small
+            id="sp-desc-count"
+            class="self-end text-xs"
+            [class]="
+              model().description.length > descriptionMax
+                ? 'font-semibold text-danger-text'
+                : 'text-text-secondary dark:text-neutral-400'
+            "
+          >
+            {{ model().description.length }} / {{ descriptionMax }}
+          </small>
+          @if (fieldError('description'); as err) {
+            <small class="font-medium text-danger-text">{{ err }}</small>
+          }
+        </div>
+
+        <label
+          class="flex min-h-11 items-center gap-3 text-sm font-semibold text-text-primary md:col-span-2 dark:text-neutral-200"
+        >
+          <input
+            type="checkbox"
+            class="size-5 accent-google-blue"
+            [checked]="model().isActive"
+            (change)="setFormActive($any($event.target).checked)"
+          />
+          <span>
+            Activo en la tienda
+            <span class="block text-xs font-normal text-text-secondary dark:text-neutral-400">
+              Un producto inactivo no se muestra ni se puede comprar; sus compras se conservan.
+            </span>
+          </span>
+        </label>
+
+        <div class="md:col-span-2">
+          <app-store-gallery-editor
+            [eventId]="eventId()"
+            [disabled]="saving()"
+            [images]="model().images"
+            (imagesChange)="setGallery($event)"
+            (uploaded)="onImageUploaded($event)"
+            (discarded)="onImageDiscarded($event)"
+            (uploadingChange)="onGalleryUploading($event)"
+          />
+          @if (fieldError('images'); as err) {
+            <small class="mt-1 block font-medium text-danger-text">{{ err }}</small>
+          } @else if (fieldWarning('images'); as warn) {
+            <small class="mt-1 block text-text-secondary dark:text-neutral-400" role="status">{{
+              warn
+            }}</small>
+          }
+        </div>
+      </div>
+
+      @if (dialogError(); as err) {
+        <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
+      }
+    </form>
+    <ng-container dialog-actions>
+      @if (summary().length) {
+        <p class="mr-auto text-sm font-medium text-danger-text">
+          Revisa {{ summary().length }} {{ summary().length === 1 ? 'campo' : 'campos' }} antes de
+          guardar.
+        </p>
+      }
+      <button
+        type="button"
+        class="min-h-11 rounded-full bg-neutral-100 px-4 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+        (click)="frame.requestClose()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        form="store-product-form"
+        class="min-h-11 rounded-full bg-action px-4 text-sm font-semibold text-on-action hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="saving() || galleryUploading()"
+      >
+        {{
+          saving()
+            ? 'Guardando...'
+            : galleryUploading()
+              ? 'Subiendo imágenes...'
+              : 'Guardar producto'
+        }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}
+
+@if (toDelete(); as p) {
+  <app-dialog-frame
+    title="Eliminar producto"
+    icon="delete"
+    initialSize="sm"
+    [busy]="deleting()"
+    (closeDialog)="cancelDelete()"
+  >
+    <div class="flex flex-col gap-3 text-sm text-text-primary dark:text-neutral-200">
+      <p>
+        ¿Eliminar <strong>{{ p.name }}</strong> y sus {{ p.images.length }}
+        {{ p.images.length === 1 ? 'imagen' : 'imágenes' }}? Esta acción es permanente.
+      </p>
+      @if (deleteError(); as err) {
+        <p class="font-medium text-danger-text" role="alert">{{ err }}</p>
+      }
+    </div>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="min-h-11 rounded-full bg-neutral-100 px-4 text-sm font-semibold text-text-primary hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-800 dark:text-neutral-200"
+        [disabled]="deleting()"
+        (click)="cancelDelete()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="min-h-11 rounded-full bg-error-text px-4 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="deleting()"
+        (click)="confirmDelete()"
+      >
+        {{ deleting() ? 'Eliminando...' : 'Eliminar' }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}

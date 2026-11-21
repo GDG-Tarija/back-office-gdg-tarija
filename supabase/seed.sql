@@ -8,6 +8,7 @@
 --   eventos   ...e1 (pasado) / ...e2 (próximo, pago) / ...e3 (próximo, gratis y virtual)
 --   usuarios  ...a1..a8 (no pueden iniciar sesión: no tienen identidad de Google)
 --   sesiones  d1d1d1d1-... a d6d6d6d6-... (el check-in usa los 16 primeros chars del id)
+--   tienda    productos ...501..504 / compras ...601..603 (solo en ...e2)
 --
 -- Para entrar al back-office local con tu cuenta de Google, después de tu primer
 -- login corre en el Studio local (http://127.0.0.1:54323 → SQL Editor):
@@ -209,6 +210,57 @@ insert into public.scan_logs (registration_id, scanned_by, scan_type, scanned_at
    date_trunc('day', now()) - interval '30 days' + interval '8 hours 55 minutes'),
   ('00000000-0000-4000-8000-000000000102', '00000000-0000-4000-8000-0000000000a2', 'refrigerio',
    date_trunc('day', now()) - interval '30 days' + interval '10 hours 35 minutes');
+
+-- ---------------------------------------------------------------------------
+-- Tienda del DevFest demo (issue #6): QR de la tienda, productos, galería y compras
+-- ---------------------------------------------------------------------------
+update public.events
+   set store_payment_qr_url = 'https://res.cloudinary.com/dopkch3x9/image/upload/v1753129644/logoGDGTarija_lyzyzo.svg'
+ where id = '00000000-0000-4000-8000-0000000000e2';
+
+insert into public.store_products (id, event_id, name, description, price, is_active, position) values
+  ('00000000-0000-4000-8000-000000000501', '00000000-0000-4000-8000-0000000000e2', 'Kit DevFest',
+   'Mochila, cuaderno, stickers y credencial impresa.', 80.00, true, 1),
+  ('00000000-0000-4000-8000-000000000502', '00000000-0000-4000-8000-0000000000e2', 'Polera DevFest',
+   'Polera de algodón con el logo del evento (tallas S a XL).', 60.00, true, 2),
+  ('00000000-0000-4000-8000-000000000503', '00000000-0000-4000-8000-0000000000e2', 'Combo Kit + Polera',
+   'El kit completo y la polera con descuento.', 130.00, true, 3),
+  ('00000000-0000-4000-8000-000000000504', '00000000-0000-4000-8000-0000000000e2', 'Taza GDG',
+   'Producto desactivado: no se muestra en el sitio público.', 35.00, false, 4);
+
+-- Imágenes de ejemplo (URLs externas: en la app real se suben al bucket store-images)
+insert into public.store_product_images (product_id, url, position, alt_text) values
+  ('00000000-0000-4000-8000-000000000501', 'https://res.cloudinary.com/dopkch3x9/image/upload/v1753129644/logoGDGTarija_lyzyzo.svg?seed=kit-1', 1, 'Kit DevFest completo'),
+  ('00000000-0000-4000-8000-000000000501', 'https://res.cloudinary.com/dopkch3x9/image/upload/v1753129644/logoGDGTarija_lyzyzo.svg?seed=kit-2', 2, 'Detalle de la mochila'),
+  ('00000000-0000-4000-8000-000000000502', 'https://res.cloudinary.com/dopkch3x9/image/upload/v1753129644/logoGDGTarija_lyzyzo.svg?seed=polera-1', 1, 'Polera DevFest'),
+  ('00000000-0000-4000-8000-000000000503', 'https://res.cloudinary.com/dopkch3x9/image/upload/v1753129644/logoGDGTarija_lyzyzo.svg?seed=combo-1', 1, 'Combo Kit + Polera');
+
+-- Compras: pagada (inscripción confirmada), pendiente (inscripción pendiente) y anulada.
+-- Compras e ítems van en UN solo comando: la coherencia total = suma de ítems se verifica al
+-- final de la transacción. Los comprobantes son rutas ficticias (no hay archivo en storage).
+with orders as (
+  insert into public.store_orders
+    (id, event_id, registration_id, user_id, status, total, payment_proof_path, reviewed_by, reviewed_at, created_at)
+  values
+    ('00000000-0000-4000-8000-000000000601', '00000000-0000-4000-8000-0000000000e2',
+     '00000000-0000-4000-8000-000000000202', '00000000-0000-4000-8000-0000000000a7', 'PAID', 200.00,
+     '00000000-0000-4000-8000-0000000000a7/00000000-0000-4000-8000-0000000000e2/seed-601.png',
+     '00000000-0000-4000-8000-0000000000a1', now() - interval '1 day', now() - interval '2 days'),
+    ('00000000-0000-4000-8000-000000000602', '00000000-0000-4000-8000-0000000000e2',
+     '00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-0000000000a4', 'PENDING', 130.00,
+     '00000000-0000-4000-8000-0000000000a4/00000000-0000-4000-8000-0000000000e2/seed-602.png',
+     null, null, now() - interval '3 hours'),
+    ('00000000-0000-4000-8000-000000000603', '00000000-0000-4000-8000-0000000000e2',
+     '00000000-0000-4000-8000-000000000203', '00000000-0000-4000-8000-0000000000a8', 'CANCELLED', 60.00,
+     '00000000-0000-4000-8000-0000000000a8/00000000-0000-4000-8000-0000000000e2/seed-603.png',
+     '00000000-0000-4000-8000-0000000000a1', now() - interval '20 hours', now() - interval '1 day')
+  returning id
+)
+insert into public.store_order_items (order_id, product_id, product_name, unit_price, quantity) values
+  ('00000000-0000-4000-8000-000000000601', '00000000-0000-4000-8000-000000000501', 'Kit DevFest', 80.00, 1),
+  ('00000000-0000-4000-8000-000000000601', '00000000-0000-4000-8000-000000000502', 'Polera DevFest', 60.00, 2),
+  ('00000000-0000-4000-8000-000000000602', '00000000-0000-4000-8000-000000000503', 'Combo Kit + Polera', 130.00, 1),
+  ('00000000-0000-4000-8000-000000000603', '00000000-0000-4000-8000-000000000502', 'Polera DevFest', 60.00, 1);
 
 -- ---------------------------------------------------------------------------
 -- Auditoría: los inserts de arriba no son actividad de nadie (los registró el trigger como

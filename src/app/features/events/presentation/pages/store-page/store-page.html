@@ -1,0 +1,117 @@
+<div class="space-y-6 p-4 sm:p-8">
+  @if (loading()) {
+    <div class="flex min-h-[50vh] flex-col items-center justify-center gap-4" role="status">
+      <div class="gdg-spinner"></div>
+      <span class="text-sm font-semibold text-text-secondary dark:text-neutral-300"
+        >Cargando la tienda...</span
+      >
+    </div>
+  } @else if (errorMsg(); as err) {
+    <div
+      class="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 text-center"
+      role="alert"
+    >
+      <span class="material-symbols-rounded text-4xl text-danger-text" aria-hidden="true"
+        >warning</span
+      >
+      <span class="text-base font-bold text-text-primary dark:text-neutral-200">{{ err }}</span>
+      <button
+        type="button"
+        (click)="goBack()"
+        class="inline-flex min-h-11 items-center gap-2 rounded-full border border-black/15 px-5 text-sm font-semibold hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-800"
+      >
+        <span class="material-symbols-rounded text-lg" aria-hidden="true">arrow_back</span>
+        Volver a Eventos
+      </button>
+    </div>
+  } @else if (event(); as ev) {
+    <app-event-header [event]="ev" section="store" />
+
+    <p class="max-w-3xl text-sm text-text-secondary dark:text-neutral-300">
+      Productos que las personas inscritas pueden comprar desde la página del evento (kits, merch y
+      combos). Cada compra lleva un comprobante que se revisa aquí.
+    </p>
+
+    @if (readiness(); as r) {
+      @if (!r.hasQr || r.activeProducts === 0) {
+        <div
+          class="flex items-start gap-3 rounded-2xl border border-warning-text/40 bg-warning-bg p-3 text-sm font-medium text-warning-text"
+          role="status"
+        >
+          <span class="material-symbols-rounded text-xl" aria-hidden="true">storefront</span>
+          <span>
+            La tienda todavía no puede recibir compras:
+            @if (!r.hasQr) {
+              falta el QR de pago{{ r.activeProducts === 0 ? ' y' : '.' }}
+            }
+            @if (r.activeProducts === 0) {
+              no hay productos activos.
+            }
+          </span>
+        </div>
+      }
+    }
+
+    <div
+      class="flex flex-wrap gap-2 border-b border-black/10 pb-px dark:border-white/10"
+      role="tablist"
+      aria-label="Secciones de la tienda"
+    >
+      @for (v of views; track v.id; let i = $index) {
+        <button
+          #tabButton
+          type="button"
+          role="tab"
+          [id]="'store-tab-' + v.id"
+          [attr.aria-selected]="view() === v.id"
+          [attr.aria-controls]="'store-panel-' + v.id"
+          [tabindex]="view() === v.id ? 0 : -1"
+          class="-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors"
+          [class]="
+            view() === v.id
+              ? 'border-accent-text text-accent-text'
+              : 'border-transparent text-text-secondary hover:text-text-primary dark:text-neutral-400 dark:hover:text-neutral-100'
+          "
+          (click)="selectView(v.id)"
+          (keydown)="onTabKeydown($event, i)"
+        >
+          <span class="material-symbols-rounded text-lg" aria-hidden="true">{{ v.icon }}</span>
+          {{ v.label }}
+          @if (v.id === 'compras' && (pending() ?? 0) > 0) {
+            <span
+              class="rounded-full bg-warning-bg px-2 py-0.5 text-xs font-bold text-warning-text"
+            >
+              {{ pending() }} <span class="sr-only">por revisar</span>
+            </span>
+          }
+        </button>
+      }
+    </div>
+
+    <!-- Ambas vistas quedan montadas: cambiar de pestaña no pierde filtros ni recarga. -->
+    <div
+      role="tabpanel"
+      id="store-panel-productos"
+      aria-labelledby="store-tab-productos"
+      [hidden]="view() !== 'productos'"
+    >
+      <app-store-products-editor
+        [eventId]="ev.id"
+        [eventPublished]="ev.isPublished"
+        (readinessChange)="readiness.set($event)"
+      />
+    </div>
+    <div
+      role="tabpanel"
+      id="store-panel-compras"
+      aria-labelledby="store-tab-compras"
+      [hidden]="view() !== 'compras'"
+    >
+      <app-store-orders-panel
+        [eventId]="ev.id"
+        [canManage]="canManage()"
+        (pendingChange)="pending.set($event)"
+      />
+    </div>
+  }
+</div>

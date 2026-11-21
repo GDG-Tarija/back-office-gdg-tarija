@@ -134,3 +134,33 @@ describe('errorField', () => {
     expect(errorField(new Error('x'))).toBeNull();
   });
 });
+
+describe('toDomainError (Tienda)', () => {
+  it('pasa el mensaje en español de los códigos propios P0040-P0056', () => {
+    const e = toDomainError(
+      { code: 'P0051', message: 'No se puede corregir: la compra ya tiene productos entregados.' },
+      'store_order',
+    );
+    expect(e.code).toBe('INVALID');
+    expect(e.message).toContain('entregados');
+    expect(
+      toDomainError({ code: 'P0047', message: 'La compra no existe.' }, 'store_order').code,
+    ).toBe('NOT_FOUND');
+  });
+
+  it('usa el RAISE en español de los RPC pero no el texto técnico de un CHECK nativo', () => {
+    expect(
+      toDomainError({ code: '23514', message: 'El precio debe ser mayor que 0.' }, 'store_product')
+        .message,
+    ).toBe('El precio debe ser mayor que 0.');
+    expect(
+      toDomainError(
+        {
+          code: '23514',
+          message: 'new row for relation "store_products" violates check constraint',
+        },
+        'store_product',
+      ).message,
+    ).not.toContain('violates');
+  });
+});

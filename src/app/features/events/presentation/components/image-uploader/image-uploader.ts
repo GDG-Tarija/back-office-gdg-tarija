@@ -27,6 +27,8 @@ export class ImageUploader {
   readonly note = input<string | null>(null);
   /** Error de validación del formulario padre (no el de subida). */
   readonly invalidMessage = input<string | null>(null);
+  /** Bloquea subir y quitar, p. ej. mientras el padre guarda el valor anterior. */
+  readonly disabled = input(false);
   /** URL pública actual (two-way). */
   readonly value = model<string | null>(null);
 

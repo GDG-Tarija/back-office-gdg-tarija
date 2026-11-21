@@ -33,7 +33,7 @@ Los guards son solo UX; la seguridad real son las políticas RLS.
 
 **Dueño del esquema: este repo (`supabase/migrations/`)**; eventos-gdg-tarija ya no guarda copia. Fuente de verdad: `supabase/migrations/20261024032707_baseline.sql` (`supabase db pull` de producción, 2026-10-24) + migraciones posteriores. Las migraciones anteriores se eliminaron (siguen en el historial de git de eventos-gdg-tarija (antes del 2026-10-24)). Lo que no se puede confirmar sin la BD remota se marca **por verificar**. No modificar la BD a mano: migración primero, luego actualizar este documento.
 
-Convención: `updated_at` se mantiene con trigger `update_updated_at_column()` (events, staff_whitelist, users, sessions, ticket_types, ticket_phases, registrations, scan_logs, tracks).
+Convención: `updated_at` se mantiene con trigger `update_updated_at_column()` (events, staff_whitelist, users, sessions, ticket_types, ticket_phases, registrations, scan_logs, tracks, store_products, store_product_images, store_orders, store_order_items).
 
 ### 2.1. `sponsors`
 
@@ -57,6 +57,8 @@ Convención: `updated_at` se mantiene con trigger `update_updated_at_column()` (
 | `created_at`, `updated_at`                                                            | timestamptz  | SÍ   |                                                                                                                                                 |
 
 Trigger `trg_prevent_event_delete`: no se puede borrar un evento con inscripciones (usar despublicar).
+
+`store_payment_qr_url` text NULL (migración `20261121180000`): QR de pago de la Tienda del evento (uno por evento, monto libre; CHECK no vacío). Sin QR no se pueden crear compras (ver 2.16).
 
 ### 2.3. `ticket_types`
 
@@ -146,7 +148,26 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 ### 2.14. Storage
 
 - `event-assets`: público, límite 2 MB, MIME `image/jpeg|png|webp`. Lectura pública; insert/update/delete solo SUPERADMIN.
-- `payment-proofs`: comprobantes de pago de asistentes (ruta `<event_id>/<user_id>/<timestamp>.<ext>`); políticas `payment_proofs_insert`/`payment_proofs_select` por bucket (`013`). Privacidad exacta **por verificar**.
+- `payment-proofs`: comprobantes de pago de asistentes (ruta `<event_id>/<user_id>/<timestamp>.<ext>`); políticas `payment_proofs_insert`/`payment_proofs_select` por bucket (`013`). Público y con inserción de `anon`: **no reutilizar** para datos nuevos.
+- `store-images` (migración `20261121180000`): imágenes de productos de la Tienda. Público, 2 MB, `image/jpeg|png|webp`. Lectura pública; escritura solo SUPERADMIN.
+- `store-payment-proofs` (migración `20261121180000`): comprobantes de compras de la Tienda. **Privado**, 5 MB, `image/jpeg|png|webp` y `application/pdf`. Ruta obligatoria `<user_id>/<event_id>/<archivo>`: el comprador solo sube a su carpeta de un evento **publicado con QR de tienda** donde tiene inscripción CONFIRMED o PENDING, **hasta 10 archivos por evento**, y solo lee lo suyo; SUPERADMIN lee todo y **borra los que ninguna compra usa** (`store_proofs_superadmin_delete_unused`); sin `anon`, sin UPDATE/DELETE de clientes. En SQL directo `storage.protect_delete` bloquea los DELETE salvo con `storage.allow_delete_query = true` (lo usa la Storage API). El back-office los muestra con URLs firmadas.
+- Los buckets se crean por migración (producción no lee `config.toml`) y se reflejan en `supabase/config.toml` para local.
+
+### 2.16. Tienda del evento (issue #6)
+
+En la UI se llama **Tienda** (producto / compra) para no confundirla con los "paquetes" de entrada (`ticket_types`). Migración `20261121180000_store_products_orders.sql`; pruebas `supabase/tests/store.test.sql`.
+
+- **`store_products`**: `id`, `event_id` (FK events, CASCADE), `name` varchar(100) (UNIQUE por evento sin distinguir mayúsculas), `description`, `price` numeric(10,2) (> 0), `is_active` (default true), `position` (orden del catálogo), `created_at`, `updated_at`. Trigger `trg_store_product_guard`: no se borra con **cualquier** compra, incluso anulada (`restrict_violation`; desactivar sí), ni cambia de evento.
+- **`store_product_images`**: `id`, `product_id` (FK, CASCADE), `url`, `position` (UNIQUE por producto, `DEFERRABLE INITIALLY IMMEDIATE`; la menor es la portada), `alt_text` varchar(200), `created_at`, `updated_at`. Sin máximo de imágenes: los límites son por archivo (bucket).
+- **`store_orders`** (compra): `id`, `event_id` (FK RESTRICT), `registration_id` (FK RESTRICT; debe ser del evento y del comprador), `user_id` (FK users, SET NULL), `status` (`PENDING|PAID|CANCELLED`, default PENDING), `total` (> 0, calculado por el servidor), `payment_proof_path` (ruta en `store-payment-proofs`, UNIQUE: un comprobante por compra), `reviewed_by`/`reviewed_at` (los fija la base de datos), `created_at`, `updated_at`.
+- **`store_order_items`**: `id`, `order_id` (FK, CASCADE), `product_id` (FK RESTRICT), instantánea `product_name` y `unit_price`, `quantity` (1..5), `subtotal` (generada), y para la issue #9 `delivered_quantity` (0..quantity), `delivered_at`, `delivered_by`. UNIQUE (`order_id`, `product_id`). Instantánea inmutable; solo se entrega en compras PAID (P0055).
+- **`store_order_status_history`**: `id` identity, `order_id` (FK, CASCADE), `from_status` (NULL en el alta), `to_status`, `reason`, `is_correction`, `changed_by` (sin FK a propósito), `changed_at`. Lo escribe solo el trigger `trg_log_store_order_status`; UPDATE/DELETE directos se rechazan (P0054).
+- **Estados**: `PENDING -> PAID | CANCELLED`. Corrección excepcional `PAID | CANCELLED -> PENDING` solo SUPERADMIN, con motivo de 10 a 500 caracteres **dado en esa misma operación** (se pasa con `set_config('app.store_order_status_reason', ..., true)` dentro de `set_store_order_status` y se borra tras el UPDATE; nunca se reutiliza) y sin productos entregados (P0051). No se marca PAID si la inscripción está CANCELLED (P0052).
+- **Coherencia** (constraint triggers diferidos): al confirmar, toda compra tiene al menos un ítem, productos del mismo evento y `total` = suma de subtotales (P0053). Compra e ítems deben insertarse en la misma transacción.
+- **Concurrencia**: `create_store_order` bloquea `FOR SHARE` la inscripción y los productos (orden estable) hasta el commit, así precio y estado no cambian entre la validación y la instantánea; `set_store_order_status` toma `FOR UPDATE` sobre la compra y la entrega de un ítem (#9) toma `FOR SHARE` sobre su compra, de modo que una corrección y una entrega simultáneas se serializan.
+- **RLS y privilegios**: productos/imágenes con lectura pública si el evento está publicado y el producto activo (SUPERADMIN ve todo); escritura solo SUPERADMIN. Compras/ítems: SELECT del comprador (`user_id = auth.uid()`) o SUPERADMIN. Historial: SELECT solo SUPERADMIN. Privilegios explícitos (se quita la ACL por defecto): `anon` solo SELECT en productos e imágenes; `authenticated` SELECT/INSERT/UPDATE/DELETE en productos e imágenes (RLS: SUPERADMIN) y solo SELECT en compras, ítems e historial; sin TRUNCATE, REFERENCES ni TRIGGER, ni acceso a la secuencia del historial. STAFF no ve compras (se habilitará en la issue #9).
+- La migración aborta si `store-payment-proofs` ya existe como público. Las imágenes de `save_store_product` deben ser URLs `http(s)://`.
+- Códigos de error propios: P0040 evento no disponible, P0041 tienda sin QR, P0042 sin inscripción activa, P0043 carrito inválido, P0044 producto no disponible, P0045 comprobante inválido, P0046 estado no válido, P0047 compra no encontrada, P0048 transición no permitida, P0049 dato inmutable, P0050 motivo inválido, P0051 hay entregas, P0052 inscripción anulada, P0053 compra inconsistente, P0054 historial inmutable, P0055 entrega sin pago, P0056 galería inválida, P0057 demasiadas compras en revisión (tope de 3 PENDING por inscripción).
 
 ### 2.15. Funciones
 
@@ -168,6 +189,9 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 | `get_ticket_availability(p_event_id)`                                                                    | RPC STABLE SECURITY DEFINER, `anon`+`authenticated`. Una fila por fase (`ticket_type_id, ticket_phase_id, name, position, price, payment_qr_url, capacity, sold, remaining, is_active, package_capacity, package_sold`); paquetes sin fases devuelven una fila con `ticket_phase_id` NULL. No expone inscripciones individuales.                                |
 | `update_updated_at_column()`                                                                             | Trigger de `updated_at`.                                                                                                                                                                                                                                                                                                                                        |
 | `prevent_attendance_for_cancelled_registration()`                                                        | Trigger de `scan_logs` (SECURITY INVOKER): bloquea asistencia de inscripciones `CANCELLED`.                                                                                                                                                                                                                                                                     |
+| `create_store_order(p_event_id, p_items, p_payment_proof_path)`                                          | RPC SECURITY DEFINER, solo `authenticated`. Crea una compra PENDING del usuario actual: evento publicado con QR, inscripción CONFIRMED o PENDING, productos activos del evento, 1 a 5 unidades, sin repetidos, comprobante existente en su carpeta y no usado. Precio y total los fija el servidor. Devuelve el id.                                             |
+| `set_store_order_status(p_order_id, p_status, p_reason)`                                                 | RPC SECURITY DEFINER, solo SUPERADMIN. Único camino para cambiar el estado de una compra (ver 2.16). Devuelve la fila.                                                                                                                                                                                                                                          |
+| `save_store_product(p_event_id, p_product_id, p_name, p_description, p_price, p_is_active, p_images)`    | RPC SECURITY DEFINER, solo SUPERADMIN. Crea o actualiza un producto y reemplaza su galería (`[{url, alt_text}]` en orden) en una sola transacción. Devuelve el id.                                                                                                                                                                                              |
 
 ---
 
@@ -185,6 +209,7 @@ Migraciones pendientes, NO aplicadas en prod:
 - `20261024032944_tracks_event_fk.sql` (FK `tracks.evento_id → events.id`). Prod no tiene tracks huérfanos (verificado 2026-10-24).
 - `20261109031500_block_attendance_for_cancelled_registrations.sql` (trigger en `scan_logs` que rechaza asistencia de inscripciones `CANCELLED`). Aditiva: no cambia policies ni datos; no afecta al sitio público (no escribe en `scan_logs`).
 - `20261114171703_checkin_undo_scan.sql` (policy DELETE de `scan_logs` para deshacer un escaneo propio de los últimos 60 s, y corrección de `staff_read_own_assignments`, que fallaba para STAFF). No cambia datos ni restringe accesos.
+- `20261121180000_store_products_orders.sql` (Tienda del evento, issue #6): tablas, RLS, RPC, triggers, columna `events.store_payment_qr_url` y buckets `store-images`/`store-payment-proofs`. También audita `store_products` (Actividad → Configuración, "el producto") y redefine `list_audit_log` para incluirlo; las imágenes y las compras no van a `audit_log` (las compras tienen `store_order_status_history`). Aditiva; debe salir antes que la compra en eventos-gdg-tarija (eventos#5). Confirmar en el DB CI que `db-deploy-prod` puede crear filas en `storage.buckets`.
 
 ---
 
@@ -192,11 +217,11 @@ Migraciones pendientes, NO aplicadas en prod:
 
 El rol del operador viene de `get_my_role()` (tabla `staff_whitelist`). `AUTH_WHITELIST` (`auth-whitelist.ts`) e `is_staff()` como mecanismo del back-office ya no existen: el front llama a `AuthService.resolveRole()` y los guards solo son UX.
 
-| Rol                       | Permisos                                                                                                                                                                                                           |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `SUPERADMIN`              | Lee y escribe todo: events, ticket_types, tracks, sessions, event_coupons, event_staff_assignments, registrations (update), users, bucket `event-assets`.                                                          |
-| `STAFF`                   | Solo lectura y check-in (insert/select en `scan_logs`, y delete de su propio escaneo de los últimos 60 s) en eventos asignados (`has_event_access`); lee `users` de inscritos de esos eventos. No escribe eventos. |
-| Asistente (authenticated) | Lee eventos publicados, crea sus registrations, lee sus propios `scan_logs`.                                                                                                                                       |
+| Rol                       | Permisos                                                                                                                                                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SUPERADMIN`              | Lee y escribe todo: events, ticket_types, tracks, sessions, event_coupons, event_staff_assignments, registrations (update), users, bucket `event-assets`, Tienda (productos, imágenes, revisión de compras vía RPC). |
+| `STAFF`                   | Solo lectura y check-in (insert/select en `scan_logs`, y delete de su propio escaneo de los últimos 60 s) en eventos asignados (`has_event_access`); lee `users` de inscritos de esos eventos. No escribe eventos.   |
+| Asistente (authenticated) | Lee eventos publicados, crea sus registrations, lee sus propios `scan_logs`.                                                                                                                                         |
 
 Políticas relevantes: `public_read_published_events`, `staff_write_events` (solo superadmin), `staff_write_ticket_types`, `staff_write_ticket_phases`, `superadmin_write_tracks|sessions|event_coupons|assignments`, `select_own_or_staff_registrations`, `staff_select_scan_logs`/`staff_insert_scan_logs`/`staff_delete_recent_own_scan_logs`, `staff_select_users_for_assigned_events`.
 

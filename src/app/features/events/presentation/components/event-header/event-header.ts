@@ -10,17 +10,18 @@ import { composeTitle } from '../../../../../core/services/page-title.strategy';
 import { Event } from '../../../domain/event.model';
 import { EVENT_TIMING_LABELS, eventTiming } from '../../../domain/event-list';
 
-export type EventSection = 'overview' | 'manage' | 'attendees';
+export type EventSection = 'overview' | 'manage' | 'attendees' | 'store';
 
 const SECTION_LABELS: Record<EventSection, string> = {
   overview: 'Resumen',
   manage: 'Configuración',
   attendees: 'Asistentes',
+  store: 'Tienda',
 };
 
 /**
  * Cabecera compartida de las pantallas de un evento: migas, nombre, fecha, estado y salto entre
- * Resumen · Configuración · Asistentes · Check-in. El contenido proyectado son acciones de la página.
+ * Resumen · Configuración · Asistentes · Tienda · Check-in. El contenido proyectado son acciones de la página.
  */
 @Component({
   selector: 'app-event-header',

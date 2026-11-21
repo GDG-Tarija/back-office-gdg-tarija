@@ -1,0 +1,478 @@
+<p-dialog
+  header="Compra de la tienda"
+  [visible]="!!order()"
+  (visibleChange)="onVisibleChange($event)"
+  [modal]="true"
+  [closable]="!busy()"
+  [closeOnEscape]="!busy()"
+  [draggable]="false"
+  [resizable]="false"
+  [focusTrap]="true"
+  [style]="{ width: '96vw', 'max-width': '70rem' }"
+  [breakpoints]="{ '768px': '100vw' }"
+  styleClass="max-md:!h-dvh max-md:!max-h-dvh max-md:!rounded-none [&_.p-dialog-header]:!p-4 [&_.p-dialog-footer]:!p-4"
+  [contentStyle]="{ padding: '0' }"
+>
+  @if (order(); as o) {
+    <div
+      class="grid grid-cols-1 outline-none lg:grid-cols-[minmax(0,1fr)_22rem]"
+      tabindex="-1"
+      (keydown)="onKeydown($event)"
+    >
+      <!-- Comprobante -->
+      <section
+        class="flex min-w-0 flex-col bg-neutral-100 lg:rounded-bl-xl dark:bg-neutral-950"
+        aria-label="Comprobante de pago"
+      >
+        <div
+          class="flex flex-wrap items-center gap-2 border-b border-black/5 px-3 py-2 dark:border-white/10"
+        >
+          <span class="text-sm font-semibold text-text-primary dark:text-neutral-100"
+            >Comprobante</span
+          >
+          @if (proofUrl()) {
+            <div class="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/15 px-3 text-xs font-semibold hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+                (click)="openProofInTab()"
+              >
+                <span class="material-symbols-rounded text-sm" aria-hidden="true">open_in_new</span>
+                Abrir en pestaña
+              </button>
+            </div>
+          }
+          @if (openError(); as err) {
+            <p class="w-full text-xs font-medium text-danger-text" role="alert">{{ err }}</p>
+          }
+        </div>
+
+        <div
+          class="relative flex min-h-[16rem] flex-1 items-start justify-center overflow-auto p-3 max-h-[50vh] lg:max-h-[70vh]"
+        >
+          @switch (proofState()) {
+            @case ('loading') {
+              <div
+                class="flex flex-col items-center justify-center gap-2 py-16 text-xs text-text-secondary"
+                role="status"
+              >
+                <div class="gdg-spinner"></div>
+                <span>Cargando comprobante...</span>
+              </div>
+            }
+            @case ('error') {
+              <div class="flex max-w-xs flex-col items-center gap-3 py-10 text-center" role="alert">
+                <span
+                  class="material-symbols-rounded text-5xl text-text-secondary"
+                  aria-hidden="true"
+                  >lock</span
+                >
+                <p class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+                  {{ proofError() }}
+                </p>
+                <button
+                  type="button"
+                  class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/15 px-4 text-sm font-semibold hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+                  (click)="loadProof()"
+                >
+                  <span class="material-symbols-rounded text-base" aria-hidden="true">refresh</span>
+                  Reintentar
+                </button>
+              </div>
+            }
+            @default {
+              @if (isPdf() || imageFailed()) {
+                <div
+                  class="flex max-w-xs flex-col items-center gap-3 py-10 text-center"
+                  role="note"
+                >
+                  <span
+                    class="material-symbols-rounded text-5xl text-text-secondary"
+                    aria-hidden="true"
+                    >{{ isPdf() ? 'description' : 'broken_image' }}</span
+                  >
+                  <p class="text-sm font-semibold text-text-primary dark:text-neutral-200">
+                    {{
+                      isPdf()
+                        ? 'El comprobante es un PDF y no se puede previsualizar.'
+                        : 'No se pudo mostrar la imagen del comprobante.'
+                    }}
+                  </p>
+                  <p class="text-xs text-text-secondary dark:text-neutral-400">
+                    Ábrelo en una pestaña para revisarlo. El enlace es privado y vence en 10
+                    minutos.
+                  </p>
+                  @if (imageFailed()) {
+                    <button
+                      type="button"
+                      class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/15 px-4 text-sm font-semibold hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+                      (click)="loadProof()"
+                    >
+                      <span class="material-symbols-rounded text-base" aria-hidden="true"
+                        >refresh</span
+                      >
+                      Volver a cargar
+                    </button>
+                  }
+                </div>
+              } @else {
+                <img
+                  [src]="proofUrl()"
+                  [alt]="'Comprobante de pago de ' + name()"
+                  referrerpolicy="no-referrer"
+                  class="max-h-[46vh] max-w-full rounded-lg bg-white object-contain shadow-sm lg:max-h-[66vh]"
+                  (error)="onImageError()"
+                />
+              }
+            }
+          }
+        </div>
+
+        <div
+          class="flex items-center justify-between gap-2 border-t border-black/5 px-3 py-2 dark:border-white/10"
+        >
+          <button
+            type="button"
+            (click)="goPrevious()"
+            [disabled]="!hasPrev() || busy()"
+            class="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold hover:bg-black/5 disabled:opacity-40 dark:hover:bg-white/10"
+            aria-label="Compra anterior"
+          >
+            <span class="material-symbols-rounded text-base" aria-hidden="true">chevron_left</span>
+            Anterior
+          </button>
+          <span
+            class="text-center text-xs font-semibold text-text-secondary dark:text-neutral-400"
+            aria-live="polite"
+          >
+            @if (position() > 0) {
+              {{ position() }} de {{ total() }}
+            } @else {
+              Ya no está en el filtro · {{ total() }} en la lista
+            }
+          </span>
+          <button
+            type="button"
+            (click)="goNext()"
+            [disabled]="!hasNext() || busy()"
+            class="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-semibold hover:bg-black/5 disabled:opacity-40 dark:hover:bg-white/10"
+            aria-label="Compra siguiente"
+          >
+            Siguiente
+            <span class="material-symbols-rounded text-base" aria-hidden="true">chevron_right</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Datos para comparar -->
+      <aside class="flex min-w-0 flex-col gap-4 p-4" aria-label="Datos de la compra">
+        <div class="flex min-w-0 flex-col gap-0.5">
+          <span
+            class="break-words text-base font-extrabold text-text-primary dark:text-neutral-100"
+            >{{ name() }}</span
+          >
+          @if (o.buyer?.email; as email) {
+            <span class="break-all text-xs text-text-secondary dark:text-neutral-400">{{
+              email
+            }}</span>
+          }
+          @if (o.buyer?.phone; as phone) {
+            <span class="text-xs text-text-secondary dark:text-neutral-400">{{ phone }}</span>
+          }
+        </div>
+
+        <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
+          <dt class="text-text-secondary dark:text-neutral-400">Estado</dt>
+          <dd><p-tag [value]="statusLabel()" [severity]="statusSeverity()" /></dd>
+          <dt class="text-text-secondary dark:text-neutral-400">Fecha</dt>
+          <dd class="text-text-primary dark:text-neutral-200">
+            {{ o.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+          </dd>
+          <dt class="text-text-secondary dark:text-neutral-400">Inscripción</dt>
+          <dd
+            class="font-semibold"
+            [class]="
+              registrationCancelled()
+                ? 'text-danger-text'
+                : 'text-text-primary dark:text-neutral-200'
+            "
+          >
+            {{ registrationLabel() }}
+          </dd>
+          @if (o.reviewedAt) {
+            <dt class="text-text-secondary dark:text-neutral-400">Revisada</dt>
+            <dd class="text-text-primary dark:text-neutral-200">
+              {{ o.reviewedAt | date: 'dd/MM/yyyy HH:mm' }}
+            </dd>
+          }
+        </dl>
+
+        @if (registrationCancelled() && isPending()) {
+          <p
+            class="flex items-start gap-2 rounded-xl bg-warning-bg p-3 text-xs font-semibold text-warning-text"
+            role="note"
+          >
+            <span class="material-symbols-rounded text-base" aria-hidden="true">warning</span>
+            La inscripción del comprador está anulada: esta compra solo se puede anular.
+          </p>
+        }
+
+        <section aria-labelledby="order-items-title">
+          <h3
+            id="order-items-title"
+            class="mb-2 text-sm font-bold text-text-primary dark:text-neutral-100"
+          >
+            Productos ({{ units() }} {{ units() === 1 ? 'unidad' : 'unidades' }})
+          </h3>
+          <ul
+            class="flex flex-col divide-y divide-black/5 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10"
+          >
+            @for (item of o.items; track item.id) {
+              <li class="flex items-start justify-between gap-3 px-3 py-2 text-sm">
+                <div class="min-w-0">
+                  <p class="font-semibold text-text-primary dark:text-neutral-100">
+                    {{ item.productName }}
+                  </p>
+                  <p class="text-xs text-text-secondary dark:text-neutral-400">
+                    {{ item.quantity }} × {{ item.unitPrice | bs }}
+                    @if (item.deliveredQuantity > 0) {
+                      · entregadas {{ item.deliveredQuantity }} de {{ item.quantity }}
+                    }
+                  </p>
+                </div>
+                <span class="shrink-0 font-semibold text-text-primary dark:text-neutral-100">{{
+                  item.subtotal | bs
+                }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <div class="rounded-2xl border border-accent-text/30 bg-info-bg p-3 text-center">
+          <span
+            class="block text-[11px] font-semibold uppercase tracking-wide text-text-secondary dark:text-neutral-400"
+          >
+            Monto esperado
+          </span>
+          <span class="block text-2xl font-extrabold text-text-primary dark:text-neutral-100">{{
+            o.total | bs
+          }}</span>
+          <span class="block text-[11px] text-text-secondary dark:text-neutral-400">
+            Precio de cada producto al momento de la compra
+          </span>
+        </div>
+
+        <section aria-labelledby="order-history-title">
+          <h3
+            id="order-history-title"
+            class="mb-2 text-sm font-bold text-text-primary dark:text-neutral-100"
+          >
+            Historial
+          </h3>
+          @if (historyLoading() && history().length === 0) {
+            <p class="text-xs text-text-secondary" role="status">Cargando historial...</p>
+          } @else if (historyError(); as err) {
+            <p class="text-xs font-medium text-danger-text" role="alert">{{ err }}</p>
+          } @else {
+            <ol class="flex flex-col gap-2">
+              @for (h of history(); track h.id) {
+                <li
+                  class="rounded-xl border border-black/10 p-2 text-xs dark:border-white/10"
+                  [class.border-warning-text]="h.isCorrection"
+                >
+                  <p class="font-semibold text-text-primary dark:text-neutral-100">
+                    @if (h.fromStatus) {
+                      {{ historyStatusLabel(h.fromStatus) }} → {{ historyStatusLabel(h.toStatus) }}
+                    } @else {
+                      Creada como {{ historyStatusLabel(h.toStatus).toLowerCase() }}
+                    }
+                    @if (h.isCorrection) {
+                      <span
+                        class="ml-1 rounded-full bg-warning-bg px-2 py-0.5 text-[11px] font-bold text-warning-text"
+                        >Corrección</span
+                      >
+                    }
+                  </p>
+                  <p class="text-text-secondary dark:text-neutral-400">
+                    {{ h.changedAt | date: 'dd/MM/yyyy HH:mm' }}
+                    @if (h.changedByName) {
+                      · {{ h.changedByName }}
+                    }
+                  </p>
+                  @if (h.reason) {
+                    <p
+                      class="mt-1 whitespace-pre-line break-words text-text-primary dark:text-neutral-200"
+                    >
+                      “{{ h.reason }}”
+                    </p>
+                  }
+                </li>
+              }
+            </ol>
+          }
+        </section>
+
+        <p class="mt-auto hidden text-[11px] text-text-secondary lg:block dark:text-neutral-400">
+          Atajos: ← → cambian de compra, Esc cierra.
+        </p>
+      </aside>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <div class="w-full text-left">
+      @if (order(); as o) {
+        @if (error(); as err) {
+          <p class="mb-2 text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
+        }
+
+        @if (!canManage()) {
+          <p class="text-sm text-text-secondary dark:text-neutral-300">
+            Solo un superadministrador puede revisar compras.
+          </p>
+        } @else if (action(); as act) {
+          <div class="flex flex-col gap-3" role="group" aria-labelledby="order-action-title">
+            <p
+              id="order-action-title"
+              class="text-sm font-semibold text-text-primary dark:text-neutral-100"
+            >
+              @switch (act) {
+                @case ('paid') {
+                  ¿Marcar como pagada la compra de {{ name() }} por {{ o.total | bs }}? Verifica que
+                  el monto del comprobante coincida.
+                }
+                @case ('cancel') {
+                  ¿Anular la compra de {{ name() }}? No se entregará. Si te equivocas, solo se puede
+                  corregir con un motivo.
+                }
+                @case ('correct') {
+                  Corrección excepcional: la compra volverá a «Pendiente de pago» y deberás
+                  revisarla de nuevo. Queda registrado quién lo hizo, cuándo y por qué.
+                }
+              }
+            </p>
+
+            @if (act !== 'paid') {
+              <div class="flex flex-col gap-1.5">
+                <label
+                  for="order-reason"
+                  class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+                >
+                  {{ act === 'correct' ? 'Motivo de la corrección *' : 'Motivo (opcional)' }}
+                </label>
+                <textarea
+                  id="order-reason"
+                  rows="3"
+                  class="w-full rounded-xl border border-black/15 bg-transparent p-3 text-sm text-text-primary dark:border-white/15 dark:text-neutral-100"
+                  [attr.aria-required]="act === 'correct'"
+                  [attr.aria-invalid]="showReasonError()"
+                  aria-describedby="order-reason-help"
+                  [attr.maxlength]="reasonMax"
+                  [disabled]="busy()"
+                  [value]="reason()"
+                  (input)="onReasonInput($any($event.target).value)"
+                  (blur)="reasonTouched.set(true)"
+                ></textarea>
+                <div id="order-reason-help" class="flex flex-wrap justify-between gap-2 text-xs">
+                  @if (showReasonError()) {
+                    <span class="font-medium text-danger-text">{{ reasonError() }}</span>
+                  } @else {
+                    <span class="text-text-secondary dark:text-neutral-400">
+                      {{
+                        act === 'correct'
+                          ? 'Entre ' + reasonMin + ' y ' + reasonMax + ' caracteres.'
+                          : 'Queda en el historial.'
+                      }}
+                    </span>
+                  }
+                  <span class="text-text-secondary dark:text-neutral-400"
+                    >{{ reason().trim().length }} / {{ reasonMax }}</span
+                  >
+                </div>
+              </div>
+            }
+
+            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                (click)="resetAction()"
+                [disabled]="busy()"
+                class="inline-flex min-h-11 items-center justify-center rounded-full border border-black/15 px-5 text-sm font-semibold text-text-primary hover:bg-neutral-100 disabled:opacity-50 dark:border-white/20 dark:text-neutral-100 dark:hover:bg-neutral-800"
+              >
+                Volver
+              </button>
+              <button
+                id="order-confirm-btn"
+                type="button"
+                (click)="submitAction()"
+                [disabled]="busy()"
+                class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+                [class]="
+                  act === 'paid'
+                    ? 'bg-action text-on-action hover:bg-action-hover'
+                    : act === 'cancel'
+                      ? 'bg-error-text text-white hover:opacity-90'
+                      : 'bg-warning-text text-white hover:opacity-90'
+                "
+              >
+                {{
+                  busy()
+                    ? 'Guardando...'
+                    : act === 'paid'
+                      ? 'Sí, marcar pagada'
+                      : act === 'cancel'
+                        ? 'Sí, anular'
+                        : 'Volver a pendiente'
+                }}
+              </button>
+            </div>
+          </div>
+        } @else if (isPending()) {
+          <div class="flex flex-col gap-2">
+            @if (paidBlockReason(); as why) {
+              <p class="text-xs text-text-secondary dark:text-neutral-400">{{ why }}</p>
+            }
+            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                (click)="startAction('cancel')"
+                [disabled]="busy()"
+                class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-danger-text px-5 text-sm font-semibold text-danger-text hover:bg-error-bg disabled:opacity-50"
+              >
+                <span class="material-symbols-rounded text-lg" aria-hidden="true">block</span>
+                Anular
+              </button>
+              <button
+                type="button"
+                (click)="startAction('paid')"
+                [disabled]="busy() || !!paidBlockReason()"
+                class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-action px-5 text-sm font-semibold text-on-action hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span class="material-symbols-rounded text-lg" aria-hidden="true">task_alt</span>
+                Marcar pagada
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm text-text-secondary dark:text-neutral-300">
+              Esta compra está {{ statusLabel().toLowerCase() }}.
+              @if (correctionBlock(); as why) {
+                <span class="block text-xs">{{ why }}</span>
+              }
+            </p>
+            <button
+              type="button"
+              (click)="startAction('correct')"
+              [disabled]="busy() || !!correctionBlock()"
+              class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-black/15 px-4 text-sm font-semibold text-text-primary hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/20 dark:text-neutral-100 dark:hover:bg-neutral-800"
+            >
+              <span class="material-symbols-rounded text-lg" aria-hidden="true">undo</span>
+              Corregir estado…
+            </button>
+          </div>
+        }
+      }
+    </div>
+  </ng-template>
+</p-dialog>

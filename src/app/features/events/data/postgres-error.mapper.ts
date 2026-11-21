@@ -1,4 +1,4 @@
-import { DomainError } from '../domain/domain-error';
+import { DomainError, DomainErrorCode } from '../domain/domain-error';
 
 export type ErrorContext =
   | 'event'
@@ -9,7 +9,9 @@ export type ErrorContext =
   | 'coupon'
   | 'staff'
   | 'asset'
-  | 'registration';
+  | 'registration'
+  | 'store_product'
+  | 'store_order';
 
 export interface PostgresLikeError {
   code?: string | null;
@@ -32,6 +34,8 @@ const DUPLICATE_MESSAGES: Record<ErrorContext, { message: string; field?: string
   staff: { message: 'Ese correo ya está asignado al evento.', field: 'staffEmail' },
   asset: { message: 'Ya existe un archivo con ese nombre.' },
   registration: { message: 'Esa persona ya tiene una inscripción en el evento.' },
+  store_product: { message: 'Ya existe un producto con ese nombre en la tienda.', field: 'name' },
+  store_order: { message: 'Ese comprobante ya se usó en otra compra.' },
 };
 
 const REGISTRATIONS_MESSAGES: Record<ErrorContext, string> = {
@@ -44,7 +48,37 @@ const REGISTRATIONS_MESSAGES: Record<ErrorContext, string> = {
   staff: 'No se puede eliminar la asignación porque tiene elementos asociados.',
   asset: 'No se puede eliminar el archivo.',
   registration: 'La inscripción tiene elementos asociados y no se puede modificar así.',
+  store_product:
+    'No se puede eliminar un producto con compras (incluidas las anuladas). Desactívalo en su lugar.',
+  store_order: 'La compra tiene elementos asociados y no se puede modificar así.',
 };
+
+/**
+ * Códigos propios de la Tienda (migración store_products_orders): la BD ya explica el motivo en
+ * español, así que se muestra su mensaje.
+ */
+const STORE_ERROR_CODES: Record<string, DomainErrorCode> = {
+  P0040: 'NOT_FOUND', // evento no disponible
+  P0041: 'INVALID', // tienda sin QR
+  P0042: 'INVALID', // sin inscripción activa
+  P0043: 'INVALID', // carrito inválido
+  P0044: 'NOT_FOUND', // producto no disponible
+  P0045: 'INVALID', // comprobante inválido
+  P0046: 'INVALID', // estado no válido
+  P0047: 'NOT_FOUND', // compra no encontrada
+  P0048: 'INVALID', // cambio de estado no permitido
+  P0049: 'INVALID', // dato inmutable
+  P0050: 'INVALID', // motivo de corrección inválido
+  P0051: 'INVALID', // la compra tiene productos entregados
+  P0052: 'INVALID', // inscripción del comprador anulada
+  P0053: 'INVALID', // compra inconsistente
+  P0054: 'INVALID', // historial inmutable
+  P0055: 'INVALID', // entrega de una compra no pagada
+  P0056: 'INVALID', // galería inválida
+  P0057: 'INVALID', // demasiadas compras en revisión
+};
+
+const STORE_CONTEXTS: readonly ErrorContext[] = ['store_product', 'store_order'];
 
 export const GENERIC_ERROR_MESSAGE = 'Ocurrió un error inesperado. Inténtalo de nuevo.';
 export const NETWORK_ERROR_MESSAGE =
@@ -82,6 +116,19 @@ function isNetworkError(error: PostgresLikeError): boolean {
 /** Traduce errores de Postgres/PostgREST/Storage/red a un DomainError en español. */
 export function toDomainError(error: PostgresLikeError, context: ErrorContext): DomainError {
   const code = error.code ?? '';
+  const storeCode = STORE_ERROR_CODES[code];
+  if (storeCode && error.message?.trim()) {
+    return new DomainError(error.message.trim(), storeCode);
+  }
+  if (STORE_CONTEXTS.includes(context)) {
+    // Los RPC de la Tienda validan con mensajes propios en español (23514/23001 con RAISE).
+    // Los CHECK y FK nativos traen texto técnico en inglés: esos caen al mensaje genérico.
+    const message = error.message?.trim() ?? '';
+    const native = /violates|constraint|relation "|null value/i.test(message);
+    if ((code === '23514' || code === '23001') && message && !native) {
+      return new DomainError(message, code === '23001' ? 'HAS_REGISTRATIONS' : 'INVALID');
+    }
+  }
   switch (code) {
     case '23505': {
       const d = DUPLICATE_MESSAGES[context];
