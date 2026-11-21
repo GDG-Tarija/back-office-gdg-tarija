@@ -58,23 +58,24 @@ const REGISTRATIONS_MESSAGES: Record<ErrorContext, string> = {
  * español, así que se muestra su mensaje.
  */
 const STORE_ERROR_CODES: Record<string, DomainErrorCode> = {
-  P0020: 'NOT_FOUND', // evento no disponible
-  P0021: 'INVALID', // tienda sin QR
-  P0022: 'INVALID', // sin inscripción activa
-  P0023: 'INVALID', // carrito inválido
-  P0024: 'NOT_FOUND', // producto no disponible
-  P0025: 'INVALID', // comprobante inválido
-  P0026: 'INVALID', // estado no válido
-  P0027: 'NOT_FOUND', // compra no encontrada
-  P0028: 'INVALID', // cambio de estado no permitido
-  P0029: 'INVALID', // dato inmutable
-  P0030: 'INVALID', // motivo de corrección inválido
-  P0031: 'INVALID', // la compra tiene productos entregados
-  P0032: 'INVALID', // inscripción del comprador anulada
-  P0033: 'INVALID', // compra inconsistente
-  P0034: 'INVALID', // historial inmutable
-  P0035: 'INVALID', // entrega de una compra no pagada
-  P0036: 'INVALID', // galería inválida
+  P0040: 'NOT_FOUND', // evento no disponible
+  P0041: 'INVALID', // tienda sin QR
+  P0042: 'INVALID', // sin inscripción activa
+  P0043: 'INVALID', // carrito inválido
+  P0044: 'NOT_FOUND', // producto no disponible
+  P0045: 'INVALID', // comprobante inválido
+  P0046: 'INVALID', // estado no válido
+  P0047: 'NOT_FOUND', // compra no encontrada
+  P0048: 'INVALID', // cambio de estado no permitido
+  P0049: 'INVALID', // dato inmutable
+  P0050: 'INVALID', // motivo de corrección inválido
+  P0051: 'INVALID', // la compra tiene productos entregados
+  P0052: 'INVALID', // inscripción del comprador anulada
+  P0053: 'INVALID', // compra inconsistente
+  P0054: 'INVALID', // historial inmutable
+  P0055: 'INVALID', // entrega de una compra no pagada
+  P0056: 'INVALID', // galería inválida
+  P0057: 'INVALID', // demasiadas compras en revisión
 };
 
 const STORE_CONTEXTS: readonly ErrorContext[] = ['store_product', 'store_order'];

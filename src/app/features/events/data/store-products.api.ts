@@ -15,6 +15,8 @@ import {
 
 type SaveStoreProductArgs = Database['public']['Functions']['save_store_product']['Args'];
 
+const PAGE_SIZE = 1000;
+
 @Injectable({ providedIn: 'root' })
 export class StoreProductsApi implements StoreProductsRepository {
   private readonly supabase = inject(SUPABASE);
@@ -31,12 +33,21 @@ export class StoreProductsApi implements StoreProductsRepository {
   }
 
   async getOrderCounts(eventId: string): Promise<Record<string, StoreProductOrderCounts>> {
-    const { data, error } = await this.supabase
-      .from('store_order_items')
-      .select('product_id, order_id, quantity, store_orders!inner(status, event_id)')
-      .eq('store_orders.event_id', eventId);
-    if (error) throw toDomainError(error, 'store_product');
-    return countOrdersByProduct((data ?? []) as unknown as StoreProductOrderRow[]);
+    // PostgREST corta en 1000 filas (max_rows): se pagina con range() y orden estable.
+    const rows: StoreProductOrderRow[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await this.supabase
+        .from('store_order_items')
+        .select('product_id, order_id, quantity, store_orders!inner(status, event_id)')
+        .eq('store_orders.event_id', eventId)
+        .order('id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw toDomainError(error, 'store_product');
+      const page = (data ?? []) as unknown as StoreProductOrderRow[];
+      rows.push(...page);
+      if (page.length < PAGE_SIZE) break;
+    }
+    return countOrdersByProduct(rows);
   }
 
   async save(eventId: string, id: string | null, input: StoreProductInput): Promise<StoreProduct> {
@@ -44,6 +55,7 @@ export class StoreProductsApi implements StoreProductsRepository {
     const args = toSaveStoreProductArgs(eventId, id, input) as unknown as SaveStoreProductArgs;
     const { data, error } = await this.supabase.rpc('save_store_product', args);
     if (error) throw toDomainError(error, 'store_product');
+    // El RPC es atómico, pero la relectura va aparte: si falla, el producto ya puede estar guardado.
     return this.getById(data as string);
   }
 

@@ -13,17 +13,22 @@
 --   con motivo dado en esa misma operación y sin productos entregados.
 -- - Auditoría (reviewed_by/at e historial) la genera la base de datos; el historial es inmutable.
 -- - Comprobantes en un bucket PRIVADO nuevo (store-payment-proofs). payment-proofs no se toca.
+-- - Anti-spam: hasta 3 compras PENDING por inscripción y 10 comprobantes por persona y evento;
+--   solo se suben comprobantes a eventos publicados con QR de tienda. SUPERADMIN puede borrar
+--   comprobantes que ninguna compra usa.
+-- - Los cambios de productos quedan en la auditoría (Actividad), como los paquetes.
 --
 -- Códigos de error propios (SQLSTATE):
---   P0020 evento no disponible          P0028 cambio de estado no permitido
---   P0021 tienda sin QR de pago         P0029 dato inmutable
---   P0022 sin inscripción activa        P0030 motivo de corrección inválido
---   P0023 carrito inválido              P0031 la compra tiene productos entregados
---   P0024 producto no disponible        P0032 inscripción del comprador anulada
---   P0025 comprobante inválido          P0033 compra inconsistente (total, ítems o evento)
---   P0026 estado no válido              P0034 historial inmutable
---   P0027 compra no encontrada          P0035 entrega de una compra no pagada
---                                       P0036 galería inválida
+--   P0040 evento no disponible          P0048 cambio de estado no permitido
+--   P0041 tienda sin QR de pago         P0049 dato inmutable
+--   P0042 sin inscripción activa        P0050 motivo de corrección inválido
+--   P0043 carrito inválido              P0051 la compra tiene productos entregados
+--   P0044 producto no disponible        P0052 inscripción del comprador anulada
+--   P0045 comprobante inválido          P0053 compra inconsistente (total, ítems o evento)
+--   P0046 estado no válido              P0054 historial inmutable
+--   P0047 compra no encontrada          P0055 entrega de una compra no pagada
+--                                       P0056 galería inválida
+--                                       P0057 demasiadas compras pendientes
 -- (No usar P0004: es assert_failure.)
 
 -- 1. QR de pago de la tienda: uno por evento, monto libre --------------------------------------
@@ -206,7 +211,7 @@ begin
   end if;
 
   if new.event_id <> old.event_id then
-    raise exception 'Un producto no puede cambiar de evento.' using errcode = 'P0029';
+    raise exception 'Un producto no puede cambiar de evento.' using errcode = 'P0049';
   end if;
   return new;
 end;
@@ -244,13 +249,13 @@ begin
    where r.id = new.registration_id;
 
   if not found or v_reg_event <> new.event_id then
-    raise exception 'La inscripción no corresponde al evento de la compra.' using errcode = 'P0033';
+    raise exception 'La inscripción no corresponde al evento de la compra.' using errcode = 'P0053';
   end if;
 
   if new.user_id is null then
     new.user_id := v_reg_user;
   elsif new.user_id is distinct from v_reg_user then
-    raise exception 'La compra debe pertenecer al titular de la inscripción.' using errcode = 'P0033';
+    raise exception 'La compra debe pertenecer al titular de la inscripción.' using errcode = 'P0053';
   end if;
 
   -- Con sesión de cliente (incluido el RPC), una compra siempre nace pendiente y sin revisión.
@@ -284,13 +289,13 @@ begin
      or new.payment_proof_path <> old.payment_proof_path
      or new.created_at is distinct from old.created_at
      or (new.user_id is distinct from old.user_id and new.user_id is not null) then
-    raise exception 'Los datos de una compra no se pueden modificar.' using errcode = 'P0029';
+    raise exception 'Los datos de una compra no se pueden modificar.' using errcode = 'P0049';
   end if;
 
   if new.status = old.status then
     if new.reviewed_at is distinct from old.reviewed_at
        or (new.reviewed_by is distinct from old.reviewed_by and new.reviewed_by is not null) then
-      raise exception 'La revisión de una compra la registra la base de datos.' using errcode = 'P0029';
+      raise exception 'La revisión de una compra la registra la base de datos.' using errcode = 'P0049';
     end if;
     return new;
   end if;
@@ -303,22 +308,22 @@ begin
 
   if not ((old.status = 'PENDING' and new.status in ('PAID', 'CANCELLED')) or v_correction) then
     raise exception 'Cambio de estado no permitido: % -> %.', old.status, new.status
-      using errcode = 'P0028';
+      using errcode = 'P0048';
   end if;
 
   if v_correction then
     if v_reason is null or char_length(v_reason) not between 10 and 500 then
-      raise exception 'Indica el motivo de la corrección (10 a 500 caracteres).' using errcode = 'P0030';
+      raise exception 'Indica el motivo de la corrección (10 a 500 caracteres).' using errcode = 'P0050';
     end if;
     if exists (
       select 1 from public.store_order_items i
        where i.order_id = old.id and i.delivered_quantity > 0
     ) then
       raise exception 'No se puede corregir: la compra ya tiene productos entregados.'
-        using errcode = 'P0031';
+        using errcode = 'P0051';
     end if;
   elsif v_reason is not null and char_length(v_reason) > 500 then
-    raise exception 'El motivo no puede superar 500 caracteres.' using errcode = 'P0030';
+    raise exception 'El motivo no puede superar 500 caracteres.' using errcode = 'P0050';
   end if;
 
   if new.status = 'PAID' and exists (
@@ -326,7 +331,7 @@ begin
      where r.id = old.registration_id and r.status = 'CANCELLED'
   ) then
     raise exception 'No se puede marcar pagada: la inscripción del comprador está anulada.'
-      using errcode = 'P0032';
+      using errcode = 'P0052';
   end if;
 
   new.reviewed_by := auth.uid();
@@ -382,7 +387,7 @@ begin
   if tg_op = 'DELETE' and pg_trigger_depth() > 1 then
     return old;
   end if;
-  raise exception 'El historial de estados de una compra no se puede modificar.' using errcode = 'P0034';
+  raise exception 'El historial de estados de una compra no se puede modificar.' using errcode = 'P0054';
 end;
 $function$;
 
@@ -414,7 +419,7 @@ begin
      or new.unit_price <> old.unit_price
      or new.quantity <> old.quantity
      or new.created_at is distinct from old.created_at then
-    raise exception 'Los productos de una compra no se pueden modificar.' using errcode = 'P0029';
+    raise exception 'Los productos de una compra no se pueden modificar.' using errcode = 'P0049';
   end if;
 
   if new.delivered_quantity > old.delivered_quantity then
@@ -422,7 +427,7 @@ begin
     -- concurrente no deja entregas en una compra que dejó de estar pagada.
     perform 1 from public.store_orders o where o.id = new.order_id and o.status = 'PAID' for share;
     if not found then
-      raise exception 'Solo se entregan productos de compras pagadas.' using errcode = 'P0035';
+      raise exception 'Solo se entregan productos de compras pagadas.' using errcode = 'P0055';
     end if;
   end if;
   return new;
@@ -471,14 +476,14 @@ begin
    where i.order_id = v_order_id;
 
   if v_items = 0 then
-    raise exception 'Una compra debe tener al menos un producto.' using errcode = 'P0033';
+    raise exception 'Una compra debe tener al menos un producto.' using errcode = 'P0053';
   end if;
   if v_foreign > 0 then
-    raise exception 'Todos los productos deben ser del evento de la compra.' using errcode = 'P0033';
+    raise exception 'Todos los productos deben ser del evento de la compra.' using errcode = 'P0053';
   end if;
   if v_sum <> v_total then
     raise exception 'El total de la compra (%) no coincide con sus productos (%).', v_total, v_sum
-      using errcode = 'P0033';
+      using errcode = 'P0053';
   end if;
   return null;
 end;
@@ -528,10 +533,10 @@ begin
     from public.events e
    where e.id = p_event_id;
   if not found or not coalesce(v_published, false) then
-    raise exception 'El evento no está disponible para compras.' using errcode = 'P0020';
+    raise exception 'El evento no está disponible para compras.' using errcode = 'P0040';
   end if;
   if v_qr is null then
-    raise exception 'La tienda de este evento no está habilitada.' using errcode = 'P0021';
+    raise exception 'La tienda de este evento no está habilitada.' using errcode = 'P0041';
   end if;
 
   -- UNIQUE (event_id, user_id) en registrations: hay a lo sumo una. FOR SHARE: no se anula
@@ -543,15 +548,24 @@ begin
      and r.status in ('CONFIRMED', 'PENDING')
      for share;
   if v_registration_id is null then
-    raise exception 'Necesitas una inscripción activa en el evento para comprar.' using errcode = 'P0022';
+    raise exception 'Necesitas una inscripción activa en el evento para comprar.' using errcode = 'P0042';
+  end if;
+
+  -- La revisión de pagos es manual: un tope evita inundar la cola. shortcut: dos compras
+  -- simultáneas de la misma inscripción pueden pasar el tope por una (FOR SHARE no las
+  -- serializa); si hiciera falta exacto, bloquear la inscripción FOR UPDATE.
+  if (select count(*) from public.store_orders o
+       where o.registration_id = v_registration_id and o.status = 'PENDING') >= 3 then
+    raise exception 'Ya tienes 3 compras en revisión en este evento. Espera a que las validemos.'
+      using errcode = 'P0057';
   end if;
 
   -- Comprobaciones separadas: SQL no garantiza el orden de evaluación de OR.
   if p_items is null or jsonb_typeof(p_items) <> 'array' then
-    raise exception 'Agrega al menos un producto.' using errcode = 'P0023';
+    raise exception 'Agrega al menos un producto.' using errcode = 'P0043';
   end if;
   if jsonb_array_length(p_items) = 0 then
-    raise exception 'Agrega al menos un producto.' using errcode = 'P0023';
+    raise exception 'Agrega al menos un producto.' using errcode = 'P0043';
   end if;
 
   if exists (
@@ -562,14 +576,14 @@ begin
         or coalesce(jsonb_typeof(e -> 'quantity'), '') <> 'number'
         or coalesce(e ->> 'quantity', '') !~ '^[1-5]$'
   ) then
-    raise exception 'Cada producto debe indicar una cantidad entre 1 y 5.' using errcode = 'P0023';
+    raise exception 'Cada producto debe indicar una cantidad entre 1 y 5.' using errcode = 'P0043';
   end if;
 
   select count(*), count(distinct (e ->> 'product_id')::uuid)
     into v_count, v_distinct
     from jsonb_array_elements(p_items) e;
   if v_distinct <> v_count then
-    raise exception 'No repitas un producto en la misma compra; usa la cantidad.' using errcode = 'P0023';
+    raise exception 'No repitas un producto en la misma compra; usa la cantidad.' using errcode = 'P0043';
   end if;
 
   -- Bloquea los productos (orden estable) hasta el final de la transacción: precio y estado no
@@ -587,7 +601,7 @@ begin
    where p.event_id = p_event_id
      and p.is_active;
   if v_valid <> v_count then
-    raise exception 'Uno de los productos ya no está disponible.' using errcode = 'P0024';
+    raise exception 'Uno de los productos ya no está disponible.' using errcode = 'P0044';
   end if;
 
   v_prefix := v_uid::text || '/' || p_event_id::text || '/';
@@ -595,16 +609,16 @@ begin
      or left(v_path, length(v_prefix)) <> v_prefix
      or length(v_path) = length(v_prefix)
      or position('..' in v_path) > 0 then
-    raise exception 'Sube el comprobante de pago de esta compra.' using errcode = 'P0025';
+    raise exception 'Sube el comprobante de pago de esta compra.' using errcode = 'P0045';
   end if;
   if not exists (
     select 1 from storage.objects o
      where o.bucket_id = 'store-payment-proofs' and o.name = v_path
   ) then
-    raise exception 'No encontramos el comprobante subido. Vuelve a subirlo.' using errcode = 'P0025';
+    raise exception 'No encontramos el comprobante subido. Vuelve a subirlo.' using errcode = 'P0045';
   end if;
   if exists (select 1 from public.store_orders o where o.payment_proof_path = v_path) then
-    raise exception 'Ese comprobante ya se usó en otra compra.' using errcode = 'P0025';
+    raise exception 'Ese comprobante ya se usó en otra compra.' using errcode = 'P0045';
   end if;
 
   insert into public.store_orders (event_id, registration_id, user_id, total, payment_proof_path)
@@ -645,15 +659,15 @@ begin
     raise exception 'Solo un SUPERADMIN puede revisar compras.' using errcode = '42501';
   end if;
   if v_status not in ('PENDING', 'PAID', 'CANCELLED') then
-    raise exception 'Estado de compra no válido.' using errcode = 'P0026';
+    raise exception 'Estado de compra no válido.' using errcode = 'P0046';
   end if;
 
   select o.status into v_current from public.store_orders o where o.id = p_order_id for update;
   if not found then
-    raise exception 'La compra no existe.' using errcode = 'P0027';
+    raise exception 'La compra no existe.' using errcode = 'P0047';
   end if;
   if v_current = v_status then
-    raise exception 'La compra ya está en ese estado.' using errcode = 'P0028';
+    raise exception 'La compra ya está en ese estado.' using errcode = 'P0048';
   end if;
 
   -- El motivo vive solo durante este UPDATE (ver store_order_status_reason()).
@@ -693,7 +707,7 @@ begin
 
   -- Sin esta comprobación la FK daría 23503, que el front interpreta como "tiene inscritos".
   if not exists (select 1 from public.events e where e.id = p_event_id) then
-    raise exception 'El evento no existe.' using errcode = 'P0020';
+    raise exception 'El evento no existe.' using errcode = 'P0040';
   end if;
 
   if char_length(coalesce(btrim(p_name), '')) not between 1 and 100 then
@@ -707,7 +721,7 @@ begin
 
   -- Comprobaciones separadas: SQL no garantiza el orden de evaluación de OR.
   if p_images is null or jsonb_typeof(p_images) <> 'array' then
-    raise exception 'La galería del producto no es válida.' using errcode = 'P0036';
+    raise exception 'La galería del producto no es válida.' using errcode = 'P0056';
   end if;
   if exists (
     select 1
@@ -718,10 +732,10 @@ begin
         or (e ? 'alt_text' and jsonb_typeof(e -> 'alt_text') not in ('string', 'null'))
         or char_length(coalesce(e ->> 'alt_text', '')) > 200
   ) then
-    raise exception 'La galería del producto no es válida.' using errcode = 'P0036';
+    raise exception 'La galería del producto no es válida.' using errcode = 'P0056';
   end if;
   if (select count(*) <> count(distinct btrim(e ->> 'url')) from jsonb_array_elements(p_images) e) then
-    raise exception 'La galería tiene imágenes repetidas.' using errcode = 'P0036';
+    raise exception 'La galería tiene imágenes repetidas.' using errcode = 'P0056';
   end if;
 
   if p_product_id is null then
@@ -745,7 +759,7 @@ begin
        and event_id = p_event_id
     returning id into v_id;
     if v_id is null then
-      raise exception 'El producto no existe en este evento.' using errcode = 'P0024';
+      raise exception 'El producto no existe en este evento.' using errcode = 'P0044';
     end if;
   end if;
 
@@ -881,8 +895,9 @@ create policy "store_images_superadmin_delete" on storage.objects
   using (bucket_id = 'store-images' and public.is_superadmin());
 
 -- Comprobantes de compras (bucket privado): cada comprador sube solo a <su uid>/<evento>/ de un
--- evento donde tiene inscripción activa, y lee solo lo suyo; SUPERADMIN lee todos. Sin anon,
--- sin UPDATE ni DELETE de clientes (el comprobante de una compra no se reemplaza).
+-- evento publicado con tienda habilitada donde tiene inscripción activa, hasta 10 archivos por
+-- evento, y lee solo lo suyo; SUPERADMIN lee todos. Sin anon, sin UPDATE ni DELETE de clientes
+-- (el comprobante de una compra no se reemplaza).
 create policy "store_proofs_insert_own" on storage.objects
   for insert to authenticated
   with check (
@@ -894,6 +909,30 @@ create policy "store_proofs_insert_own" on storage.objects
          and r.event_id::text = (storage.foldername(name))[2]
          and r.status in ('CONFIRMED', 'PENDING')
     )
+    and exists (
+      select 1 from public.events e
+       where e.id::text = (storage.foldername(name))[2]
+         and e.is_published
+         and e.store_payment_qr_url is not null
+    )
+    -- Dentro de la subconsulta `name` sería o.name: el archivo nuevo es storage.objects.name.
+    and (
+      select count(*) from storage.objects o
+       where o.bucket_id = 'store-payment-proofs'
+         and (storage.foldername(o.name))[1] = auth.uid()::text
+         and (storage.foldername(o.name))[2] = (storage.foldername(storage.objects.name))[2]
+    ) < 10
+  );
+
+-- Limpieza: SUPERADMIN borra comprobantes que ninguna compra usa (subidas abandonadas).
+create policy "store_proofs_superadmin_delete_unused" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'store-payment-proofs'
+    and public.is_superadmin()
+    and not exists (
+      select 1 from public.store_orders so where so.payment_proof_path = storage.objects.name
+    )
   );
 
 create policy "store_proofs_select_own_or_superadmin" on storage.objects
@@ -902,3 +941,136 @@ create policy "store_proofs_select_own_or_superadmin" on storage.objects
     bucket_id = 'store-payment-proofs'
     and ((storage.foldername(name))[1] = auth.uid()::text or public.is_superadmin())
   );
+
+-- 12. Auditoría (Actividad) ---------------------------------------------------------------------
+-- Los productos son configuración del evento, como los paquetes. Las imágenes no se auditan
+-- (save_store_product reemplaza la galería entera en cada guardado) y las compras ya tienen su
+-- historial propio (store_order_status_history). audit_row_change toma store_products.event_id.
+create trigger trg_audit_row_change after insert or update or delete on public.store_products
+  for each row execute function public.audit_row_change();
+
+-- Igual que en 20261116001404_audit_log_queries, más store_products en CONFIG y su nombre.
+create or replace function public.list_audit_log(
+  p_event_id        uuid        default null,
+  p_actor_id        uuid        default null,
+  p_category        text        default null,
+  p_registration_id uuid        default null,
+  p_from            timestamptz default null,
+  p_to              timestamptz default null,
+  p_limit           integer     default 50,
+  p_offset          integer     default 0
+)
+returns table (
+  id           bigint,
+  occurred_at  timestamptz,
+  actor_id     uuid,
+  actor_email  text,
+  actor_role   text,
+  actor_name   text,
+  action       text,
+  table_name   text,
+  record_id    text,
+  event_id     uuid,
+  event_title  text,
+  subject_name text,
+  changes      jsonb,
+  source       text,
+  total_count  bigint
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+#variable_conflict use_column
+declare
+  v_tables text[] := case p_category
+    when 'ACCESS'        then array['staff_whitelist', 'event_staff_assignments']
+    when 'CONFIG'        then array['events', 'ticket_types', 'ticket_phases', 'event_coupons', 'tracks', 'sessions', 'store_products']
+    when 'REGISTRATIONS' then array['registrations', 'session_registrations']
+    when 'CHECKIN'       then array['scan_logs']
+    else null
+  end;
+begin
+  perform public.require_superadmin();
+
+  if p_category is not null and v_tables is null then
+    raise exception 'Categoría no válida.' using errcode = 'P0020';
+  end if;
+
+  return query
+  with filtered as (
+    select a.*
+    from public.audit_log a
+    where (p_event_id is null or a.event_id = p_event_id)
+      and (p_actor_id is null or a.actor_id = p_actor_id)
+      and (v_tables is null or a.table_name = any (v_tables))
+      and (p_from is null or a.occurred_at >= p_from)
+      and (p_to is null or a.occurred_at < p_to)
+      and (
+        p_registration_id is null
+        or (a.table_name = 'registrations' and a.record_id = p_registration_id::text)
+        or (a.table_name in ('scan_logs', 'session_registrations')
+            and a.changes ->> 'registration_id' = p_registration_id::text)
+      )
+  ),
+  page as (
+    select f.*, count(*) over () as total
+    from filtered f
+    order by f.occurred_at desc, f.id desc
+    limit greatest(least(coalesce(p_limit, 50), 200), 1)
+    offset greatest(coalesce(p_offset, 0), 0)
+  )
+  select
+    p.id,
+    p.occurred_at,
+    p.actor_id,
+    p.actor_email,
+    p.actor_role,
+    nullif(trim(concat_ws(' ', au_user.first_name, au_user.last_name)), '')::text,
+    p.action,
+    p.table_name,
+    p.record_id,
+    p.event_id,
+    coalesce(ev.title, case when p.table_name = 'events' then p.changes ->> 'title' end)::text,
+    (case
+      when p.table_name in ('registrations', 'scan_logs', 'session_registrations') then
+        coalesce(
+          nullif(trim(concat_ws(' ', reg_user.first_name, reg_user.last_name)), ''),
+          reg_user.email
+        )
+      when p.table_name = 'staff_whitelist' then coalesce(p.changes ->> 'email', sw.email)
+      when p.table_name = 'event_staff_assignments' then coalesce(p.changes ->> 'staff_email', esa.staff_email)
+      when p.table_name = 'events' then coalesce(ev.title, p.changes ->> 'title')
+      when p.table_name = 'ticket_types' then coalesce(tt.name, p.changes ->> 'name')
+      when p.table_name = 'ticket_phases' then coalesce(tp.name, p.changes ->> 'name')
+      when p.table_name = 'event_coupons' then coalesce(cp.code, p.changes ->> 'code')
+      when p.table_name = 'tracks' then coalesce(tr.nombre, p.changes ->> 'nombre')
+      when p.table_name = 'sessions' then coalesce(se.title, p.changes ->> 'title')
+      when p.table_name = 'store_products' then coalesce(spr.name, p.changes ->> 'name')
+    end)::text,
+    p.changes,
+    p.source,
+    p.total
+  from page p
+  left join public.users au_user on au_user.id = p.actor_id
+  left join public.events ev on ev.id = p.event_id
+  left join public.registrations reg
+    on p.table_name in ('registrations', 'scan_logs', 'session_registrations')
+   and reg.id::text = case
+         when p.table_name = 'registrations' then p.record_id
+         else coalesce(p.changes ->> 'registration_id', p.record_id)
+       end
+  left join public.users reg_user
+    on reg_user.id = coalesce(reg.user_id, nullif(p.changes ->> 'user_id', '')::uuid)
+  left join public.staff_whitelist sw on p.table_name = 'staff_whitelist' and sw.id::text = p.record_id
+  left join public.event_staff_assignments esa on p.table_name = 'event_staff_assignments' and esa.id::text = p.record_id
+  left join public.ticket_types tt on p.table_name = 'ticket_types' and tt.id::text = p.record_id
+  left join public.ticket_phases tp on p.table_name = 'ticket_phases' and tp.id::text = p.record_id
+  left join public.event_coupons cp on p.table_name = 'event_coupons' and cp.id::text = p.record_id
+  left join public.tracks tr on p.table_name = 'tracks' and tr.id::text = p.record_id
+  left join public.sessions se on p.table_name = 'sessions' and se.id::text = p.record_id
+  left join public.store_products spr on p.table_name = 'store_products' and spr.id::text = p.record_id
+  order by p.occurred_at desc, p.id desc;
+end;
+$$;

@@ -39,6 +39,7 @@
         hint="JPG, PNG o WebP, máximo 500 KB. Se guarda al subirlo."
         [eventId]="eventId()"
         [value]="qrUrl()"
+        [disabled]="qrSaving()"
         (valueChange)="onQrChange($event)"
         (uploaded)="onQrUploaded()"
         (discarded)="onQrDiscarded($event)"

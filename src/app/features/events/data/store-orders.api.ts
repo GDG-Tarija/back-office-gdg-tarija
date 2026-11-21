@@ -9,18 +9,29 @@ import { toDomainError } from './postgres-error.mapper';
 import { STORE_ORDER_SELECT, StoreOrderHistoryRow, StoreOrderRow } from './store.dto';
 import { toDomainStoreOrder, toDomainStoreOrderHistory } from './store.mapper';
 
+const PAGE_SIZE = 1000;
+
 @Injectable({ providedIn: 'root' })
 export class StoreOrdersApi implements StoreOrdersRepository {
   private readonly supabase = inject(SUPABASE);
 
   async list(eventId: string): Promise<StoreOrder[]> {
-    const { data, error } = await this.supabase
-      .from('store_orders')
-      .select(STORE_ORDER_SELECT)
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: false });
-    if (error) throw toDomainError(error, 'store_order');
-    return ((data ?? []) as unknown as StoreOrderRow[]).map(toDomainStoreOrder);
+    // PostgREST corta en 1000 filas (max_rows): se pagina con range() y orden estable.
+    const rows: StoreOrderRow[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await this.supabase
+        .from('store_orders')
+        .select(STORE_ORDER_SELECT)
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw toDomainError(error, 'store_order');
+      const page = (data ?? []) as unknown as StoreOrderRow[];
+      rows.push(...page);
+      if (page.length < PAGE_SIZE) break;
+    }
+    return rows.map(toDomainStoreOrder);
   }
 
   async getHistory(orderId: string): Promise<StoreOrderHistoryEntry[]> {

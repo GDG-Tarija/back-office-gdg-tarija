@@ -20,7 +20,7 @@ function fakeSupabase(results: Result[], rpcResults: Result[] = []) {
   const next = () => Promise.resolve(queue.shift() ?? { data: null, error: null });
   const calls: { method: string; args: unknown[] }[] = [];
   const chain: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'in', 'order', 'update', 'delete', 'insert']) {
+  for (const m of ['select', 'eq', 'in', 'order', 'range', 'update', 'delete', 'insert']) {
     chain[m] = vi.fn((...args: unknown[]) => {
       calls.push({ method: m, args });
       return chain;
@@ -98,7 +98,7 @@ describe('StoreProductsApi', () => {
   it('traduce errores propios de la Tienda con el mensaje de la BD', async () => {
     const { api } = setup(
       [],
-      [{ data: null, error: { code: 'P0036', message: 'La galería tiene imágenes repetidas.' } }],
+      [{ data: null, error: { code: 'P0056', message: 'La galería tiene imágenes repetidas.' } }],
     );
     await expect(
       api.save('e1', null, {
@@ -166,6 +166,25 @@ describe('StoreProductsApi', () => {
     });
     expect(calls).toContainEqual({ method: 'eq', args: ['store_orders.event_id', 'e1'] });
   });
+
+  it('pagina los ítems con range() para no cortar en 1000 filas', async () => {
+    const item = (i: number) => ({
+      product_id: 'p1',
+      order_id: `o${i}`,
+      quantity: 1,
+      store_orders: { status: 'PAID' },
+    });
+    const { api, calls } = setup([
+      { data: Array.from({ length: 1000 }, (_, i) => item(i)), error: null },
+      { data: [item(1000)], error: null },
+    ]);
+    expect((await api.getOrderCounts('e1'))['p1'].paid).toBe(1001);
+    expect(calls.filter((c) => c.method === 'range').map((c) => c.args)).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ]);
+    expect(calls).toContainEqual({ method: 'order', args: ['id', { ascending: true }] });
+  });
 });
 
 describe('StoreOrdersApi', () => {
@@ -174,6 +193,21 @@ describe('StoreOrdersApi', () => {
     TestBed.configureTestingModule({ providers: [{ provide: SUPABASE, useValue: fake.client }] });
     return { api: TestBed.inject(StoreOrdersApi), ...fake };
   }
+
+  it('lista todas las compras paginando con range() y orden estable', async () => {
+    const { api, calls } = setup([
+      { data: Array.from({ length: 1000 }, () => orderRow('PENDING')), error: null },
+      { data: [orderRow('PAID')], error: null },
+    ]);
+    const orders = await api.list('e1');
+    expect(orders).toHaveLength(1001);
+    expect(orders.at(-1)?.status).toBe('PAID');
+    expect(calls.filter((c) => c.method === 'range').map((c) => c.args)).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ]);
+    expect(calls).toContainEqual({ method: 'order', args: ['id', { ascending: true }] });
+  });
 
   it('cambia el estado solo por el RPC y pasa el motivo', async () => {
     const { api, rpc } = setup(
@@ -209,7 +243,7 @@ describe('StoreOrdersApi', () => {
         {
           data: null,
           error: {
-            code: 'P0031',
+            code: 'P0051',
             message: 'No se puede corregir: la compra ya tiene productos entregados.',
           },
         },

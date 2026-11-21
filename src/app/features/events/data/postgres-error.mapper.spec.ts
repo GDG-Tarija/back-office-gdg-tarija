@@ -136,15 +136,15 @@ describe('errorField', () => {
 });
 
 describe('toDomainError (Tienda)', () => {
-  it('pasa el mensaje en español de los códigos propios P0020-P0036', () => {
+  it('pasa el mensaje en español de los códigos propios P0040-P0056', () => {
     const e = toDomainError(
-      { code: 'P0031', message: 'No se puede corregir: la compra ya tiene productos entregados.' },
+      { code: 'P0051', message: 'No se puede corregir: la compra ya tiene productos entregados.' },
       'store_order',
     );
     expect(e.code).toBe('INVALID');
     expect(e.message).toContain('entregados');
     expect(
-      toDomainError({ code: 'P0027', message: 'La compra no existe.' }, 'store_order').code,
+      toDomainError({ code: 'P0047', message: 'La compra no existe.' }, 'store_order').code,
     ).toBe('NOT_FOUND');
   });
 

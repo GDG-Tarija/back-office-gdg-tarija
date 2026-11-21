@@ -78,6 +78,7 @@ export class StoreOrderDialog {
   readonly proofState = signal<ProofState>('loading');
   readonly proofError = signal<string | null>(null);
   readonly imageFailed = signal(false);
+  readonly openError = signal<string | null>(null);
 
   readonly history = signal<StoreOrderHistoryEntry[]>([]);
   readonly historyLoading = signal(false);
@@ -168,6 +169,7 @@ export class StoreOrderDialog {
     this.proofState.set('loading');
     this.proofError.set(null);
     this.imageFailed.set(false);
+    this.openError.set(null);
     this.proofUrl.set(null);
     try {
       const url = await this.repo.getProofUrl(order.paymentProofPath);
@@ -178,6 +180,26 @@ export class StoreOrderDialog {
       if (token !== this.loadToken) return;
       this.proofState.set('error');
       this.proofError.set(toUserMessage(err, 'No se pudo abrir el comprobante.', 'store_order'));
+    }
+  }
+
+  /** La URL firmada vence a los 10 min: se pide una nueva al abrir (un PDF solo se ve así). */
+  async openProofInTab(): Promise<void> {
+    const order = this.order();
+    if (!order) return;
+    this.openError.set(null);
+    // La pestaña se abre dentro del clic para que el navegador no la bloquee.
+    const tab = window.open('', '_blank');
+    if (!tab) {
+      this.openError.set('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes.');
+      return;
+    }
+    tab.opener = null;
+    try {
+      tab.location.href = await this.repo.getProofUrl(order.paymentProofPath);
+    } catch (err) {
+      tab.close();
+      this.openError.set(toUserMessage(err, 'No se pudo abrir el comprobante.', 'store_order'));
     }
   }
 

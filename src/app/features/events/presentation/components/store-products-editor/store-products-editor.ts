@@ -192,12 +192,13 @@ export class StoreProductsEditor implements OnInit, OnDestroy {
   async onQrChange(url: string | null): Promise<void> {
     const previous = this.savedQr;
     if (url === previous) return;
+    // Refleja lo que ya muestra el uploader, para que volver a `previous` sí lo actualice.
+    this.qrUrl.set(url);
     this.qrSaving.set(true);
     this.qrError.set(null);
     try {
       await this.repo.setPaymentQr(this.eventId(), url);
       this.savedQr = url;
-      this.qrUrl.set(url);
       // `discarded` llega después de `valueChange`: se borra lo que ya nadie referencia.
       await Promise.resolve();
       const orphans = this.qrPendingDelete.filter((u) => u !== url);
@@ -318,7 +319,10 @@ export class StoreProductsEditor implements OnInit, OnDestroy {
       const field = errorField(err);
       if (field) this.serverIssue.set({ field, message });
       else this.dialogError.set(message);
-      // save_store_product es atómico: si falló, la BD quedó como estaba y no hay que reconciliar.
+      // El RPC puede haber guardado aunque falle la relectura: se decide qué archivos limpiar
+      // según lo que la BD referencia (nunca borrar un archivo en uso).
+      const refreshed = await this.refreshQuietly();
+      await this.cleanup.reconcile(refreshed ? this.referencedUrls() : null);
     } finally {
       this.saving.set(false);
     }
@@ -369,6 +373,23 @@ export class StoreProductsEditor implements OnInit, OnDestroy {
     } catch {
       // Se actualizan en la próxima carga.
     }
+  }
+
+  /** Recarga los productos sin spinner; un fallo aquí no debe tapar el error del guardado. */
+  private async refreshQuietly(): Promise<boolean> {
+    try {
+      this.products.set(await this.repo.list(this.eventId()));
+      this.emitReadiness();
+      return true;
+    } catch {
+      // La lista queda como estaba hasta la próxima carga.
+      return false;
+    }
+  }
+
+  /** Todas las imágenes que algún producto guardado referencia ahora mismo. */
+  private referencedUrls(): Set<string> {
+    return new Set(this.products().flatMap((p) => p.images.map((img) => img.url)));
   }
 
   private emitReadiness(): void {

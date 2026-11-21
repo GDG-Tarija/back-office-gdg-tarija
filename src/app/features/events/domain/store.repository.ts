@@ -11,7 +11,10 @@ export abstract class StoreProductsRepository {
   abstract list(eventId: string): Promise<StoreProduct[]>;
   /** Compras por producto y estado (incluye anuladas: bloquean el borrado). */
   abstract getOrderCounts(eventId: string): Promise<Record<string, StoreProductOrderCounts>>;
-  /** Crea (id null) o actualiza un producto y reemplaza su galería de forma atómica. */
+  /**
+   * Crea (id null) o actualiza un producto y reemplaza su galería de forma atómica. Un error no
+   * garantiza que no se guardó: la relectura posterior puede fallar con el producto ya guardado.
+   */
   abstract save(
     eventId: string,
     id: string | null,

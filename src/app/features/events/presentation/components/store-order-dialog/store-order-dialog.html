@@ -30,18 +30,20 @@
           <span class="text-sm font-semibold text-text-primary dark:text-neutral-100"
             >Comprobante</span
           >
-          @if (proofUrl(); as url) {
+          @if (proofUrl()) {
             <div class="ml-auto flex items-center gap-2">
-              <a
-                [href]="url"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/15 px-3 text-xs font-semibold hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+                (click)="openProofInTab()"
               >
                 <span class="material-symbols-rounded text-sm" aria-hidden="true">open_in_new</span>
                 Abrir en pestaña
-              </a>
+              </button>
             </div>
+          }
+          @if (openError(); as err) {
+            <p class="w-full text-xs font-medium text-danger-text" role="alert">{{ err }}</p>
           }
         </div>
 

@@ -1,6 +1,7 @@
 import { registerLocaleData } from '@angular/common';
 import localeEsBo from '@angular/common/locales/es-BO';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { FeedbackService } from '../../../../../core/services/feedback.service';
 import { feedbackStub } from '../../../../../testing/feedback-stub';
@@ -8,6 +9,7 @@ import { AssetsRepository } from '../../../domain/assets.repository';
 import { DomainError } from '../../../domain/domain-error';
 import { StoreProduct } from '../../../domain/store.model';
 import { StoreImagesRepository, StoreProductsRepository } from '../../../domain/store.repository';
+import { ImageUploader } from '../image-uploader/image-uploader';
 import { StoreProductsEditor } from './store-products-editor';
 
 registerLocaleData(localeEsBo, 'es-BO');
@@ -207,6 +209,33 @@ describe('StoreProductsEditor', () => {
     expect(images.remove).not.toHaveBeenCalledWith('https://x.test/kit.png');
   });
 
+  it('si el guardado falla pero el producto quedó en la BD, cancelar no borra sus imágenes', async () => {
+    const { cmp } = await create();
+    cmp.openCreate();
+    cmp.onImageUploaded('https://x.test/nueva.png');
+    cmp.model.set({
+      name: 'Polera',
+      description: '',
+      price: '60',
+      isActive: true,
+      images: [{ url: 'https://x.test/nueva.png', altText: null }],
+    });
+    // El RPC guardó, pero la relectura se perdió.
+    repo.save.mockRejectedValue(new DomainError('Sin conexión con el servidor.', 'NETWORK'));
+    const persisted: StoreProduct = {
+      ...kit,
+      id: 'p3',
+      name: 'Polera',
+      images: [{ id: 'i3', url: 'https://x.test/nueva.png', position: 1, altText: null }],
+    };
+    repo.list.mockResolvedValue([kit, taza, persisted]);
+    await cmp.save();
+    expect(cmp.dialogError()).toBe('Sin conexión con el servidor.');
+    expect(cmp.products().map((p) => p.id)).toContain('p3');
+    await cmp.closeDialog();
+    expect(images.remove).not.toHaveBeenCalled();
+  });
+
   it('no guarda mientras la galería sube imágenes', async () => {
     const { cmp } = await create();
     cmp.openCreate();
@@ -264,5 +293,23 @@ describe('StoreProductsEditor', () => {
     expect(assets.remove).toHaveBeenCalledWith('https://x.test/qr-nuevo.png');
     expect(assets.remove).not.toHaveBeenCalledWith('https://x.test/qr-viejo.png');
     expect(cmp.qrError()).toBe('No tienes permisos.');
+  });
+
+  it('el uploader se bloquea mientras guarda el QR y, si falla, vuelve a mostrar el anterior', async () => {
+    repo.getPaymentQr.mockResolvedValue('https://x.test/qr-viejo.png');
+    const { fixture, cmp } = await create();
+    let reject!: (err: unknown) => void;
+    repo.setPaymentQr.mockReturnValue(new Promise((_, r) => (reject = r)));
+    const uploader = fixture.debugElement.query(By.directive(ImageUploader))
+      .componentInstance as ImageUploader;
+    // Igual que tras subir un archivo: el uploader emite el valor nuevo.
+    uploader.value.set('https://x.test/qr-nuevo.png');
+    fixture.detectChanges();
+    expect(uploader.disabled()).toBe(true);
+    reject(new DomainError('No tienes permisos.', 'FORBIDDEN'));
+    await vi.waitFor(() => expect(cmp.qrSaving()).toBe(false));
+    fixture.detectChanges();
+    expect(uploader.value()).toBe('https://x.test/qr-viejo.png');
+    expect(uploader.disabled()).toBe(false);
   });
 });

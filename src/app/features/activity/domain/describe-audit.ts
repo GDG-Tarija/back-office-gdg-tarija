@@ -71,6 +71,8 @@ const FIELD_LABELS: Record<string, string> = {
   ticket_phase_id: 'Fase',
   email: 'Correo',
   staff_email: 'Correo',
+  is_active: 'Activo',
+  store_payment_qr_url: 'QR de la tienda',
 };
 
 export function fieldLabel(field: string): string {
@@ -108,6 +110,7 @@ const CONFIG_NOUNS: Record<string, { noun: string; icon: string }> = {
   event_coupons: { noun: 'el cupón', icon: 'local_offer' },
   tracks: { noun: 'el track', icon: 'route' },
   sessions: { noun: 'la sesión', icon: 'event_note' },
+  store_products: { noun: 'el producto', icon: 'storefront' },
 };
 
 export function describeAudit(e: AuditEntry): AuditDescription {

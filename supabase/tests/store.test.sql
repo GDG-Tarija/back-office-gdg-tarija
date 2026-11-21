@@ -13,7 +13,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(106);
+select plan(117);
 
 -- ---------------------------------------------------------------------------
 -- Fixture (como postgres)
@@ -175,17 +175,17 @@ select results_eq(
 select throws_ok(
   $$ select public.save_store_product('57000000-0000-4000-8000-0000000000e1', null, 'Llavero', null, 5, true,
        '[{"url": "https://ejemplo.test/x.png"}, {"url": "https://ejemplo.test/x.png"}]') $$,
-  'P0036', null, 'galería con imágenes repetidas: rechazada');
+  'P0056', null, 'galería con imágenes repetidas: rechazada');
 select throws_ok(
   $$ select public.save_store_product('57000000-0000-4000-8000-0000000000e1', null, 'Llavero', null, 5, true, '{"url": "x"}') $$,
-  'P0036', null, 'galería que no es lista: rechazada');
+  'P0056', null, 'galería que no es lista: rechazada');
 select throws_ok(
   $$ select public.save_store_product('57000000-0000-4000-8000-0000000000e1', null, 'Llavero', null, 5, true,
        '[{"url": "javascript:alert(1)"}]') $$,
-  'P0036', null, 'imagen con URL que no es http(s): rechazada');
+  'P0056', null, 'imagen con URL que no es http(s): rechazada');
 select throws_ok(
   $$ select public.save_store_product(gen_random_uuid(), null, 'Llavero', null, 5, true, '[]') $$,
-  'P0020', null, 'evento inexistente: rechazado con mensaje claro');
+  'P0040', null, 'evento inexistente: rechazado con mensaje claro');
 select throws_ok(
   $$ select public.save_store_product('57000000-0000-4000-8000-0000000000e1', null, 'Llavero', null, 0, true, '[]') $$,
   '23514', null, 'precio 0: rechazado');
@@ -198,13 +198,13 @@ select throws_ok(
 select throws_ok(
   $$ select public.save_store_product('57000000-0000-4000-8000-0000000000e2',
        '57000000-0000-4000-8000-000000000201', 'Kit', null, 80, true, '[]') $$,
-  'P0024', null, 'no se edita un producto desde otro evento');
+  'P0044', null, 'no se edita un producto desde otro evento');
 reset role;
 
 select throws_ok(
   $$ update public.store_products set event_id = '57000000-0000-4000-8000-0000000000e2'
       where id = '57000000-0000-4000-8000-000000000201' $$,
-  'P0029', null, 'un producto no cambia de evento');
+  'P0049', null, 'un producto no cambia de evento');
 
 -- ---------------------------------------------------------------------------
 -- 4. create_store_order (33-55)
@@ -240,66 +240,66 @@ select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000201", "quantity": 6}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/proof-2.png') $$,
-  'P0023', null, 'cantidad 6: rechazada');
+  'P0043', null, 'cantidad 6: rechazada');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000201", "quantity": 0}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/proof-2.png') $$,
-  'P0023', null, 'cantidad 0: rechazada');
+  'P0043', null, 'cantidad 0: rechazada');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000201", "quantity": "2"}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/proof-2.png') $$,
-  'P0023', null, 'cantidad como texto: rechazada');
+  'P0043', null, 'cantidad como texto: rechazada');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000201", "quantity": 1},
          {"product_id": "57000000-0000-4000-8000-000000000201", "quantity": 1}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/proof-2.png') $$,
-  'P0023', null, 'producto repetido: rechazado');
+  'P0043', null, 'producto repetido: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1', '[]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/proof-2.png') $$,
-  'P0023', null, 'carrito vacío: rechazado');
+  'P0043', null, 'carrito vacío: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000203", "quantity": 1}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/proof-2.png') $$,
-  'P0024', null, 'producto inactivo: rechazado');
+  'P0044', null, 'producto inactivo: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000204", "quantity": 1}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/proof-2.png') $$,
-  'P0024', null, 'producto de otro evento: rechazado');
+  'P0044', null, 'producto de otro evento: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000202", "quantity": 1}]',
        '57000000-0000-4000-8000-0000000000b2/57000000-0000-4000-8000-0000000000e1/proof-1.png') $$,
-  'P0025', null, 'comprobante de otro usuario: rechazado');
+  'P0045', null, 'comprobante de otro usuario: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000202", "quantity": 1}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/no-existe.png') $$,
-  'P0025', null, 'comprobante inexistente en storage: rechazado');
+  'P0045', null, 'comprobante inexistente en storage: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000202", "quantity": 1}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/proof-1.png') $$,
-  'P0025', null, 'comprobante ya usado en otra compra: rechazado');
+  'P0045', null, 'comprobante ya usado en otra compra: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000202", "quantity": 1}]', '') $$,
-  'P0025', null, 'sin comprobante: rechazado');
+  'P0045', null, 'sin comprobante: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e2',
        '[{"product_id": "57000000-0000-4000-8000-000000000204", "quantity": 1}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e2/proof-1.png') $$,
-  'P0021', null, 'evento sin QR de tienda: rechazado');
+  'P0041', null, 'evento sin QR de tienda: rechazado');
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e3',
        '[{"product_id": "57000000-0000-4000-8000-000000000205", "quantity": 1}]',
        '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e3/proof-1.png') $$,
-  'P0020', null, 'evento sin publicar: rechazado');
+  'P0040', null, 'evento sin publicar: rechazado');
 reset role;
 
 set local role authenticated;
@@ -307,7 +307,7 @@ set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000b3",
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000202", "quantity": 1}]', 'x') $$,
-  'P0022', null, 'inscripción CANCELLED: no compra');
+  'P0042', null, 'inscripción CANCELLED: no compra');
 reset role;
 
 set local role authenticated;
@@ -315,7 +315,7 @@ set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000b4",
 select throws_ok(
   $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
        '[{"product_id": "57000000-0000-4000-8000-000000000202", "quantity": 1}]', 'x') $$,
-  'P0022', null, 'sin inscripción: no compra');
+  'P0042', null, 'sin inscripción: no compra');
 reset role;
 
 set local role authenticated;
@@ -403,14 +403,14 @@ set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000a1",
 select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'REFUNDED') $$,
-  'P0026', null, 'estado desconocido: rechazado');
+  'P0046', null, 'estado desconocido: rechazado');
 select throws_ok(
   $$ select public.set_store_order_status(gen_random_uuid(), 'PAID') $$,
-  'P0027', null, 'compra inexistente: rechazada');
+  'P0047', null, 'compra inexistente: rechazada');
 select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PENDING') $$,
-  'P0028', null, 'mismo estado: rechazado');
+  'P0048', null, 'mismo estado: rechazado');
 select lives_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PAID') $$,
@@ -423,19 +423,19 @@ select results_eq(
 select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'CANCELLED') $$,
-  'P0028', null, 'PAID -> CANCELLED directo: rechazado');
+  'P0048', null, 'PAID -> CANCELLED directo: rechazado');
 select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PENDING') $$,
-  'P0030', null, 'corrección sin motivo: rechazada');
+  'P0050', null, 'corrección sin motivo: rechazada');
 select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PENDING', ' error ') $$,
-  'P0030', null, 'corrección con motivo corto: rechazada');
+  'P0050', null, 'corrección con motivo corto: rechazada');
 select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PENDING', repeat('x', 501)) $$,
-  'P0030', null, 'corrección con motivo de más de 500 caracteres: rechazada');
+  'P0050', null, 'corrección con motivo de más de 500 caracteres: rechazada');
 select lives_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PENDING',
@@ -460,7 +460,7 @@ select is(
 select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PENDING') $$,
-  'P0030', null, 'nueva corrección sin motivo: rechazada (no reutiliza el anterior)');
+  'P0050', null, 'nueva corrección sin motivo: rechazada (no reutiliza el anterior)');
 select lives_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PENDING',
@@ -479,7 +479,7 @@ set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000a1",
 select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b2'), 'PAID') $$,
-  'P0032', null, 'no se marca pagada si la inscripción del comprador está anulada');
+  'P0052', null, 'no se marca pagada si la inscripción del comprador está anulada');
 select lives_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b2'), 'CANCELLED',
@@ -490,10 +490,10 @@ reset role;
 -- Escrituras directas (como postgres): la base de datos sigue imponiendo las reglas.
 select throws_ok(
   $$ update public.store_orders set total = 1 where user_id = '57000000-0000-4000-8000-0000000000b1' $$,
-  'P0029', null, 'el total no se modifica');
+  'P0049', null, 'el total no se modifica');
 select throws_ok(
   $$ update public.store_orders set status = 'PENDING' where user_id = '57000000-0000-4000-8000-0000000000b1' $$,
-  'P0030', null, 'una corrección directa sin motivo de la operación se rechaza');
+  'P0050', null, 'una corrección directa sin motivo de la operación se rechaza');
 
 -- ---------------------------------------------------------------------------
 -- 7. Entregas (issue #9), ítems e historial inmutables (86-93)
@@ -502,7 +502,7 @@ select throws_ok(
   $$ update public.store_order_items i set delivered_quantity = 1
        from public.store_orders o
       where o.id = i.order_id and o.user_id = '57000000-0000-4000-8000-0000000000b2' $$,
-  'P0035', null, 'no se entregan productos de una compra no pagada');
+  'P0055', null, 'no se entregan productos de una compra no pagada');
 select lives_ok(
   $$ update public.store_order_items i set delivered_quantity = 1
        from public.store_orders o
@@ -522,19 +522,19 @@ select throws_ok(
   $$ select public.set_store_order_status(
        (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1'), 'PENDING',
        'Intento de corregir después de entregar') $$,
-  'P0031', null, 'no se corrige una compra con productos entregados');
+  'P0051', null, 'no se corrige una compra con productos entregados');
 reset role;
 
 select throws_ok(
   $$ update public.store_order_items set quantity = 5 where product_name = 'Polera'
        and order_id = (select id from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b1') $$,
-  'P0029', null, 'los ítems de una compra no se modifican');
+  'P0049', null, 'los ítems de una compra no se modifican');
 select throws_ok(
   $$ update public.store_order_status_history set reason = 'manipulado' $$,
-  'P0034', null, 'el historial no se edita');
+  'P0054', null, 'el historial no se edita');
 select throws_ok(
   $$ delete from public.store_order_status_history $$,
-  'P0034', null, 'el historial no se borra directo');
+  'P0054', null, 'el historial no se borra directo');
 select lives_ok(
   $$ delete from public.store_orders where user_id = '57000000-0000-4000-8000-0000000000b2' $$,
   'borrar una compra (solo postgres) arrastra su historial en cascada');
@@ -627,6 +627,111 @@ select isnt_empty(
   $$ select 1 from storage.objects where bucket_id = 'store-payment-proofs'
        and name like '57000000-0000-4000-8000-0000000000b1/%' $$,
   'SUPERADMIN lee los comprobantes');
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- 10. Anti-spam, limpieza de comprobantes y auditoría (107-117)
+-- ---------------------------------------------------------------------------
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000b1", "role": "authenticated"}';
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name) values
+       ('store-payment-proofs', '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e3/x.png') $$,
+  '42501', null, 'no se suben comprobantes a un evento sin publicar');
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name) values
+       ('store-payment-proofs', '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e2/x.png') $$,
+  '42501', null, 'no se suben comprobantes a un evento sin QR de tienda');
+reset role;
+
+-- La Storage API borra con storage.allow_delete_query = true (si no, storage.protect_delete lo
+-- impide) y como el rol del usuario: así se prueban las policies de borrado.
+set local storage.allow_delete_query to 'true';
+
+-- Llena la carpeta de U1 en E1 hasta 9 archivos (como postgres).
+insert into storage.objects (bucket_id, name, owner)
+select 'store-payment-proofs',
+       '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/relleno-' || g || '.png',
+       '57000000-0000-4000-8000-0000000000b1'
+  from generate_series(1, 9 - (
+    select count(*) from storage.objects
+     where bucket_id = 'store-payment-proofs'
+       and name like '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/%')) g;
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000b1", "role": "authenticated"}';
+select lives_ok(
+  $$ insert into storage.objects (bucket_id, name, owner) values
+       ('store-payment-proofs', '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/decimo.png',
+        '57000000-0000-4000-8000-0000000000b1') $$,
+  'el décimo comprobante del evento se acepta');
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name, owner) values
+       ('store-payment-proofs', '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/once.png',
+        '57000000-0000-4000-8000-0000000000b1') $$,
+  '42501', null, 'el comprobante 11 del mismo evento se rechaza');
+select is_empty(
+  $$ delete from storage.objects where bucket_id = 'store-payment-proofs'
+       and name = '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/relleno-1.png'
+     returning 1 $$,
+  'el comprador no borra sus comprobantes');
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000a1", "role": "authenticated"}';
+select isnt_empty(
+  $$ delete from storage.objects where bucket_id = 'store-payment-proofs'
+       and name = '57000000-0000-4000-8000-0000000000b1/57000000-0000-4000-8000-0000000000e1/relleno-1.png'
+     returning 1 $$,
+  'SUPERADMIN borra un comprobante que ninguna compra usa');
+select is_empty(
+  $$ delete from storage.objects where bucket_id = 'store-payment-proofs'
+       and name in (select payment_proof_path from public.store_orders)
+     returning 1 $$,
+  'SUPERADMIN no borra comprobantes de compras');
+reset role;
+
+-- Tope de compras PENDING por inscripción: U5, inscrito en E1, con 4 comprobantes.
+insert into auth.users (instance_id, id, aud, role, email) values
+  ('00000000-0000-0000-0000-000000000000', '57000000-0000-4000-8000-0000000000b5', 'authenticated', 'authenticated', 'u5@store-test.test');
+insert into public.registrations (id, event_id, user_id, ticket_type_id, status) values
+  ('57000000-0000-4000-8000-000000000109', '57000000-0000-4000-8000-0000000000e1', '57000000-0000-4000-8000-0000000000b5', '57000000-0000-4000-8000-0000000000f1', 'CONFIRMED');
+insert into storage.objects (bucket_id, name, owner)
+select 'store-payment-proofs',
+       '57000000-0000-4000-8000-0000000000b5/57000000-0000-4000-8000-0000000000e1/p' || g || '.png',
+       '57000000-0000-4000-8000-0000000000b5'
+  from generate_series(1, 4) g;
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000b5", "role": "authenticated"}';
+select lives_ok(
+  $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
+       '[{"product_id": "57000000-0000-4000-8000-000000000201", "quantity": 1}]',
+       '57000000-0000-4000-8000-0000000000b5/57000000-0000-4000-8000-0000000000e1/p' || g || '.png')
+       from generate_series(1, 3) g $$,
+  'tres compras en revisión se aceptan');
+select throws_ok(
+  $$ select public.create_store_order('57000000-0000-4000-8000-0000000000e1',
+       '[{"product_id": "57000000-0000-4000-8000-000000000201", "quantity": 1}]',
+       '57000000-0000-4000-8000-0000000000b5/57000000-0000-4000-8000-0000000000e1/p4.png') $$,
+  'P0057', null, 'la cuarta compra en revisión se rechaza');
+reset role;
+
+-- Auditoría: los cambios de productos aparecen en Actividad (categoría CONFIG).
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "57000000-0000-4000-8000-0000000000a1", "role": "authenticated"}';
+update public.store_products set price = 65.00 where id = '57000000-0000-4000-8000-000000000202';
+select is(
+  (select count(*)::int from public.audit_log
+    where table_name = 'store_products' and record_id = '57000000-0000-4000-8000-000000000202'
+      and action = 'UPDATE' and event_id = '57000000-0000-4000-8000-0000000000e1'
+      and changes -> 'price' = '[60.00, 65.00]'::jsonb),
+  1, 'el cambio de precio de un producto queda auditado con su evento');
+select is(
+  (select subject_name from public.list_audit_log(
+      p_event_id => '57000000-0000-4000-8000-0000000000e1', p_category => 'CONFIG')
+    where table_name = 'store_products' and action = 'UPDATE' limit 1),
+  'Polera', 'Actividad lista el producto en Configuración con su nombre');
 reset role;
 
 select * from finish();

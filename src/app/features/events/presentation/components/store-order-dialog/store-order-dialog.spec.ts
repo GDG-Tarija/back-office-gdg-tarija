@@ -98,6 +98,22 @@ describe('StoreOrderDialog', () => {
     expect(cmp.isPdf()).toBe(true);
   });
 
+  it('abrir en pestaña pide una URL firmada nueva y avisa si falla', async () => {
+    const { cmp } = await create(order({ paymentProofPath: 'u1/e1/pago.pdf' }));
+    const tab = { opener: {}, location: { href: '' }, close: vi.fn() };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    repo.getProofUrl.mockResolvedValueOnce('https://x.test/firmada.pdf?token=2');
+    await cmp.openProofInTab();
+    expect(repo.getProofUrl).toHaveBeenCalledTimes(2);
+    expect(tab.opener).toBeNull();
+    expect(tab.location.href).toBe('https://x.test/firmada.pdf?token=2');
+    repo.getProofUrl.mockRejectedValueOnce(new Error('x'));
+    await cmp.openProofInTab();
+    expect(tab.close).toHaveBeenCalled();
+    expect(cmp.openError()).toContain('comprobante');
+    open.mockRestore();
+  });
+
   it('marcar pagada pide confirmación y emite el estado sin motivo', async () => {
     const { cmp, emitted } = await create(order());
     cmp.startAction('paid');
