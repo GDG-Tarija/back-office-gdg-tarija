@@ -87,7 +87,7 @@ Trigger `trg_prevent_event_delete`: no se puede borrar un evento con inscripcion
 `description` text, `track_id` uuid (FK tracks, ON DELETE SET NULL), `date` date, `start_time` time, `end_time` time, `speaker` text, `speaker_avatar_url` text, `city` text, `level` enum `session_level` (`Basico`|`Intermedio`|`Avanzado`), `topic` text (CSV, ej. `Kotlin,Android`).
 
 - `time_slot` (smallint) fue agregada en `005` y revertida en `007`: **por verificar** que no exista en remoto.
-- Existe un trigger de conflicto de horario (`010_session_datetime_conflict_trigger.sql`, afecta inscripción a sesiones); revisar su definición antes de tocar sesiones.
+- Trigger `trg_session_datetime_conflict` (BEFORE INSERT en `session_registrations`, función `check_session_datetime_conflict`): rechaza inscribirse a dos sesiones del mismo día que empiezan a la vez o cuyos rangos `[start_time, end_time)` se cruzan; sin `end_time` la sesión cuenta como un instante. Definición vigente en `20261121160500_session_conflict_overlap.sql`. El sitio de registro aplica el mismo criterio (`session-schedule.ts` en eventos).
 - Trigger `trg_prevent_session_delete`: no se borra una sesión con inscritos.
 
 ### 2.6. `event_coupons`
