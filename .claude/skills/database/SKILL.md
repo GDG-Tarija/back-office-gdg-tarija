@@ -87,7 +87,7 @@ Trigger `trg_prevent_event_delete`: no se puede borrar un evento con inscripcion
 `description` text, `track_id` uuid (FK tracks, ON DELETE SET NULL), `date` date, `start_time` time, `end_time` time, `speaker` text, `speaker_avatar_url` text, `city` text, `level` enum `session_level` (`Basico`|`Intermedio`|`Avanzado`), `topic` text (CSV, ej. `Kotlin,Android`).
 
 - `time_slot` (smallint) fue agregada en `005` y revertida en `007`: **por verificar** que no exista en remoto.
-- Existe un trigger de conflicto de horario (`010_session_datetime_conflict_trigger.sql`, afecta inscripción a sesiones); revisar su definición antes de tocar sesiones.
+- Trigger `trg_session_datetime_conflict` (BEFORE INSERT en `session_registrations`, función `check_session_datetime_conflict`): rechaza inscribirse a dos sesiones del mismo día que empiezan a la vez o cuyos rangos `[start_time, end_time)` se cruzan; sin `end_time` la sesión cuenta como un instante. Definición vigente en `20261121160500_session_conflict_overlap.sql`. El sitio de registro aplica el mismo criterio (`session-schedule.ts` en eventos).
 - Trigger `trg_prevent_session_delete`: no se borra una sesión con inscritos.
 
 ### 2.6. `event_coupons`
@@ -100,6 +100,15 @@ Trigger `trg_process_registration_coupon` (BEFORE INSERT en registrations; únic
 `id`, `event_id` (FK events, CASCADE), `staff_email` varchar (FK `staff_whitelist.email`, ON UPDATE/DELETE CASCADE desde `20261115235749`), `assigned_at` timestamptz default now(). UNIQUE (`event_id`, `staff_email`). No tiene `created_at`/`updated_at` (excepción a la regla general). Solo se puede asignar un correo con acceso al back-office; quitarle el acceso borra sus asignaciones. El correo se guarda en minúsculas (trigger `normalize_staff_email`).
 
 - Policy `staff_read_own_assignments` (SELECT, corregida en `20261114171703`): `is_superadmin()` o `lower(staff_email) = lower(auth.jwt() ->> 'email')`. La versión original leía `auth.users` como `authenticated` (sin permiso) y fallaba con 42501 para todo STAFF; ahora cada STAFF lee solo sus asignaciones sin tocar `auth.users`. Escritura: solo SUPERADMIN.
+
+### 2.7.1. `event_whatsapp_groups`
+
+`id`, `event_id` (FK events, CASCADE, UNIQUE: un link por evento), `url` text NOT NULL (CHECK: link de invitación `https://chat.whatsapp.com/<código>`), `created_at`, `updated_at` (trigger `update_updated_at_column`). Desde `20261121170000`.
+
+- Va aparte de `events` porque `events` es de lectura pública: ahí el link quedaría expuesto vía API.
+- Policy `registered_read_event_whatsapp_groups` (SELECT): `is_superadmin()`, `has_event_access(event_id)` o una inscripción propia del evento con `status <> 'CANCELLED'` (pendientes incluidas). Escritura: solo SUPERADMIN (`superadmin_write_event_whatsapp_groups`).
+- Se edita en "Datos" del evento (campo "Grupo de WhatsApp"); el sitio de registro lo muestra a inscritos no anulados.
+- Sin trigger de auditoría.
 
 ### 2.8. `registrations`
 
