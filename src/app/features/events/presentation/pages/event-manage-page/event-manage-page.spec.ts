@@ -40,6 +40,7 @@ const event = {
 describe('EventManagePage', () => {
   const events = {
     getEventById: vi.fn(),
+    getWhatsappGroupUrl: vi.fn().mockResolvedValue(null),
     countRegistrations: vi.fn(),
     countActiveRegistrations: vi.fn(),
     getEvents: vi.fn(),

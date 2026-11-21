@@ -101,6 +101,15 @@ Trigger `trg_process_registration_coupon` (BEFORE INSERT en registrations; únic
 
 - Policy `staff_read_own_assignments` (SELECT, corregida en `20261114171703`): `is_superadmin()` o `lower(staff_email) = lower(auth.jwt() ->> 'email')`. La versión original leía `auth.users` como `authenticated` (sin permiso) y fallaba con 42501 para todo STAFF; ahora cada STAFF lee solo sus asignaciones sin tocar `auth.users`. Escritura: solo SUPERADMIN.
 
+### 2.7.1. `event_whatsapp_groups`
+
+`id`, `event_id` (FK events, CASCADE, UNIQUE: un link por evento), `url` text NOT NULL (CHECK: link de invitación `https://chat.whatsapp.com/<código>`), `created_at`, `updated_at` (trigger `update_updated_at_column`). Desde `20261121170000`.
+
+- Va aparte de `events` porque `events` es de lectura pública: ahí el link quedaría expuesto vía API.
+- Policy `registered_read_event_whatsapp_groups` (SELECT): `is_superadmin()`, `has_event_access(event_id)` o una inscripción propia del evento con `status <> 'CANCELLED'` (pendientes incluidas). Escritura: solo SUPERADMIN (`superadmin_write_event_whatsapp_groups`).
+- Se edita en "Datos" del evento (campo "Grupo de WhatsApp"); el sitio de registro lo muestra a inscritos no anulados.
+- Sin trigger de auditoría.
+
 ### 2.8. `registrations`
 
 `id`, `event_id` (FK, CASCADE), `user_id` (FK users, SET NULL, nullable), `ticket_type_id` (FK ticket_types, ON DELETE RESTRICT), `event_role` varchar(20) default `ATTENDEE` (CHECK `ATTENDEE|SPEAKER|SPONSOR|STAFF`), `status` varchar(20) (CHECK `PENDING|CONFIRMED|CANCELLED`), `custom_responses` jsonb, `payment_proof_url` text, `coupon_id` uuid (FK event_coupons, SET NULL), `ticket_phase_id` uuid NULL (FK ticket_phases, ON DELETE RESTRICT, indexada; la asigna el trigger, el cliente no la elige), `created_at`, `updated_at`. UNIQUE (`event_id`, `user_id`).

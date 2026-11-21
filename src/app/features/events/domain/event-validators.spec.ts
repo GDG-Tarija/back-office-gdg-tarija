@@ -121,6 +121,17 @@ describe('validateEvent', () => {
     ).toContain('addressLink');
     expect(validateEvent({ ...baseEvent, addressLink: null }).errors).toEqual([]);
   });
+
+  it('solo acepta links de invitación de grupos de WhatsApp (mismo CHECK que la tabla)', () => {
+    const ok = (url: string | null) =>
+      !fields(validateEvent({ ...baseEvent, whatsappGroupUrl: url })).includes('whatsappGroupUrl');
+    expect(ok(null)).toBe(true);
+    expect(ok('https://chat.whatsapp.com/AbCdEf123')).toBe(true);
+    expect(ok('https://chat.whatsapp.com/AbCdEf123?mode=ems_copy_t')).toBe(true);
+    expect(ok('https://wa.me/59170000000')).toBe(false);
+    expect(ok('http://chat.whatsapp.com/AbCdEf123')).toBe(false);
+    expect(ok('https://chat.whatsapp.com/')).toBe(false);
+  });
   it('avisa al cambiar fechas o capacidad con inscritos', () => {
     const r = validateEvent(
       { ...baseEvent, capacity: 300 },
