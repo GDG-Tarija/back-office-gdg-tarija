@@ -208,6 +208,83 @@ export interface Database {
           },
         ];
       };
+      point_activities: {
+        Row: {
+          created_at: string;
+          event_id: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_id: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_id?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'point_activities_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      raffle_winners: {
+        Row: {
+          created_at: string;
+          event_id: string;
+          id: string;
+          prize: string;
+          registration_id: string;
+          tickets: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_id: string;
+          id?: string;
+          prize: string;
+          registration_id: string;
+          tickets: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_id?: string;
+          id?: string;
+          prize?: string;
+          registration_id?: string;
+          tickets?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'raffle_winners_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'raffle_winners_registration_id_fkey';
+            columns: ['registration_id'];
+            isOneToOne: false;
+            referencedRelation: 'registrations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       registrations: {
         Row: {
           coupon_id: string | null;
@@ -651,6 +728,7 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       add_backoffice_user: { Args: { p_email: string; p_role: string }; Returns: undefined };
+      draw_raffle: { Args: { p_event_id: string; p_prize: string }; Returns: Json };
       get_coupon_uses: { Args: { p_coupon_id: string }; Returns: number };
       get_my_profile: {
         Args: never;
@@ -758,12 +836,28 @@ export interface Database {
           user_id: string | null;
         }[];
       };
+      my_tickets: { Args: { p_event_id: string }; Returns: Json };
+      networking_ticket_cap: { Args: never; Returns: number };
+      raffle_tickets: {
+        Args: { p_event_id: string; p_registration_id?: string };
+        Returns: {
+          kind: string;
+          label: string;
+          registration_id: string;
+          scanned_at: string;
+          scanned_by: string;
+        }[];
+      };
       registrar_asistencia_qr: {
         Args: { p_session_id: string; p_usuario_id: string };
         Returns: string;
       };
       remove_backoffice_user: { Args: { p_email: string }; Returns: undefined };
       require_superadmin: { Args: never; Returns: undefined };
+      scan_ticket: {
+        Args: { p_activity_id?: string; p_event_id: string; p_registration_id: string };
+        Returns: Json;
+      };
       set_backoffice_user_role: { Args: { p_email: string; p_role: string }; Returns: undefined };
       update_user_profile: {
         Args: { p_first_name: string; p_last_name: string; p_phone: string };
