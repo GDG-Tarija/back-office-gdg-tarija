@@ -94,9 +94,12 @@ function str(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
-function scanKind(e: AuditEntry): 'checkin' | 'refrigerio' | 'session' {
+function scanKind(e: AuditEntry): 'checkin' | 'refrigerio' | 'session' | 'ticket' | 'networking' {
   const type = str(e.changes['scan_type']);
   if (type === 'refrigerio') return 'refrigerio';
+  // pts:<actividad> y net:<inscripción>: tickets del sorteo.
+  if (type.startsWith('pts:')) return 'ticket';
+  if (type.startsWith('net:')) return 'networking';
   if (type.startsWith('session')) return 'session';
   return 'checkin';
 }
@@ -108,6 +111,7 @@ const CONFIG_NOUNS: Record<string, { noun: string; icon: string }> = {
   event_coupons: { noun: 'el cupón', icon: 'local_offer' },
   tracks: { noun: 'el track', icon: 'route' },
   sessions: { noun: 'la sesión', icon: 'event_note' },
+  point_activities: { noun: 'la actividad del sorteo', icon: 'stars' },
 };
 
 export function describeAudit(e: AuditEntry): AuditDescription {
@@ -155,6 +159,16 @@ export function describeAudit(e: AuditEntry): AuditDescription {
     case 'scan_logs': {
       const undo = e.action === 'DELETE';
       switch (scanKind(e)) {
+        case 'networking':
+          return {
+            icon: 'handshake',
+            tone: 'success',
+            text: `Networking: ticket del sorteo para ${who}`,
+          };
+        case 'ticket':
+          return undo
+            ? { icon: 'undo', tone: 'warning', text: `Quitó un ticket del sorteo a ${who}` }
+            : { icon: 'stars', tone: 'success', text: `Dio un ticket del sorteo a ${who}` };
         case 'refrigerio':
           return undo
             ? { icon: 'undo', tone: 'warning', text: `Deshizo la entrega de refrigerio a ${who}` }
@@ -209,6 +223,13 @@ export function describeAudit(e: AuditEntry): AuditDescription {
           }
         : { icon: 'manage_accounts', tone: 'neutral', text: `Editó el acceso de ${who}` };
     }
+
+    case 'raffle_winners':
+      return {
+        icon: 'redeem',
+        tone: 'success',
+        text: `Sorteó «${str(e.changes['prize'])}»: ganó ${who}`,
+      };
 
     case 'event_staff_assignments':
       return e.action === 'DELETE'
