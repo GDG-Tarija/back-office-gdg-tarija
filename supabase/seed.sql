@@ -131,6 +131,22 @@ insert into public.sessions (id, event_id, track_id, title, capacity, date, star
    'PWAs offline-first', 30, (now() + interval '20 days')::date, '11:00', '12:30', 'Speaker Invitado', 'Tarija, Bolivia', 'Web,PWA', 'Intermedio');
 
 -- ---------------------------------------------------------------------------
+-- Actividades del sorteo por tickets (DevFest demo): stands, Zona Zen, hackathon y una
+-- pregunta por sesión. Es el mismo script que se corre en prod antes del evento.
+-- ---------------------------------------------------------------------------
+insert into public.point_activities (event_id, name)
+select '00000000-0000-4000-8000-0000000000e2', unnest(array[
+  'Stand · Google', 'Stand · Sponsor demo', 'Comunidad · Women Techmakers',
+  'Zona Zen · participar', 'Zona Zen · ganador', 'Hackathon · participar'
+])
+on conflict (event_id, name) do nothing;
+insert into public.point_activities (event_id, name)
+select event_id, 'Pregunta · ' || title
+from public.sessions
+where event_id = '00000000-0000-4000-8000-0000000000e2'
+on conflict (event_id, name) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- Sponsors
 -- ---------------------------------------------------------------------------
 insert into public.sponsors (name, description, score, state) values

@@ -60,6 +60,12 @@ describe('describeAudit — check-in', () => {
     expect(
       text({ table: 'scan_logs', action: 'INSERT', changes: { scan_type: 'session_entry:abc' } }),
     ).toBe('Registró el ingreso de Ana Paz a una sesión');
+    expect(text({ table: 'scan_logs', action: 'INSERT', changes: { scan_type: 'pts:abc' } })).toBe(
+      'Dio un ticket del sorteo a Ana Paz',
+    );
+    expect(text({ table: 'scan_logs', action: 'INSERT', changes: { scan_type: 'net:abc' } })).toBe(
+      'Networking: ticket del sorteo para Ana Paz',
+    );
   });
 });
 
