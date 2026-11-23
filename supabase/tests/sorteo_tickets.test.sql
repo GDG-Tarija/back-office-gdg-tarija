@@ -8,7 +8,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(40);
+select plan(45);
 
 -- a1 superadmin · b1 Ana · b2 Beto · b3 Caro (sin check-in) · b4 Sponsor · b5 sin inscripción
 -- c1..c5 asistentes extra para el tope de networking.
@@ -289,6 +289,44 @@ select is(
 select is(
   (select tickets from public.raffle_winners where registration_id = '5a770000-0000-4000-8000-0000000001b1'),
   6, 'draw_raffle: guarda los mismos tickets que ve Ana');
+
+-- ---------------------------------------------------------------------------
+-- Tachar y eliminar ganadores (ya ganaron Ana, Beto y X1..X3)
+-- ---------------------------------------------------------------------------
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "5a770000-0000-4000-8000-0000000000b1", "role": "authenticated"}';
+update public.raffle_winners set voided_at = now();
+delete from public.raffle_winners;
+reset role;
+select is(
+  (select count(*)::int from public.raffle_winners
+   where event_id = '5a770000-0000-4000-8000-0000000000e1' and voided_at is null),
+  5, 'raffle_winners: un asistente no tacha ni elimina ganadores');
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "5a770000-0000-4000-8000-0000000000a1", "role": "authenticated"}';
+select throws_ok(
+  $$ update public.raffle_winners set prize = 'Otro premio' $$,
+  '42501', null, 'raffle_winners: ni el superadmin cambia el premio o el ganador desde el cliente');
+
+-- Ana no estaba: se tacha. Sigue en la lista y no vuelve a salir.
+update public.raffle_winners set voided_at = now() where registration_id = '5a770000-0000-4000-8000-0000000001b1';
+select is(
+  public.draw_raffle('5a770000-0000-4000-8000-0000000000e1', 'Premio 7') ->> 'status', 'empty',
+  'tachar: quien fue tachado no vuelve a entrar al sorteo');
+
+-- Beto era un ganador de prueba: se elimina y vuelve a participar.
+delete from public.raffle_winners where registration_id = '5a770000-0000-4000-8000-0000000001b2';
+select results_eq(
+  $$ select (r ->> 'status'), (r ->> 'participants')::int, (r ->> 'registration_id')
+     from (select public.draw_raffle('5a770000-0000-4000-8000-0000000000e1', 'Premio 8') as r) s $$,
+  $$ values ('ok', 1, '5a770000-0000-4000-8000-0000000001b2') $$,
+  'eliminar: el ganador eliminado vuelve a participar');
+reset role;
+
+select isnt(
+  (select voided_at from public.raffle_winners where registration_id = '5a770000-0000-4000-8000-0000000001b1'),
+  null, 'tachar: el ganador tachado queda guardado en la lista');
 
 select * from finish();
 rollback;

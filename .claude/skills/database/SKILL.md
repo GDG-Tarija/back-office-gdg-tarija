@@ -136,7 +136,7 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 ### 2.10.1. `point_activities` y `raffle_winners` (sorteo por tickets)
 
 - `point_activities`: `id`, `event_id` (FK events, CASCADE), `name`, `created_at`, `updated_at`, UNIQUE (`event_id`, `name`). Actividades que dan 1 ticket (stand, pregunta en una sesión, Zona Zen…). SELECT para `authenticated`; sin policies de escritura (se cargan por SQL).
-- `raffle_winners`: `id`, `event_id` (FK events, CASCADE), `registration_id` (FK registrations, CASCADE), `prize`, `tickets`, `created_at`, `updated_at`, UNIQUE (`event_id`, `registration_id`). SELECT solo SUPERADMIN; la escribe solo `draw_raffle`.
+- `raffle_winners`: `id`, `event_id` (FK events, CASCADE), `registration_id` (FK registrations, CASCADE), `prize`, `tickets`, `voided_at` (NULL = vigente; con fecha = tachado: sigue en la lista y no vuelve a participar), `created_at`, `updated_at`, UNIQUE (`event_id`, `registration_id`). SELECT solo SUPERADMIN; la crea solo `draw_raffle`. Un SUPERADMIN puede tachar (UPDATE solo de `voided_at`, por permiso de columna) o eliminar (DELETE: vuelve a participar).
 - Tickets de una persona = filas `checkin` + `pts:%` + `net:%` de su inscripción. Entra al sorteo con `status = 'CONFIRMED'`, `event_role = 'ATTENDEE'` y check-in.
 
 ### 2.11. `staff_whitelist`
@@ -208,6 +208,7 @@ Migraciones pendientes, NO aplicadas en prod:
 - `20261109031500_block_attendance_for_cancelled_registrations.sql` (trigger en `scan_logs` que rechaza asistencia de inscripciones `CANCELLED`). Aditiva: no cambia policies ni datos; no afecta al sitio público (no escribe en `scan_logs`).
 - `20261114171703_checkin_undo_scan.sql` (policy DELETE de `scan_logs` para deshacer un escaneo propio de los últimos 60 s, y corrección de `staff_read_own_assignments`, que fallaba para STAFF). No cambia datos ni restringe accesos.
 - `20261122092228_sorteo_tickets.sql` (sorteo por tickets: `scan_type` a varchar(50) y CHECK con `pts:%`/`net:%`, `staff_insert_scan_logs` rechaza `pts:%`/`net:%`, tablas `point_activities` y `raffle_winners`, RPCs `scan_ticket`, `my_tickets`, `draw_raffle`; `get_public_certificate` devuelve `user_email` en null). No cambia datos. Después del release, cargar las actividades del evento por SQL (`on conflict (event_id, name) do nothing`).
+- `20261123014753_sorteo_ganadores_tachar.sql` (`raffle_winners.voided_at`, UPDATE limitado a esa columna y políticas de UPDATE/DELETE para SUPERADMIN: tachar o eliminar ganadores desde la pantalla del sorteo). No cambia datos.
 
 ---
 
