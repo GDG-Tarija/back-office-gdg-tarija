@@ -69,6 +69,25 @@ describe('describeAudit — check-in', () => {
   });
 });
 
+describe('describeAudit — sorteo', () => {
+  it('sortear, tachar, restaurar y eliminar un ganador', () => {
+    const winner = (overrides: Partial<AuditEntry>) =>
+      text({ table: 'raffle_winners', ...overrides });
+    expect(winner({ action: 'INSERT', changes: { prize: 'Polera' } })).toBe(
+      'Sorteó «Polera»: ganó Ana Paz',
+    );
+    expect(winner({ changes: { voided_at: [null, '2026-11-28T20:00:00Z'] } })).toBe(
+      'Tachó a Ana Paz de los ganadores del sorteo',
+    );
+    expect(winner({ changes: { voided_at: ['2026-11-28T20:00:00Z', null] } })).toBe(
+      'Restauró a Ana Paz como ganador del sorteo',
+    );
+    expect(winner({ action: 'DELETE', changes: { prize: 'Polera' } })).toBe(
+      'Eliminó a Ana Paz de los ganadores del sorteo',
+    );
+  });
+});
+
 describe('describeAudit — accesos y configuración', () => {
   it('accesos al back-office con la etiqueta del rol', () => {
     const access = { table: 'staff_whitelist', subjectName: 'puerta@gdg.test' };

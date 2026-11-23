@@ -224,12 +224,30 @@ export function describeAudit(e: AuditEntry): AuditDescription {
         : { icon: 'manage_accounts', tone: 'neutral', text: `Editó el acceso de ${who}` };
     }
 
-    case 'raffle_winners':
+    case 'raffle_winners': {
+      if (e.action === 'DELETE') {
+        return {
+          icon: 'delete',
+          tone: 'danger',
+          text: `Eliminó a ${who} de los ganadores del sorteo`,
+        };
+      }
+      const voided = updated(e, 'voided_at');
+      if (voided) {
+        return voided[1]
+          ? {
+              icon: 'person_off',
+              tone: 'warning',
+              text: `Tachó a ${who} de los ganadores del sorteo`,
+            }
+          : { icon: 'undo', tone: 'info', text: `Restauró a ${who} como ganador del sorteo` };
+      }
       return {
         icon: 'redeem',
         tone: 'success',
         text: `Sorteó «${str(e.changes['prize'])}»: ganó ${who}`,
       };
+    }
 
     case 'event_staff_assignments':
       return e.action === 'DELETE'
