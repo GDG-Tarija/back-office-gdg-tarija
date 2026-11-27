@@ -47,6 +47,8 @@ const ROLE_LABELS: Record<string, string> = {
   STAFF: 'Staff',
   VOLUNTEER: 'Voluntarios',
   SPONSOR: 'Sponsors',
+  MENTOR: 'Mentores',
+  PARTNER: 'Comunidades aliadas',
 };
 
 const STATUS_LABELS: Record<string, string> = {

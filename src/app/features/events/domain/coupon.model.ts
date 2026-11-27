@@ -1,6 +1,13 @@
-export type CouponRole = 'ATTENDEE' | 'SPEAKER' | 'SPONSOR' | 'STAFF';
+export type CouponRole = 'ATTENDEE' | 'SPEAKER' | 'SPONSOR' | 'STAFF' | 'MENTOR' | 'PARTNER';
 
-export const COUPON_ROLES: readonly CouponRole[] = ['ATTENDEE', 'SPEAKER', 'SPONSOR', 'STAFF'];
+export const COUPON_ROLES: readonly CouponRole[] = [
+  'ATTENDEE',
+  'SPEAKER',
+  'SPONSOR',
+  'STAFF',
+  'MENTOR',
+  'PARTNER',
+];
 
 export interface Coupon {
   id: string;

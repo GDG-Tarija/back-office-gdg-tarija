@@ -15,12 +15,15 @@ describe('attendee-role', () => {
     expect(attendeeRoleLabel('SPEAKER')).toBe('Expositor');
     expect(attendeeRoleLabel('VOLUNTEER')).toBe('Voluntario');
     expect(attendeeRoleLabel('ATTENDEE')).toBe('Asistente');
+    expect(attendeeRoleLabel('SPONSOR')).toBe('Sponsor');
+    expect(attendeeRoleLabel('MENTOR')).toBe('Mentor');
+    expect(attendeeRoleLabel('PARTNER')).toBe('Comunidad aliada');
   });
 
   it('usa el valor tal cual si el rol no se conoce y Asistente si falta', () => {
-    expect(attendeeRoleLabel('SPONSOR')).toBe('SPONSOR');
+    expect(attendeeRoleLabel('MODERADOR')).toBe('MODERADOR');
     expect(attendeeRoleLabel(undefined)).toBe('Asistente');
-    expect(attendeeRoleOption('SPONSOR')).toBeNull();
+    expect(attendeeRoleOption('MODERADOR')).toBeNull();
   });
 
   it('ningún rol reutiliza el color de un estado de inscripción', () => {
