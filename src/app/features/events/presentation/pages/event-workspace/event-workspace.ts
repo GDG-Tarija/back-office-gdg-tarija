@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { AssetsApi } from '../../../data/assets.api';
 import { CouponsApi } from '../../../data/coupons.api';
 import { EventsApi } from '../../../data/events.api';
+import { RaffleQrsApi } from '../../../data/raffle-qrs.api';
 import { SessionsApi } from '../../../data/sessions.api';
 import { StaffAssignmentsApi } from '../../../data/staff-assignments.api';
 import { TicketTypesApi } from '../../../data/ticket-types.api';
@@ -13,6 +14,7 @@ import { validatePublish } from '../../../domain/event-validators';
 import { Event, EventInput } from '../../../domain/event.model';
 import { EventsRepository } from '../../../domain/events.repository';
 import { FormField } from '../../../domain/form-field.model';
+import { RaffleQrsRepository } from '../../../domain/raffle-qrs.repository';
 import { Session } from '../../../domain/session.model';
 import { SessionsRepository } from '../../../domain/sessions.repository';
 import { StaffAssignmentsRepository } from '../../../domain/staff-assignments.repository';
@@ -26,6 +28,7 @@ export const EVENT_PAGE_PROVIDERS = [
   { provide: TicketTypesRepository, useClass: TicketTypesApi },
   { provide: SessionsRepository, useClass: SessionsApi },
   { provide: CouponsRepository, useClass: CouponsApi },
+  { provide: RaffleQrsRepository, useClass: RaffleQrsApi },
   { provide: StaffAssignmentsRepository, useClass: StaffAssignmentsApi },
 ];
 
