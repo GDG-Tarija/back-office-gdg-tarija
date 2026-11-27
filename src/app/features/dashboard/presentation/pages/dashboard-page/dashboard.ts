@@ -31,6 +31,9 @@ const ROLE_COLORS: Record<string, string> = {
   ORGANIZER: 'bg-google-red',
   STAFF: 'bg-google-red',
   VOLUNTEER: 'bg-google-green',
+  SPONSOR: 'bg-google-green',
+  MENTOR: 'bg-google-yellow-dark',
+  PARTNER: 'bg-google-blue-dark',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -78,7 +81,16 @@ export class Dashboard implements OnInit {
 
   readonly roleOptions = [
     { label: 'Todos los roles', value: null as string | null },
-    ...['ATTENDEE', 'SPEAKER', 'ORGANIZER', 'STAFF', 'VOLUNTEER', 'SPONSOR'].map((value) => ({
+    ...[
+      'ATTENDEE',
+      'SPEAKER',
+      'SPONSOR',
+      'MENTOR',
+      'PARTNER',
+      'STAFF',
+      'ORGANIZER',
+      'VOLUNTEER',
+    ].map((value) => ({
       label: roleLabel(value),
       value,
     })),

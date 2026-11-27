@@ -1,7 +1,15 @@
 import { StatusSeverity } from './registration-status';
 
 /** Roles de una inscripción (columna `registrations.role`). */
-export type AttendeeRole = 'ATTENDEE' | 'SPEAKER' | 'VOLUNTEER' | 'STAFF' | 'ORGANIZER';
+export type AttendeeRole =
+  | 'ATTENDEE'
+  | 'SPEAKER'
+  | 'SPONSOR'
+  | 'MENTOR'
+  | 'PARTNER'
+  | 'VOLUNTEER'
+  | 'STAFF'
+  | 'ORGANIZER';
 
 export interface RoleOption {
   value: AttendeeRole;
@@ -26,6 +34,27 @@ export const ATTENDEE_ROLE_OPTIONS: readonly RoleOption[] = [
     pluralLabel: 'Expositores',
     severity: 'info',
     description: 'Da una charla o taller.',
+  },
+  {
+    value: 'SPONSOR',
+    label: 'Sponsor',
+    pluralLabel: 'Sponsors',
+    severity: 'contrast',
+    description: 'Representa a una empresa o institución que apoya el evento.',
+  },
+  {
+    value: 'MENTOR',
+    label: 'Mentor',
+    pluralLabel: 'Mentores',
+    severity: 'info',
+    description: 'Acompaña y orienta a los participantes. No participa del sorteo.',
+  },
+  {
+    value: 'PARTNER',
+    label: 'Comunidad aliada',
+    pluralLabel: 'Comunidades aliadas',
+    severity: 'info',
+    description: 'Viene de una comunidad aliada. Participa del sorteo.',
   },
   {
     value: 'VOLUNTEER',

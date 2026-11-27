@@ -92,7 +92,7 @@ Trigger `trg_prevent_event_delete`: no se puede borrar un evento con inscripcion
 
 ### 2.6. `event_coupons`
 
-`id`, `event_id` (FK events, CASCADE), `code` varchar(50), `role` varchar(20) default `ATTENDEE` (CHECK: `ATTENDEE`, `SPEAKER`, `SPONSOR`, `STAFF`), `max_uses` int default 1, `created_at`, `updated_at`. UNIQUE (`event_id`, `code`).
+`id`, `event_id` (FK events, CASCADE), `code` varchar(50), `role` varchar(20) default `ATTENDEE` (CHECK: `ATTENDEE`, `SPEAKER`, `SPONSOR`, `STAFF`, `MENTOR`, `PARTNER` desde `20261127015203`), `max_uses` int default 1, `created_at`, `updated_at`. UNIQUE (`event_id`, `code`).
 Trigger `trg_process_registration_coupon` (BEFORE INSERT en registrations; único trigger de inserción, hace todo en orden): (1) valida cupón/evento/usos (P0002/P0003) y, si el rol no es ATTENDEE, fuerza `event_role` y `status = CONFIRMED`; (2) para usuarios no SUPERADMIN fuerza rol ATTENDEE; (3) asigna `ticket_phase_id` (ignora lo enviado; bloquea el paquete con `FOR NO KEY UPDATE` para serializar registros concurrentes), respeta `ticket_types.ticket_capacity` y el cupo de cada fase, y lanza **P0010** si todo está lleno (los roles especiales no consumen cupo ni fallan); SUPERADMIN/sin JWT puede enviar su fase (debe ser del paquete, si no **P0011**); (4) para no SUPERADMIN fija `status` = CONFIRMED si el precio de la fase asignada (o del paquete si no hay fases) es 0, si no PENDING. No usar `P0004` (es `assert_failure` y PL/pgSQL no lo atrapa con `WHEN OTHERS`).
 
 ### 2.7. `event_staff_assignments`
@@ -112,7 +112,7 @@ Trigger `trg_process_registration_coupon` (BEFORE INSERT en registrations; únic
 
 ### 2.8. `registrations`
 
-`id`, `event_id` (FK, CASCADE), `user_id` (FK users, ON DELETE SET NULL, ON UPDATE CASCADE desde `20261127013739`, nullable), `ticket_type_id` (FK ticket_types, ON DELETE RESTRICT), `event_role` varchar(20) default `ATTENDEE` (CHECK `ATTENDEE|SPEAKER|SPONSOR|STAFF`), `status` varchar(20) (CHECK `PENDING|CONFIRMED|CANCELLED`), `custom_responses` jsonb, `payment_proof_url` text, `coupon_id` uuid (FK event_coupons, SET NULL), `ticket_phase_id` uuid NULL (FK ticket_phases, ON DELETE RESTRICT, indexada; la asigna el trigger, el cliente no la elige), `created_at`, `updated_at`. UNIQUE (`event_id`, `user_id`).
+`id`, `event_id` (FK, CASCADE), `user_id` (FK users, ON DELETE SET NULL, ON UPDATE CASCADE desde `20261127013739`, nullable), `ticket_type_id` (FK ticket_types, ON DELETE RESTRICT), `event_role` varchar(20) default `ATTENDEE` (CHECK `ATTENDEE|SPEAKER|SPONSOR|STAFF|MENTOR|PARTNER`; en la UI MENTOR = "Mentor" y PARTNER = "Comunidad aliada"), `status` varchar(20) (CHECK `PENDING|CONFIRMED|CANCELLED`), `custom_responses` jsonb, `payment_proof_url` text, `coupon_id` uuid (FK event_coupons, SET NULL), `ticket_phase_id` uuid NULL (FK ticket_phases, ON DELETE RESTRICT, indexada; la asigna el trigger, el cliente no la elige), `created_at`, `updated_at`. UNIQUE (`event_id`, `user_id`).
 
 - `back.sql` declara default de `status` = `'REGISTERED'`, que viola el CHECK: **por verificar** el default real en remoto.
 - Estados en el back-office (issue #7): `CONFIRMED` = pagada/confirmada, `PENDING` = pendiente de pago, `CANCELLED` = anulada. Solo SUPERADMIN los cambia (policy `staff_update_registrations`); el front envía solo `{ status }` (`RegistrationsApi`). Cualquier transición es válida, incluida restaurar una anulada. Dominio en `features/events/domain/registration-status.ts`.
@@ -137,7 +137,7 @@ PK compuesta (`registration_id` FK registrations CASCADE, `session_id` FK sessio
 
 - `point_activities`: `id`, `event_id` (FK events, CASCADE), `name`, `created_at`, `updated_at`, UNIQUE (`event_id`, `name`). Actividades que dan 1 ticket (stand, pregunta en una sesión, Zona Zen…). SELECT para `authenticated`; sin policies de escritura (se cargan por SQL).
 - `raffle_winners`: `id`, `event_id` (FK events, CASCADE), `registration_id` (FK registrations, CASCADE), `prize`, `tickets`, `voided_at` (NULL = vigente; con fecha = tachado: sigue en la lista y no vuelve a participar), `created_at`, `updated_at`, UNIQUE (`event_id`, `registration_id`). SELECT solo SUPERADMIN; la crea solo `draw_raffle`. Un SUPERADMIN puede tachar (UPDATE solo de `voided_at`, por permiso de columna) o eliminar (DELETE: vuelve a participar).
-- Tickets de una persona = filas `checkin` + `pts:%` + `net:%` de su inscripción. Entra al sorteo con `status = 'CONFIRMED'`, `event_role = 'ATTENDEE'` y check-in.
+- Tickets de una persona = filas `checkin` + `pts:%` + `net:%` de su inscripción. Entra al sorteo con `status = 'CONFIRMED'`, `event_role IN ('ATTENDEE', 'PARTNER')` y check-in (Comunidad aliada participa; Mentor, Expositor, Sponsor y Staff no). El networking vale para cualquier rol.
 
 ### 2.11. `staff_whitelist`
 
