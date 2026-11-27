@@ -86,6 +86,7 @@
           <div class="flex flex-col gap-8">
             <app-coupons-editor [eventId]="e.id" />
             <app-staff-assignment-editor [eventId]="e.id" />
+            <app-raffle-qrs-editor [eventId]="e.id" [slug]="e.slug" />
           </div>
         }
         @case ('publicacion') {

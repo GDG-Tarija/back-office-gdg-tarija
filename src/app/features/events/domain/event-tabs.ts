@@ -6,7 +6,7 @@ export const EVENT_TABS = [
   { id: 'formulario', label: 'Formulario de registro' },
   { id: 'paquetes', label: 'Paquetes' },
   { id: 'sesiones', label: 'Tracks y sesiones' },
-  { id: 'extras', label: 'Cupones y staff' },
+  { id: 'extras', label: 'Cupones, staff y sorteo' },
   { id: 'publicacion', label: 'Publicación' },
 ] as const;
 
@@ -62,7 +62,7 @@ export function domIdForField(field: string): string | null {
 export type TabStatus = 'complete' | 'pending' | 'error' | 'optional';
 
 /**
- * Estado de cada pestaña según el checklist de publicación. "Cupones y staff" es opcional
+ * Estado de cada pestaña según el checklist de publicación. "Cupones, staff y sorteo" es opcional
  * y "Publicación" solo está completa cuando nada más falta.
  */
 export function tabStatuses(

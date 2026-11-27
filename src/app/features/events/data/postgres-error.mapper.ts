@@ -7,6 +7,7 @@ export type ErrorContext =
   | 'track'
   | 'session'
   | 'coupon'
+  | 'raffle_qr'
   | 'staff'
   | 'asset'
   | 'registration';
@@ -29,6 +30,7 @@ const DUPLICATE_MESSAGES: Record<ErrorContext, { message: string; field?: string
   track: { message: 'Ya existe un track con ese nombre en el evento.', field: 'name' },
   session: { message: 'Ya existe una sesión con ese horario.', field: 'startTime' },
   coupon: { message: 'Ya existe un cupón con ese código en el evento.', field: 'code' },
+  raffle_qr: { message: 'Ya existe un QR con ese nombre en el evento.', field: 'name' },
   staff: { message: 'Ese correo ya está asignado al evento.', field: 'staffEmail' },
   asset: { message: 'Ya existe un archivo con ese nombre.' },
   registration: { message: 'Esa persona ya tiene una inscripción en el evento.' },
@@ -41,6 +43,7 @@ const REGISTRATIONS_MESSAGES: Record<ErrorContext, string> = {
   track: 'No se puede eliminar el track porque tiene elementos asociados.',
   session: 'No se puede eliminar una sesión con personas inscritas.',
   coupon: 'No se puede eliminar un cupón que ya fue utilizado.',
+  raffle_qr: 'No se puede eliminar el QR porque tiene elementos asociados.',
   staff: 'No se puede eliminar la asignación porque tiene elementos asociados.',
   asset: 'No se puede eliminar el archivo.',
   registration: 'La inscripción tiene elementos asociados y no se puede modificar así.',

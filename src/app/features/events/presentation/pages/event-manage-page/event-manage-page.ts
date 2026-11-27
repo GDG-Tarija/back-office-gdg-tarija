@@ -26,6 +26,7 @@ import { EventHeader } from '../../components/event-header/event-header';
 import { EventSectionNav } from '../../components/event-section-nav/event-section-nav';
 import { FormFieldsBuilder } from '../../components/form-fields-builder/form-fields-builder';
 import { PublishChecklist } from '../../components/publish-checklist/publish-checklist';
+import { RaffleQrsEditor } from '../../components/raffle-qrs-editor/raffle-qrs-editor';
 import { StaffAssignmentEditor } from '../../components/staff-assignment-editor/staff-assignment-editor';
 import { TicketTypesEditor } from '../../components/ticket-types-editor/ticket-types-editor';
 import { TracksSessionsEditor } from '../../components/tracks-sessions-editor/tracks-sessions-editor';
@@ -44,6 +45,7 @@ import { UnsavedPrompt } from '../event-workspace/unsaved-prompt';
     EventSectionNav,
     FormFieldsBuilder,
     PublishChecklist,
+    RaffleQrsEditor,
     StaffAssignmentEditor,
     TicketTypesEditor,
     TracksSessionsEditor,

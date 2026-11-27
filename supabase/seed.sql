@@ -146,6 +146,13 @@ from public.sessions
 where event_id = '00000000-0000-4000-8000-0000000000e2'
 on conflict (event_id, name) do nothing;
 
+-- QRs que escanean los asistentes (mesas de la feria): el id es el código que lleva el QR.
+insert into public.point_activity_qrs (activity_id)
+select id from public.point_activities
+where event_id = '00000000-0000-4000-8000-0000000000e2'
+  and name in ('Stand · Google', 'Comunidad · Women Techmakers')
+on conflict (activity_id) do nothing;
+
 -- ---------------------------------------------------------------------------
 -- Sponsors
 -- ---------------------------------------------------------------------------
