@@ -50,7 +50,6 @@ const ROLE_OPTIONS = [
   { label: 'Mentor', value: 'MENTOR' },
   { label: 'Comunidad aliada', value: 'PARTNER' },
   { label: 'Staff', value: 'STAFF' },
-  { label: 'Voluntario', value: 'VOLUNTEER' },
 ];
 
 const MAX_PREVIEW_HEIGHT = 480;
@@ -264,11 +263,6 @@ export class CredentialGenerator implements OnInit, OnDestroy {
   getFilteredAttendees(): Attendee[] {
     const role = this.selectedRole();
     if (!role) return this.filteredAttendees();
-    if (role === 'STAFF') {
-      return this.filteredAttendees().filter(
-        (a) => a.role?.toUpperCase() === 'STAFF' || a.role?.toUpperCase() === 'ORGANIZER',
-      );
-    }
     return this.filteredAttendees().filter((a) => a.role === role);
   }
 
@@ -279,9 +273,7 @@ export class CredentialGenerator implements OnInit, OnDestroy {
       SPONSOR: 'Sponsor',
       MENTOR: 'Mentor',
       PARTNER: 'Comunidad aliada',
-      ORGANIZER: 'Staff',
       STAFF: 'Staff',
-      VOLUNTEER: 'Voluntario',
     };
     return map[role?.toUpperCase()] || role;
   }

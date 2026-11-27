@@ -28,9 +28,7 @@ import { DashboardTrend } from '../../components/dashboard-trend/dashboard-trend
 const ROLE_COLORS: Record<string, string> = {
   ATTENDEE: 'bg-google-blue',
   SPEAKER: 'bg-google-yellow',
-  ORGANIZER: 'bg-google-red',
   STAFF: 'bg-google-red',
-  VOLUNTEER: 'bg-google-green',
   SPONSOR: 'bg-google-green',
   MENTOR: 'bg-google-yellow-dark',
   PARTNER: 'bg-google-blue-dark',
@@ -81,16 +79,7 @@ export class Dashboard implements OnInit {
 
   readonly roleOptions = [
     { label: 'Todos los roles', value: null as string | null },
-    ...[
-      'ATTENDEE',
-      'SPEAKER',
-      'SPONSOR',
-      'MENTOR',
-      'PARTNER',
-      'STAFF',
-      'ORGANIZER',
-      'VOLUNTEER',
-    ].map((value) => ({
+    ...['ATTENDEE', 'SPEAKER', 'SPONSOR', 'MENTOR', 'PARTNER', 'STAFF'].map((value) => ({
       label: roleLabel(value),
       value,
     })),

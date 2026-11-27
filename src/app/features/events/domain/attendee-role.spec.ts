@@ -9,11 +9,9 @@ import {
 import { REGISTRATION_STATUS_OPTIONS } from './registration-status';
 
 describe('attendee-role', () => {
-  it('nombra cada rol sin mezclar Organizador con Staff', () => {
-    expect(attendeeRoleLabel('ORGANIZER')).toBe('Organizador');
+  it('nombra cada rol de entrada que permite la base', () => {
     expect(attendeeRoleLabel('staff')).toBe('Staff');
     expect(attendeeRoleLabel('SPEAKER')).toBe('Expositor');
-    expect(attendeeRoleLabel('VOLUNTEER')).toBe('Voluntario');
     expect(attendeeRoleLabel('ATTENDEE')).toBe('Asistente');
     expect(attendeeRoleLabel('SPONSOR')).toBe('Sponsor');
     expect(attendeeRoleLabel('MENTOR')).toBe('Mentor');
@@ -24,6 +22,9 @@ describe('attendee-role', () => {
     expect(attendeeRoleLabel('MODERADOR')).toBe('MODERADOR');
     expect(attendeeRoleLabel(undefined)).toBe('Asistente');
     expect(attendeeRoleOption('MODERADOR')).toBeNull();
+    // Restos de la primera versión: la base nunca los aceptó y ya no se ofrecen.
+    expect(attendeeRoleOption('VOLUNTEER')).toBeNull();
+    expect(attendeeRoleOption('ORGANIZER')).toBeNull();
   });
 
   it('ningún rol reutiliza el color de un estado de inscripción', () => {

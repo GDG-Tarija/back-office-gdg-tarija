@@ -43,9 +43,7 @@ export interface DistributionItem {
 const ROLE_LABELS: Record<string, string> = {
   ATTENDEE: 'Asistentes',
   SPEAKER: 'Expositores',
-  ORGANIZER: 'Organizadores',
   STAFF: 'Staff',
-  VOLUNTEER: 'Voluntarios',
   SPONSOR: 'Sponsors',
   MENTOR: 'Mentores',
   PARTNER: 'Comunidades aliadas',

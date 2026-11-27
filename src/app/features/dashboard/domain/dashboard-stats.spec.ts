@@ -170,9 +170,9 @@ describe('filtros', () => {
 });
 
 describe('distribuciones', () => {
-  it('no mezcla Staff ni Organizadores con Asistentes', () => {
-    const items = roleDistribution([reg(), reg({ role: 'ORGANIZER' }), reg({ role: 'STAFF' })]);
-    expect(items.map((i) => i.label)).toEqual(['Asistentes', 'Organizadores', 'Staff']);
+  it('no mezcla Staff ni Comunidad aliada con Asistentes', () => {
+    const items = roleDistribution([reg(), reg({ role: 'PARTNER' }), reg({ role: 'STAFF' })]);
+    expect(items.map((i) => i.label)).toEqual(['Asistentes', 'Staff', 'Comunidades aliadas']);
   });
 
   it('usa el vocabulario de estados', () => {
