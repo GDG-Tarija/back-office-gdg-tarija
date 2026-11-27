@@ -46,6 +46,9 @@ const DEFAULT_POSITIONS: CredentialPosition = {
 const ROLE_OPTIONS = [
   { label: 'Participante', value: 'ATTENDEE' },
   { label: 'Speaker', value: 'SPEAKER' },
+  { label: 'Sponsor', value: 'SPONSOR' },
+  { label: 'Mentor', value: 'MENTOR' },
+  { label: 'Comunidad aliada', value: 'PARTNER' },
   { label: 'Staff', value: 'STAFF' },
   { label: 'Voluntario', value: 'VOLUNTEER' },
 ];
@@ -273,6 +276,9 @@ export class CredentialGenerator implements OnInit, OnDestroy {
     const map: Record<string, string> = {
       ATTENDEE: 'Participante',
       SPEAKER: 'Speaker',
+      SPONSOR: 'Sponsor',
+      MENTOR: 'Mentor',
+      PARTNER: 'Comunidad aliada',
       ORGANIZER: 'Staff',
       STAFF: 'Staff',
       VOLUNTEER: 'Voluntario',

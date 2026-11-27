@@ -31,6 +31,8 @@ export const COUPON_ROLE_LABELS: Record<CouponRole, string> = {
   SPEAKER: 'Speaker',
   SPONSOR: 'Sponsor',
   STAFF: 'Staff',
+  MENTOR: 'Mentor',
+  PARTNER: 'Comunidad aliada',
 };
 
 export function couponRemaining(c: Pick<Coupon, 'maxUses' | 'usedCount'>): number {
