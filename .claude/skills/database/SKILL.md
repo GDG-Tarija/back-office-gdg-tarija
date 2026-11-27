@@ -72,7 +72,7 @@ Trigger `trg_prevent_event_delete`: no se puede borrar un evento con inscripcion
 
 - CHECK `check_qr_for_paid_phases`: igual que `check_qr_for_paid_tickets`.
 - RLS: lectura pública (`public_read_ticket_phases`); escritura solo SUPERADMIN (`staff_write_ticket_phases`).
-- Trigger `trg_validate_ticket_phase`: solo la última fase (mayor `position`) puede tener `capacity` NULL; no se puede cambiar de paquete ni bajar `capacity` por debajo de lo vendido.
+- Trigger `trg_validate_ticket_phase`: solo la última fase (mayor `position`) puede tener `capacity` NULL; no se puede cambiar de paquete ni bajar `capacity` por debajo de lo vendido. Función `validate_ticket_phase()` SECURITY DEFINER desde `20261123023721` (llama a `ticket_phase_sold()`, sin EXECUTE para `authenticated`; como invoker, cambiar el cupo fallaba con 42501).
 - Trigger `trg_prevent_phase_delete` (+ FK RESTRICT): no se borra una fase con inscripciones.
 - "Vendido" = registrations con `event_role = 'ATTENDEE'` y `status IN ('CONFIRMED','PENDING')` en esa fase (`CANCELLED` libera cupo; cupones de rol especial no consumen cupo). Helper interno `ticket_phase_sold(phase_id)` (sin grants a clientes).
 - La fase activa es la primera por `position` con cupo libre. Paquete sin fases = comportamiento anterior (sin validación de cupo en servidor).
@@ -112,7 +112,7 @@ Trigger `trg_process_registration_coupon` (BEFORE INSERT en registrations; únic
 
 ### 2.8. `registrations`
 
-`id`, `event_id` (FK, CASCADE), `user_id` (FK users, SET NULL, nullable), `ticket_type_id` (FK ticket_types, ON DELETE RESTRICT), `event_role` varchar(20) default `ATTENDEE` (CHECK `ATTENDEE|SPEAKER|SPONSOR|STAFF`), `status` varchar(20) (CHECK `PENDING|CONFIRMED|CANCELLED`), `custom_responses` jsonb, `payment_proof_url` text, `coupon_id` uuid (FK event_coupons, SET NULL), `ticket_phase_id` uuid NULL (FK ticket_phases, ON DELETE RESTRICT, indexada; la asigna el trigger, el cliente no la elige), `created_at`, `updated_at`. UNIQUE (`event_id`, `user_id`).
+`id`, `event_id` (FK, CASCADE), `user_id` (FK users, ON DELETE SET NULL, ON UPDATE CASCADE desde `20261127013739`, nullable), `ticket_type_id` (FK ticket_types, ON DELETE RESTRICT), `event_role` varchar(20) default `ATTENDEE` (CHECK `ATTENDEE|SPEAKER|SPONSOR|STAFF`), `status` varchar(20) (CHECK `PENDING|CONFIRMED|CANCELLED`), `custom_responses` jsonb, `payment_proof_url` text, `coupon_id` uuid (FK event_coupons, SET NULL), `ticket_phase_id` uuid NULL (FK ticket_phases, ON DELETE RESTRICT, indexada; la asigna el trigger, el cliente no la elige), `created_at`, `updated_at`. UNIQUE (`event_id`, `user_id`).
 
 - `back.sql` declara default de `status` = `'REGISTERED'`, que viola el CHECK: **por verificar** el default real en remoto.
 - Estados en el back-office (issue #7): `CONFIRMED` = pagada/confirmada, `PENDING` = pendiente de pago, `CANCELLED` = anulada. Solo SUPERADMIN los cambia (policy `staff_update_registrations`); el front envía solo `{ status }` (`RegistrationsApi`). Cualquier transición es válida, incluida restaurar una anulada. Dominio en `features/events/domain/registration-status.ts`.
