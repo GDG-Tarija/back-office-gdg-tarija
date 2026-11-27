@@ -72,7 +72,7 @@ Trigger `trg_prevent_event_delete`: no se puede borrar un evento con inscripcion
 
 - CHECK `check_qr_for_paid_phases`: igual que `check_qr_for_paid_tickets`.
 - RLS: lectura pública (`public_read_ticket_phases`); escritura solo SUPERADMIN (`staff_write_ticket_phases`).
-- Trigger `trg_validate_ticket_phase`: solo la última fase (mayor `position`) puede tener `capacity` NULL; no se puede cambiar de paquete ni bajar `capacity` por debajo de lo vendido.
+- Trigger `trg_validate_ticket_phase`: solo la última fase (mayor `position`) puede tener `capacity` NULL; no se puede cambiar de paquete ni bajar `capacity` por debajo de lo vendido. Función `validate_ticket_phase()` SECURITY DEFINER desde `20261123023721` (llama a `ticket_phase_sold()`, sin EXECUTE para `authenticated`; como invoker, cambiar el cupo fallaba con 42501).
 - Trigger `trg_prevent_phase_delete` (+ FK RESTRICT): no se borra una fase con inscripciones.
 - "Vendido" = registrations con `event_role = 'ATTENDEE'` y `status IN ('CONFIRMED','PENDING')` en esa fase (`CANCELLED` libera cupo; cupones de rol especial no consumen cupo). Helper interno `ticket_phase_sold(phase_id)` (sin grants a clientes).
 - La fase activa es la primera por `position` con cupo libre. Paquete sin fases = comportamiento anterior (sin validación de cupo en servidor).
