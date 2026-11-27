@@ -154,23 +154,31 @@ begin
   perform pg_temp.as_postgres();
   perform pg_temp.assert(true, '6c. Sin fases: ticket_capacity no se aplica en servidor (comportamiento previo intacto)');
 
-  -- 7. SUPERADMIN conserva lo enviado
-  perform pg_temp.as_admin();
-  r := pg_temp.reg(10, T, 'STAFF', 'CONFIRMED', P2);  -- el admin se registra a sí mismo (policy insert_own)
-  perform pg_temp.as_postgres();
-  perform pg_temp.assert(r.event_role = 'STAFF' and r.status = 'CONFIRMED' and r.ticket_phase_id = P2,
-    '7a. SUPERADMIN conserva rol, estado y fase enviados');
+  -- 7. Un SUPERADMIN que se inscribe a sí mismo sigue las reglas (20261127022457); solo una
+  --    conexión sin JWT (consola, migraciones) respeta lo enviado.
+  --    (Los casos de cupón y paquete gratis están en superadmin_self_registration.test.sql.)
+  begin
+    perform pg_temp.as_admin();
+    -- El admin se registra a sí mismo (policy insert_own) enviando rol, estado y fase: con el
+    -- paquete lleno, la base lo rechaza como a cualquiera en vez de respetar la fase enviada.
+    perform pg_temp.reg(10, T, 'STAFF', 'CONFIRMED', P2);
+    perform pg_temp.as_postgres();
+    raise exception 'FAIL: 7a. debió aplicar el cupo también al SUPERADMIN';
+  exception when others then
+    get stacked diagnostics msg = message_text; code := sqlstate;
+    perform pg_temp.as_postgres();
+    if msg like 'FAIL:%' then raise; end if;
+    perform pg_temp.assert(code = 'P0010', format('7a. SUPERADMIN que se inscribe a sí mismo no se salta el cupo -> P0010 ("%s")', msg));
+  end;
   begin
     delete from public.registrations where user_id = 'aaaaaaaa-0000-4000-8000-00000000000a';
-    perform pg_temp.as_admin();
     perform pg_temp.reg(10, 'cccccccc-0000-4000-8000-000000000002', 'ATTENDEE', 'CONFIRMED', P1);
-    perform pg_temp.as_postgres();
     raise exception 'FAIL: 7b. debió rechazar fase de otro paquete';
   exception when others then
     get stacked diagnostics msg = message_text; code := sqlstate;
     perform pg_temp.as_postgres();
     if msg like 'FAIL:%' then raise; end if;
-    perform pg_temp.assert(code = 'P0011', format('7b. Fase de otro paquete -> P0011 ("%s")', msg));
+    perform pg_temp.assert(code = 'P0011', format('7b. Sin JWT, fase de otro paquete -> P0011 ("%s")', msg));
   end;
 end $$;
 
