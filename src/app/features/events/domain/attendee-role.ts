@@ -1,15 +1,10 @@
 import { StatusSeverity } from './registration-status';
 
-/** Roles de una inscripción (columna `registrations.role`). */
-export type AttendeeRole =
-  | 'ATTENDEE'
-  | 'SPEAKER'
-  | 'SPONSOR'
-  | 'MENTOR'
-  | 'PARTNER'
-  | 'VOLUNTEER'
-  | 'STAFF'
-  | 'ORGANIZER';
+/**
+ * Rol de la entrada (`registrations.event_role`, lo da el cupón). Mismos valores que permite la base.
+ * No confundir con el rol del back-office (Superadmin / Staff de check-in, en Usuarios).
+ */
+export type AttendeeRole = 'ATTENDEE' | 'SPEAKER' | 'SPONSOR' | 'MENTOR' | 'PARTNER' | 'STAFF';
 
 export interface RoleOption {
   value: AttendeeRole;
@@ -57,25 +52,12 @@ export const ATTENDEE_ROLE_OPTIONS: readonly RoleOption[] = [
     description: 'Viene de una comunidad aliada. Participa del sorteo.',
   },
   {
-    value: 'VOLUNTEER',
-    label: 'Voluntario',
-    pluralLabel: 'Voluntarios',
-    severity: 'info',
-    description: 'Ayuda en la organización.',
-  },
-  {
     value: 'STAFF',
     label: 'Staff',
     pluralLabel: 'Staff',
     severity: 'contrast',
-    description: 'Opera el check-in del evento.',
-  },
-  {
-    value: 'ORGANIZER',
-    label: 'Organizador',
-    pluralLabel: 'Organizadores',
-    severity: 'contrast',
-    description: 'Forma parte del equipo organizador.',
+    description:
+      'Ayuda en el evento (moderación, asistencia técnica). No da acceso al back-office.',
   },
 ];
 

@@ -12,7 +12,7 @@ const attendee: Attendee = {
   lastName: 'Pérez',
   avatarUrl: null,
   phone: '+59170000001',
-  role: 'ORGANIZER',
+  role: 'SPEAKER',
   status: 'CANCELLED',
   ticketName: 'General',
   ticketPrice: 10,
@@ -44,7 +44,7 @@ describe('attendee-export', () => {
   it('traduce rol, estado y booleanos y formatea fechas locales', () => {
     const { headers, rows } = buildAttendeeExport([attendee], fields);
     const row = Object.fromEntries(headers.map((h, i) => [h, rows[0][i]]));
-    expect(row['Rol']).toBe('Organizador');
+    expect(row['Rol']).toBe('Expositor');
     expect(row['Estado']).toBe('Anulada');
     expect(row['Entrada']).toBe('General · Normal');
     expect(row['Fecha de inscripción']).toBe('05/11/2026 09:07');
