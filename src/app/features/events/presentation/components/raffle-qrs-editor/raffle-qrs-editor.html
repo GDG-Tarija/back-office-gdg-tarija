@@ -1,0 +1,256 @@
+<div class="flex flex-col gap-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-bold text-text-primary dark:text-neutral-100">QRs del sorteo</h2>
+      <p class="text-sm text-text-secondary dark:text-neutral-400">
+        Cada QR da 1 ticket del sorteo a quien lo escanea con su cuenta, una sola vez por persona.
+        Imprímelo para una mesa de la feria, proyéctalo un momento o comparte su link.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="inline-flex items-center gap-1.5 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action transition-opacity hover:opacity-90"
+      (click)="openCreate()"
+    >
+      <span class="material-symbols-rounded text-base" aria-hidden="true">add</span>
+      Nuevo QR
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="flex justify-center p-8" role="status" aria-label="Cargando QRs del sorteo">
+      <span class="material-symbols-rounded animate-gdg-spin text-3xl text-accent-text"
+        >progress_activity</span
+      >
+    </div>
+  } @else if (loadError(); as err) {
+    <div
+      class="flex items-center justify-between gap-3 rounded-2xl border border-google-red/20 bg-google-red-light/30 p-4 text-sm font-medium text-danger-text"
+      role="alert"
+    >
+      <span>{{ err }}</span>
+      <button type="button" class="underline" (click)="load()">Reintentar</button>
+    </div>
+  } @else if (qrs().length === 0) {
+    <div
+      class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-black/10 p-10 text-center dark:border-white/10"
+    >
+      <span
+        class="material-symbols-rounded text-4xl text-neutral-300 dark:text-neutral-600"
+        aria-hidden="true"
+        >qr_code_2</span
+      >
+      <p class="text-base font-bold text-text-primary dark:text-neutral-200">
+        Aún no hay QRs del sorteo
+      </p>
+      <p class="text-sm text-text-secondary dark:text-neutral-400">
+        Crea uno por cada mesa, stand o momento del evento en el que quieras dar un ticket.
+      </p>
+    </div>
+  } @else {
+    <ul class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      @for (q of qrs(); track q.activityId) {
+        <li
+          class="flex flex-wrap items-center gap-3 rounded-2xl border border-black/5 p-4 dark:border-white/5"
+        >
+          <div class="min-w-40 flex-1">
+            <p class="truncate text-base font-bold text-text-primary dark:text-neutral-100">
+              {{ q.name }}
+            </p>
+            <p class="text-sm text-text-secondary dark:text-neutral-400">
+              @if (!q.code) {
+                Sin QR: solo suma si el staff escanea a la persona
+              } @else if (q.active) {
+                <span class="font-semibold text-success-text">Encendido</span> · suma 1 ticket
+              } @else {
+                <span class="font-semibold text-danger-text">Apagado</span> · no suma tickets
+              }
+            </p>
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            @if (q.code) {
+              <button
+                type="button"
+                class="flex size-11 items-center justify-center rounded-full text-accent-text hover:bg-google-blue-light/60"
+                [attr.aria-label]="'Ver QR de ' + q.name"
+                (click)="openQr(q)"
+              >
+                <span class="material-symbols-rounded text-xl" aria-hidden="true">qr_code_2</span>
+              </button>
+              <button
+                type="button"
+                class="flex size-11 items-center justify-center rounded-full hover:bg-neutral-100 disabled:opacity-50 dark:hover:bg-neutral-800"
+                [class]="q.active ? 'text-success-text' : 'text-text-secondary'"
+                [attr.aria-label]="(q.active ? 'Apagar QR de ' : 'Encender QR de ') + q.name"
+                [disabled]="togglingId() === q.activityId"
+                (click)="toggle(q)"
+              >
+                <span class="material-symbols-rounded text-3xl" aria-hidden="true">{{
+                  q.active ? 'toggle_on' : 'toggle_off'
+                }}</span>
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 disabled:opacity-50 dark:bg-neutral-800 dark:text-neutral-200"
+                [attr.aria-label]="'Crear QR para ' + q.name"
+                [disabled]="togglingId() === q.activityId"
+                (click)="toggle(q)"
+              >
+                Crear QR
+              </button>
+            }
+            <button
+              type="button"
+              class="flex size-11 items-center justify-center rounded-full text-accent-text hover:bg-google-blue-light/60"
+              [attr.aria-label]="'Cambiar nombre de ' + q.name"
+              (click)="openEdit(q)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">edit</span>
+            </button>
+            <button
+              type="button"
+              class="flex size-11 items-center justify-center rounded-full text-danger-text hover:bg-google-red-light/40"
+              [attr.aria-label]="'Eliminar ' + q.name"
+              (click)="remove(q)"
+            >
+              <span class="material-symbols-rounded text-xl" aria-hidden="true">delete</span>
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+@if (dialogOpen()) {
+  <app-dialog-frame
+    #frame
+    [title]="editing() ? 'Cambiar nombre' : 'Nuevo QR del sorteo'"
+    icon="qr_code_2"
+    initialSize="sm"
+    [dirty]="dirty()"
+    [busy]="saving()"
+    (closeDialog)="closeDialog()"
+  >
+    <form
+      id="raffle-qr-form"
+      class="flex flex-col gap-5"
+      (submit)="$event.preventDefault(); save()"
+      novalidate
+    >
+      <div class="flex flex-col gap-1.5">
+        <label for="rq-name" class="text-sm font-semibold text-text-primary dark:text-neutral-200"
+          >Nombre *</label
+        >
+        <input
+          id="rq-name"
+          type="text"
+          pInputText
+          class="w-full rounded-xl"
+          autocomplete="off"
+          [formField]="f.name"
+          aria-required="true"
+          [attr.aria-invalid]="!!nameError()"
+          aria-describedby="rq-name-help"
+        />
+        <small id="rq-name-help" class="text-text-secondary dark:text-neutral-400"
+          >Los asistentes lo ven en su lista de tickets. Ejemplo: "Feria · Flutter Tarija".</small
+        >
+        @if (nameError(); as err) {
+          <small class="font-medium text-danger-text" role="alert">{{ err }}</small>
+        }
+      </div>
+      @if (dialogError(); as err) {
+        <p class="text-sm font-medium text-danger-text" role="alert">{{ err }}</p>
+      }
+    </form>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+        (click)="frame.requestClose()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        form="raffle-qr-form"
+        class="rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        [disabled]="saving()"
+      >
+        {{ saving() ? 'Guardando...' : editing() ? 'Guardar' : 'Crear QR' }}
+      </button>
+    </ng-container>
+  </app-dialog-frame>
+}
+
+@if (viewing(); as q) {
+  <app-dialog-frame [title]="q.name" icon="qr_code_2" initialSize="sm" (closeDialog)="closeQr()">
+    <div class="flex flex-col items-center gap-4 text-sm text-text-primary dark:text-neutral-200">
+      @if (!q.active) {
+        <p
+          class="w-full rounded-2xl bg-google-red-light/30 p-3 font-medium text-danger-text"
+          role="status"
+        >
+          Este QR está apagado: quien lo escanee no suma tickets.
+        </p>
+      }
+      @if (qrImage(); as src) {
+        <img
+          class="w-full max-w-72 rounded-2xl border border-black/10"
+          [src]="src"
+          [alt]="'QR de ' + q.name"
+        />
+      } @else {
+        <span
+          class="material-symbols-rounded animate-gdg-spin p-8 text-3xl text-accent-text"
+          role="status"
+          aria-label="Generando QR"
+          >progress_activity</span
+        >
+      }
+      <p class="text-center text-text-secondary dark:text-neutral-400">
+        Se escanea con la cámara del celular o desde "Mis tickets" en la app de eventos. Solo suma a
+        quienes ya hicieron check-in.
+      </p>
+      <div class="flex w-full items-center gap-2">
+        <input
+          type="text"
+          readonly
+          pInputText
+          class="w-full rounded-xl font-mono text-xs"
+          aria-label="Link del QR"
+          [value]="viewingUrl()"
+        />
+        <button
+          type="button"
+          class="flex size-11 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          aria-label="Copiar link del QR"
+          (click)="copyLink()"
+        >
+          <span class="material-symbols-rounded text-xl" aria-hidden="true">content_copy</span>
+        </button>
+      </div>
+    </div>
+    <ng-container dialog-actions>
+      <button
+        type="button"
+        class="rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-neutral-200 disabled:opacity-50 dark:bg-neutral-800 dark:text-neutral-200"
+        [disabled]="!!togglingId()"
+        (click)="toggle(q)"
+      >
+        {{ q.active ? 'Apagar' : 'Encender' }}
+      </button>
+      @if (qrImage(); as src) {
+        <a
+          class="rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action hover:opacity-90"
+          [href]="src"
+          [download]="fileName()"
+        >
+          Descargar PNG
+        </a>
+      }
+    </ng-container>
+  </app-dialog-frame>
+}

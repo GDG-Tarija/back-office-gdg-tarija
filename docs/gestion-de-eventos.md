@@ -10,7 +10,7 @@ Ir a **Eventos > Nuevo evento** (`/events/new`). Empieza solo con el paso **Dato
 2. **Formulario de registro**: preguntas extra para las personas inscritas (texto, número, casilla, selección).
 3. **Paquetes**: tipos de entrada, gratis o de pago.
 4. **Tracks y sesiones**: salas/ejes y charlas con fecha, hora, ponente, nivel y temas.
-5. **Cupones y staff**: códigos de invitación y personal asignado al evento.
+5. **Cupones, staff y sorteo**: códigos de invitación, personal asignado al evento y QRs del sorteo.
 6. **Publicación**: checklist de requisitos. Si hay errores, no se puede publicar; los avisos no bloquean.
 
 El paso actual vive en la URL (`?tab=…`), así que **refrescar la página retoma donde estabas**, y puedes salir y volver al borrador desde la lista de eventos. Si cambias de pestaña o sales con **cambios sin guardar**, la app pregunta si quieres guardar, descartar o seguir editando. Con `setup=1` las pestañas se muestran como pasos con "Siguiente"; sin él (evento ya configurado) es la gestión normal con las mismas pestañas.
@@ -24,6 +24,7 @@ El paso actual vive en la URL (`?tab=…`), así que **refrescar la página reto
 - **Tracks**: nombre obligatorio y único en el evento.
 - **Sesiones**: título, fecha dentro del rango del evento, hora de inicio y fin (fin posterior), capacidad >= 1, nivel Básico/Intermedio/Avanzado (opcional), track del mismo evento. Aviso si se solapa con otra sesión del mismo track.
 - **Cupones**: código de 3 a 50 caracteres, sin espacios, en MAYÚSCULAS y único por evento; usos máximos >= 1 y no menores a los ya usados; rol Asistente, Speaker, Sponsor, Staff, Mentor o Comunidad aliada (los distintos de Asistente confirman la inscripción sin pago y no ocupan cupo de los paquetes). En el sorteo participan Asistentes y Comunidad aliada; Mentor, Speaker, Sponsor y Staff no, aunque todos pueden hacer networking.
+- **QRs del sorteo**: cada QR tiene un nombre único en el evento (máx. 80) y da 1 ticket a quien lo escanea con su cuenta, una sola vez y solo si ya hizo check-in. Sirve para la mesa de una comunidad (QR impreso), un momento de una charla (proyectado) o un link al grupo. **Apagar** hace que deje de sumar sin quitar los tickets ya dados; **Eliminar** quita ese ticket a todos. Solo SUPERADMIN.
 - **Formulario**: clave en snake_case y única; los campos de selección necesitan al menos 2 opciones.
 - **Staff**: correo válido y no repetido en el evento.
 - **Publicar** exige: datos completos (descripción, lugar, modalidad, fecha de fin), imagen de portada, al menos un paquete (con fases válidas si las usa), formulario válido y sesiones con fecha y hora completas.
@@ -62,7 +63,7 @@ En **Usuarios** (`/users`, solo SUPERADMIN) se ve quién entra al back-office, c
 - **Agregar usuario**: correo de Google + rol. La persona entra con "Continuar con Google" usando ese correo.
 - **Roles**: **Superadmin** ve y gestiona todo; **Staff de check-in** solo ve asistentes y hace check-in en los eventos que tenga asignados.
 - **El rol "Staff" de un cupón es otra cosa**: da la credencial del evento (moderadores, asistencia técnica), no acceso a este panel.
-- **Eventos de un Staff de check-in**: desde Usuarios (menú `⋮` → "Eventos asignados") o en la Configuración del evento → "Cupones y staff", donde solo aparecen personas con acceso de Staff de check-in.
+- **Eventos de un Staff de check-in**: desde Usuarios (menú `⋮` → "Eventos asignados") o en la Configuración del evento → "Cupones, staff y sorteo", donde solo aparecen personas con acceso de Staff de check-in.
 - **Cambiar rol / Quitar acceso**: desde el menú `⋮`. Nadie puede cambiar su propio rol ni quitarse el acceso, y siempre queda al menos un superadmin. Quitar el acceso también lo quita de sus eventos.
 - **Auditoría**: cada alta, cambio o baja de accesos, eventos, paquetes, cupones, inscripciones y check-ins queda registrada con quién la hizo y cuándo.
 

@@ -240,6 +240,38 @@ export interface Database {
           },
         ];
       };
+      point_activity_qrs: {
+        Row: {
+          active: boolean;
+          activity_id: string;
+          created_at: string;
+          id: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          activity_id: string;
+          created_at?: string;
+          id?: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          activity_id?: string;
+          created_at?: string;
+          id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'point_activity_qrs_activity_id_fkey';
+            columns: ['activity_id'];
+            isOneToOne: true;
+            referencedRelation: 'point_activities';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       raffle_winners: {
         Row: {
           created_at: string;
@@ -731,6 +763,7 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       add_backoffice_user: { Args: { p_email: string; p_role: string }; Returns: undefined };
+      claim_qr_ticket: { Args: { p_code: string; p_event_id: string }; Returns: Json };
       draw_raffle: { Args: { p_event_id: string; p_prize: string }; Returns: Json };
       get_coupon_uses: { Args: { p_coupon_id: string }; Returns: number };
       get_my_profile: {

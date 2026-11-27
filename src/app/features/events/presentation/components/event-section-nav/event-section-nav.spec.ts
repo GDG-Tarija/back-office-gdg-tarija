@@ -34,7 +34,7 @@ describe('EventSectionNav', () => {
       'Formulario de registro',
       'Paquetes',
       'Tracks y sesiones',
-      'Cupones y staff',
+      'Cupones, staff y sorteo',
       'Publicación',
     ]);
     expect(tabs.map((t) => t.getAttribute('tabindex'))).toEqual([
